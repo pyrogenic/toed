@@ -27,7 +27,7 @@ class ParseModel
   end
 
   def exec
-    Pathname(ARGV.shift || 'ODModel.model').readlines.each do |line|
+    Pathname(ARGV.shift || 'words.odmodel').readlines.each do |line|
       line.gsub!(/^\s+|\s+$/, '')
       if open_class
         if /^}$/ =~ line
@@ -114,39 +114,63 @@ class ParseModel
     result.split('[').first
   end
 
-  def gen
-    yield 'import {serializable, primitive, object, optional, list, alias} from "serializr";'
-    yield
-    interfaces.sort.each do |declaring_interface_name, props|
-      yield
-      yield("export interface #{proper_name(declaring_interface_name, declaration: true)} {")
+  def gen_interfaces
+    interfaces.map do |declaring_interface_name, props|
+      declaring_interface_name = proper_name(declaring_interface_name, declaration: true)
+      lines = []
+      lines << "export default interface #{declaring_interface_name} {"
       props.each do |name:, optional:, type:, comment: nil|
         type = proper_name(type)
-        yield("    /** #{comment} */") if comment
-        yield("    #{name}#{optional ? '?' : ''}: #{type};")
-        yield
+        is_interface = /^I[^a-z]/ =~ type
+        dep_name = proper_name(type, declaration: true)
+        dep_map[declaring_interface_name] << dep_name if is_interface && dep_name != declaring_interface_name
+        lines << "    /** #{comment} */" if comment
+        lines << "    #{name}#{optional ? '?' : ''}: #{type};"
+        lines << nil
       end
-      yield('}')
-      yield
+      lines << '}'
+      lines << nil
+      [declaring_interface_name, lines]
     end
-    dep_map = Hash.new { |h, k| h[k] = Set.new }
-    class_declarations = interfaces.sort.map do |declaring_type_name, props|
+  end
+
+  def dep_map
+    @dep_map ||= Hash.new { |h, k| h[k] = Set.new }
+  end
+
+  def ser_map
+    @ser_map ||= Hash.new { |h, k| h[k] = Set.new }
+  end
+
+  def gen_classes
+    interfaces.map do |declaring_type_name, props|
       declaring_type_name = proper_name(declaring_type_name, declaration: true, as_class: true)
-      lines = ["export class #{declaring_type_name} {"]
+      lines = ["export default class #{declaring_type_name} {"]
       props.each do |name:, optional:, type:, comment: nil|
         interface_type = proper_name(type)
         type = proper_name(type, as_class: true)
         is_class = interface_type != type
+        is_interface = /^I[^a-z]/ =~ interface_type
         type, is_array = type.split('[')
-        default = if is_array
-                    ' = []'
-                  elsif is_class
-                    " = new #{type}()"
-                  end
+        unless optional
+          default = if is_array
+                      ' = []'
+                    elsif is_class
+                      " = new #{type}()"
+                    end
+        end
         dep_map[declaring_type_name] << type if is_class && declaring_type_name != type
+        dep_map[declaring_type_name] << proper_name(interface_type, declaration: true) if is_interface
         serializable = is_class ? "object(#{type})" : 'primitive()'
-        serializable = "list(#{serializable})" if is_array
-        serializable = "optional(#{serializable})" if optional
+        ser_map[declaring_type_name] << (is_class ? 'object' : 'primitive')
+        if is_array
+          serializable = "list(#{serializable})"
+          ser_map[declaring_type_name] << 'list'
+        end
+        if optional
+          serializable = "optional(#{serializable})"
+          ser_map[declaring_type_name] << 'optional'
+        end
         optional = if optional
                      '?'
                    elsif default
@@ -163,38 +187,49 @@ class ParseModel
       lines << nil
       [declaring_type_name, lines]
     end
-    circular_dep_sentinel = Set.new
-    depends_on = lambda do |a, b|
-      puts((' ' * circular_dep_sentinel.length) + "depends_on(#{a}, #{b})?")
-      raise circular_dep_sentinel.to_a.join(' > ') unless circular_dep_sentinel.add?(a)
+    # circular_dep_sentinel = Set.new
+    # depends_on = lambda do |a, b|
+    #   puts((' ' * circular_dep_sentinel.length) + "depends_on(#{a}, #{b})?")
+    #   raise circular_dep_sentinel.to_a.join(' > ') unless circular_dep_sentinel.add?(a)
 
-      begin
-        if dep_map[a].member?(b)
-          puts((' ' * circular_dep_sentinel.length) + "#{a} depends on #{b}")
-          true
-        else
-          why = dep_map[a].detect { |bb| depends_on.call(bb, b) }
-          puts((' ' * circular_dep_sentinel.length) + "#{a} depends on #{b} because of #{why}") if why
-          why
+    #   begin
+    #     if dep_map[a].member?(b)
+    #       puts((' ' * circular_dep_sentinel.length) + "#{a} depends on #{b}")
+    #       true
+    #     else
+    #       why = dep_map[a].detect { |bb| depends_on.call(bb, b) }
+    #       puts((' ' * circular_dep_sentinel.length) + "#{a} depends on #{b} because of #{why}") if why
+    #       why
+    #     end
+    #   ensure
+    #     circular_dep_sentinel.delete(a)
+    #   end
+    # end
+    # remaining_types = declarations.map { |e, _| e }
+    # next_type = declarations.detect do |type, _|
+    #   (remaining_types - [type]).none? do |other_type|
+    #     depends_on.call(type, other_type)
+    #   end
+    # end
+    # raise unless next_type
+    # declarations.delete(next_type)
+  end
+
+  def export
+    declarations = gen_interfaces + gen_classes
+    declarations.each do |type, lines|
+      File.open("gen/#{type}.ts", 'w') do |file|
+        unless ser_map[type].empty?
+          ser_deps = ['serializable'] + ser_map[type].to_a
+          pp(type: type, ser_deps: ser_deps)
+          ser_deps = ser_deps.sort
+          file.puts("import {#{ser_deps.join(', ')}} from \"serializr\";")
         end
-      ensure
-        circular_dep_sentinel.delete(a)
-      end
-    end
-    loop do
-      break if class_declarations.empty?
-
-      remaining_types = class_declarations.map { |e, _| e }
-      next_type = class_declarations.detect do |type, _|
-        (remaining_types - [type]).none? do |other_type|
-          depends_on.call(type, other_type)
+        dep_map[type].to_a.sort.each do |dep|
+          file.puts("import #{dep} from \"./#{dep}\";")
         end
-      end
-      raise unless next_type
-
-      class_declarations.delete(next_type)
-      next_type[1].each do |line|
-        yield line
+        file.puts
+        lines.each(&file.method(:puts))
       end
     end
   end
@@ -202,7 +237,4 @@ end
 
 p = ParseModel.new
 p.exec
-p.inspect
-File.open('gen/RetrieveEntry.ts', 'w') do |file|
-  p.gen(&file.method(:puts))
-end
+p.export
