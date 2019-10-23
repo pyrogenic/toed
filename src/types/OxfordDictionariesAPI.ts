@@ -1,18 +1,18 @@
-import {serializable, primitive, object, list, alias} from "serializr";
+// import {serializable, primitive, object, list, alias} from "serializr";
 
 const OD_API_URL = "https://od-api.oxforddictionaries.com/api/v2";
 const RESOURCE_NAME = "Oxford Dictionaries";
 const API_NAME = "Oxford Dictionaries API";
 export { OD_API_URL, RESOURCE_NAME, API_NAME }
 
-class OxfordMetadata {
-    @serializable(primitive())
-    public operation!: string; // "retrieve",
-    @serializable(primitive())
-    public provider!: string; // "Oxford University Press",
-    @serializable(primitive())
-    public schema!: string; // "RetrieveEntry",
-}
+// class OxfordMetadata {
+//     @serializable(primitive())
+//     public operation!: string; // "retrieve",
+//     @serializable(primitive())
+//     public provider!: string; // "Oxford University Press",
+//     @serializable(primitive())
+//     public schema!: string; // "RetrieveEntry",
+// }
 
 export enum OxfordLanguage {
     de = "de",
@@ -46,108 +46,108 @@ export enum OxfordLanguage {
     zu = "zu",
 }
 
-class CrossReference {
-    @serializable(primitive())
-    id!: string;
-    @serializable(primitive())
-    text!: string;
-}
+// class CrossReference {
+//     @serializable(primitive())
+//     id!: string;
+//     @serializable(primitive())
+//     text!: string;
+// }
 
-class ExampleSentence {
-    @serializable(primitive())
-    text!: string;
-}
+// class ExampleSentence {
+//     @serializable(primitive())
+//     text!: string;
+// }
 
-class Sense {
-    @serializable(list(object(CrossReference)))
-    registers?: CrossReference[];
+// class Sense {
+//     @serializable(list(object(CrossReference)))
+//     registers?: CrossReference[];
 
-    @serializable(list(primitive()))
-    definitions?: string[];
+//     @serializable(list(primitive()))
+//     definitions?: string[];
 
-    @serializable(list(primitive()))
-    shortDefinitions?: string[];
+//     @serializable(list(primitive()))
+//     shortDefinitions?: string[];
 
-    @serializable(list(object(ExampleSentence)))
-    examples?: ExampleSentence[];
+//     @serializable(list(object(ExampleSentence)))
+//     examples?: ExampleSentence[];
 
-    @serializable(primitive())
-    id?: string;
+//     @serializable(primitive())
+//     id?: string;
 
-    @serializable(list(object(Sense)))
-    subsenses?: Sense[];
-}
+//     @serializable(list(object(Sense)))
+//     subsenses?: Sense[];
+// }
 
-class LexicalEntryEntry {
-    @serializable(list(object(Sense)))
-    senses?: Sense[];
-}
+// class LexicalEntryEntry {
+//     @serializable(list(object(Sense)))
+//     senses?: Sense[];
+// }
 
-class Pronounciation {
-    @serializable(list(primitive()))
-    dialects?: string[];
+// class Pronounciation {
+//     @serializable(list(primitive()))
+//     dialects?: string[];
 
-    @serializable(primitive())
-    phoneticNotation!: "IPA" | "respell";
+//     @serializable(primitive())
+//     phoneticNotation!: "IPA" | "respell";
 
-    @serializable(primitive())
-    phoneticSpelling!: string;
+//     @serializable(primitive())
+//     phoneticSpelling!: string;
 
-    @serializable(primitive())
-    audioFile?: string;
-}
+//     @serializable(primitive())
+//     audioFile?: string;
+// }
 
-class LexicalEntry {
-    @serializable(alias("derivativeOf", list(object(CrossReference))))
-    parents?: CrossReference[];
+// class LexicalEntry {
+//     @serializable(alias("derivativeOf", list(object(CrossReference))))
+//     parents?: CrossReference[];
 
-    @serializable(alias("derivatives", list(object(CrossReference))))
-    children?: CrossReference[];
+//     @serializable(alias("derivatives", list(object(CrossReference))))
+//     children?: CrossReference[];
 
-    @serializable(list(object(LexicalEntryEntry)))
-    entries?: LexicalEntryEntry[];
+//     @serializable(list(object(LexicalEntryEntry)))
+//     entries?: LexicalEntryEntry[];
 
-    @serializable(primitive())
-    language!: OxfordLanguage;
+//     @serializable(primitive())
+//     language!: OxfordLanguage;
 
-    @serializable(list(object(CrossReference)))
-    lexicalCategory!: CrossReference;
+//     @serializable(list(object(CrossReference)))
+//     lexicalCategory!: CrossReference;
 
-    @serializable(list(object(Pronounciation)))
-    pronunciations?: Pronounciation[]
+//     @serializable(list(object(Pronounciation)))
+//     pronunciations?: Pronounciation[]
 
-    @serializable(primitive())
-    text!: string
-}
+//     @serializable(primitive())
+//     text!: string
+// }
 
-enum ResultType {
-    headword = "headword",
-}
+// enum ResultType {
+//     headword = "headword",
+// }
 
-class Result {
-    @serializable(primitive())
-    id!: string;
-    @serializable(primitive())
-    language!: OxfordLanguage;
-    @serializable(alias("lexicalEntries", list(object(LexicalEntry))))
-    results: LexicalEntry[] = [];
-    @serializable(primitive())
-    type!: ResultType;
-    @serializable(primitive())
-    word!: string;
-}
+// class Result {
+//     @serializable(primitive())
+//     id!: string;
+//     @serializable(primitive())
+//     language!: OxfordLanguage;
+//     @serializable(alias("lexicalEntries", list(object(LexicalEntry))))
+//     results: LexicalEntry[] = [];
+//     @serializable(primitive())
+//     type!: ResultType;
+//     @serializable(primitive())
+//     word!: string;
+// }
 
-class WordsResponse {
-    @serializable(object(OxfordMetadata))
-    metadata!: OxfordMetadata;
+// class WordsResponse {
+//     @serializable(object(OxfordMetadata))
+//     metadata!: OxfordMetadata;
 
-    @serializable(primitive())
-    query!: string;
+//     @serializable(primitive())
+//     query!: string;
 
-    @serializable(list(object(Result)))
-    results: Result[] = [];
+//     @serializable(list(object(Result)))
+//     results: Result[] = [];
 
-}
+// }
 
 // lookup babyishness
 const REDIRECT = {

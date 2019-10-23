@@ -1,4 +1,4 @@
-import {list, object, optional, primitive, serializable} from "serializr";
+import {list, object, primitive, serializable} from "serializr";
 import CategorizedText from "./CategorizedText";
 import GrammaticalFeature from "./GrammaticalFeature";
 import ICategorizedText from "./ICategorizedText";
@@ -12,28 +12,28 @@ import VariantForm from "./VariantForm";
 
 export default class Entry {
     /** The origin of the word and the way in which its meaning has changed throughout history  */
-    @serializable(optional(list(primitive())))
+    @serializable(list(primitive()))
     etymologies?: string[];
 
-    @serializable(optional(list(object(GrammaticalFeature))))
+    @serializable(list(object(GrammaticalFeature)))
     grammaticalFeatures?: IGrammaticalFeature[];
 
     /** Identifies the homograph grouping. The last two digits identify different entries of the same homograph. The first one/two digits identify the homograph number.  */
-    @serializable(optional(primitive()))
+    @serializable(primitive())
     homographNumber?: string;
 
-    @serializable(optional(list(object(CategorizedText))))
+    @serializable(list(object(CategorizedText)))
     notes?: ICategorizedText[];
 
-    @serializable(optional(list(object(Pronunciation))))
+    @serializable(list(object(Pronunciation)))
     pronunciations?: IPronunciation[];
 
     /** Complete list of senses  */
-    @serializable(optional(list(object(Sense))))
+    @serializable(list(object(Sense)))
     senses?: ISense[];
 
     /** Various words that are used interchangeably depending on the context, e.g 'a' and 'an' */
-    @serializable(optional(list(object(VariantForm))))
+    @serializable(list(object(VariantForm)))
     variantForms?: IVariantForm[];
 
 }

@@ -1,4 +1,4 @@
-import {list, object, optional, primitive, serializable} from "serializr";
+import {list, object, primitive, serializable} from "serializr";
 import CategorizedText from "./CategorizedText";
 import Domain from "./Domain";
 import ICategorizedText from "./ICategorizedText";
@@ -9,19 +9,19 @@ import Region from "./Region";
 import Register from "./Register";
 
 export default class Construction {
-    @serializable(optional(list(object(Domain))))
+    @serializable(list(object(Domain)))
     domains?: IDomain[];
 
-    @serializable(optional(list(primitive())))
+    @serializable(list(primitive()))
     examples?: string[];
 
-    @serializable(optional(list(object(CategorizedText))))
+    @serializable(list(object(CategorizedText)))
     notes?: ICategorizedText[];
 
-    @serializable(optional(list(object(Region))))
+    @serializable(list(object(Region)))
     regions?: IRegion[];
 
-    @serializable(optional(list(object(Register))))
+    @serializable(list(object(Register)))
     registers?: IRegister[];
 
     /** The construction text */

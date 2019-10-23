@@ -1,8 +1,8 @@
-import {optional, primitive, serializable} from "serializr";
+import {primitive, serializable} from "serializr";
 
 export default class CategorizedText {
     /** The identifier of the word  */
-    @serializable(optional(primitive()))
+    @serializable(primitive())
     id?: string;
 
     /** A note text  */

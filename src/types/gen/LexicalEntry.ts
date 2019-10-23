@@ -1,4 +1,4 @@
-import {list, object, optional, primitive, serializable} from "serializr";
+import {list, object, primitive, serializable} from "serializr";
 import CategorizedText from "./CategorizedText";
 import Entry from "./Entry";
 import GrammaticalFeature from "./GrammaticalFeature";
@@ -16,17 +16,17 @@ import VariantForm from "./VariantForm";
 
 export default class LexicalEntry {
     /** Other words from which this one derives  */
-    @serializable(optional(list(object(RelatedEntries))))
+    @serializable(list(object(RelatedEntries)))
     derivativeOf?: IRelatedEntries[];
 
     /** Other words from which their Sense derives  */
-    @serializable(optional(list(object(RelatedEntries))))
+    @serializable(list(object(RelatedEntries)))
     derivatives?: IRelatedEntries[];
 
-    @serializable(optional(list(object(Entry))))
+    @serializable(list(object(Entry)))
     entries?: IEntry[];
 
-    @serializable(optional(list(object(GrammaticalFeature))))
+    @serializable(list(object(GrammaticalFeature)))
     grammaticalFeatures?: IGrammaticalFeature[];
 
     /** IANA language code  */
@@ -37,10 +37,10 @@ export default class LexicalEntry {
     @serializable(object(LexicalCategory))
     lexicalCategory: ILexicalCategory = new LexicalCategory();
 
-    @serializable(optional(list(object(CategorizedText))))
+    @serializable(list(object(CategorizedText)))
     notes?: ICategorizedText[];
 
-    @serializable(optional(list(object(Pronunciation))))
+    @serializable(list(object(Pronunciation)))
     pronunciations?: IPronunciation[];
 
     /** A given written or spoken realisation of an entry.  */
@@ -48,7 +48,7 @@ export default class LexicalEntry {
     text!: string;
 
     /** Various words that are used interchangeably depending on the context, e.g 'a' and 'an' */
-    @serializable(optional(list(object(VariantForm))))
+    @serializable(list(object(VariantForm)))
     variantForms?: IVariantForm[];
 
 }

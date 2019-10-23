@@ -1,4 +1,4 @@
-import {list, object, optional, primitive, serializable} from "serializr";
+import {list, object, primitive, serializable} from "serializr";
 import ILexicalEntry from "./ILexicalEntry";
 import IPronunciation from "./IPronunciation";
 import LexicalEntry from "./LexicalEntry";
@@ -17,11 +17,11 @@ export default class HeadwordEntry {
     @serializable(list(object(LexicalEntry)))
     lexicalEntries: ILexicalEntry[] = [];
 
-    @serializable(optional(list(object(Pronunciation))))
+    @serializable(list(object(Pronunciation)))
     pronunciations?: IPronunciation[];
 
     /** The json object type. Could be 'headword', 'inflection' or 'phrase'  */
-    @serializable(optional(primitive()))
+    @serializable(primitive())
     type?: string;
 
     /** (DEPRECATED) A given written or spoken realisation of an entry, lowercased. */

@@ -101,6 +101,8 @@ class ParseModel
         "#{base}[]"
       elsif /^(?<primitive>string|object|number)s?$/i =~ name
         primitive.downcase
+      elsif /^objects?$/i =~ name
+        'any'
       elsif /^(I[a-z]|[^I])/ =~ name
         'I' + name
       else
@@ -159,18 +161,41 @@ class ParseModel
                       " = new #{type}()"
                     end
         end
-        dep_map[declaring_type_name] << type if is_class && declaring_type_name != type
         dep_map[declaring_type_name] << proper_name(interface_type, declaration: true) if is_interface
-        serializable = is_class ? "object(#{type})" : 'primitive()'
-        ser_map[declaring_type_name] << (is_class ? 'object' : 'primitive')
+        if is_class
+          # TODO: this is the case where serializable must be done after the class definition
+          #
+          #   class Senses {
+          #       //@serializable(optional(list(object(Sense))))
+          #       subsenses?: ISense[];
+          #   }
+          #
+          #   createModelSchema(Sense, {
+          #     subsenses: optional(list(object(Sense))),
+          #   });
+          dep_map[declaring_type_name] << type unless declaring_type_name == type
+          serializable = "object(#{type})"
+          ser_map[declaring_type_name] << 'object'
+        elsif type == 'any'
+          serializable = 'raw()'
+          ser_map[declaring_type_name] << 'raw'
+        else
+          serializable = 'primitive()'
+          ser_map[declaring_type_name] << 'primitive'
+        end
         if is_array
           serializable = "list(#{serializable})"
           ser_map[declaring_type_name] << 'list'
         end
-        if optional
-          serializable = "optional(#{serializable})"
-          ser_map[declaring_type_name] << 'optional'
-        end
+        # TODO: @optional() appears to create failures on deserialization for non-primitives:
+        #   Unhandled Rejection (Error): [serializr] this value is not primitive: [object Object]
+        #    Context.GUARDED_NOOP [as onReadyCb]
+        #    node_modules/serializr/lib/es/serializr.js:65
+        #
+        # if optional
+        #   serializable = "optional(#{serializable})"
+        #   ser_map[declaring_type_name] << 'optional'
+        # end
         optional = if optional
                      '?'
                    elsif default
