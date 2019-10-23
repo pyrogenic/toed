@@ -1,0 +1,163 @@
+RetrieveEntry {
+    metadata (object, optional): Additional Information provided by OUP ,
+    results (Array[HeadwordEntry], optional): A list of entries and all the data related to them
+    }
+    HeadwordEntry {
+    id (string): The identifier of a word ,
+    language (string): IANA language code ,
+    lexicalEntries (Array[lexicalEntry]): A grouping of various senses in a specific language, and a lexical category that relates to a word ,
+    pronunciations (PronunciationsList, optional),
+    type (string, optional): The json object type. Could be 'headword', 'inflection' or 'phrase' ,
+    word (string): (DEPRECATED) A given written or spoken realisation of an entry, lowercased.
+    }
+    lexicalEntry {
+    derivativeOf (ArrayOfRelatedEntries, optional): Other words from which this one derives ,
+    derivatives (ArrayOfRelatedEntries, optional): Other words from which their Sense derives ,
+    entries (Array[Entry], optional),
+    grammaticalFeatures (GrammaticalFeaturesList, optional),
+    language (string): IANA language code ,
+    lexicalCategory (lexicalCategory): A linguistic category of words (or more precisely lexical items), generally defined by the syntactic or morphological behaviour of the lexical item in question, such as noun or verb ,
+    notes (CategorizedTextList, optional),
+    pronunciations (PronunciationsList, optional),
+    text (string): A given written or spoken realisation of an entry. ,
+    variantForms (VariantFormsList, optional): Various words that are used interchangeably depending on the context, e.g 'a' and 'an'
+    }
+    PronunciationsList [
+    Inline Model 1
+    ]
+    ArrayOfRelatedEntries [
+    Inline Model 2
+    ]
+    Entry {
+    etymologies (arrayofstrings, optional): The origin of the word and the way in which its meaning has changed throughout history ,
+    grammaticalFeatures (GrammaticalFeaturesList, optional),
+    homographNumber (string, optional): Identifies the homograph grouping. The last two digits identify different entries of the same homograph. The first one/two digits identify the homograph number. ,
+    notes (CategorizedTextList, optional),
+    pronunciations (PronunciationsList, optional),
+    senses (Array[Sense], optional): Complete list of senses ,
+    variantForms (VariantFormsList, optional): Various words that are used interchangeably depending on the context, e.g 'a' and 'an'
+    }
+    GrammaticalFeaturesList [
+    Inline Model 3
+    ]
+    lexicalCategory {
+    id (string),
+    text (string)
+    }
+    CategorizedTextList [
+    Inline Model 4
+    ]
+    VariantFormsList [
+    Inline Model 5
+    ]
+    Inline Model 1 {
+    audioFile (string, optional): The URL of the sound file ,
+    dialects (arrayofstrings, optional): A local or regional variation where the pronunciation occurs, e.g. 'British English' ,
+    phoneticNotation (string, optional): The alphabetic system used to display the phonetic spelling ,
+    phoneticSpelling (string, optional): Phonetic spelling is the representation of vocal sounds which express pronunciations of words. It is a system of spelling in which each letter represents invariably the same spoken sound ,
+    regions (regionsList, optional): A particular area in which the pronunciation occurs, e.g. 'Great Britain' ,
+    registers (registersList, optional): A level of language usage, typically with respect to formality. e.g. 'offensive', 'informal'
+    }
+    Inline Model 2 {
+    domains (domainsList, optional): A subject, discipline, or branch of knowledge particular to the Sense ,
+    id (string): The identifier of the word ,
+    language (string, optional): IANA language code specifying the language of the word ,
+    regions (regionsList, optional): A particular area in which the pronunciation occurs, e.g. 'Great Britain' ,
+    registers (registersList, optional): A level of language usage, typically with respect to formality. e.g. 'offensive', 'informal' ,
+    text (string)
+    }
+    arrayofstrings [
+    string
+    ]
+    Sense {
+    constructions (Array[inline_model_3], optional): A construction provides information about typical syntax used of this sense. Each construction may optionally have one or more examples. ,
+    crossReferenceMarkers (arrayofstrings, optional): A grouping of crossreference notes. ,
+    crossReferences (CrossReferencesList, optional),
+    definitions (arrayofstrings, optional): A list of statements of the exact meaning of a word ,
+    domains (domainsList, optional): A subject, discipline, or branch of knowledge particular to the Sense ,
+    etymologies (arrayofstrings, optional): The origin of the word and the way in which its meaning has changed throughout history ,
+    examples (ExamplesList, optional),
+    id (string, optional): The id of the sense that is required for the delete procedure ,
+    notes (CategorizedTextList, optional),
+    pronunciations (PronunciationsList, optional),
+    regions (regionsList, optional): A particular area in which the Sense occurs, e.g. 'Great Britain' ,
+    registers (registersList, optional): A level of language usage, typically with respect to formality. e.g. 'offensive', 'informal' ,
+    shortDefinitions (arrayofstrings, optional): A list of short statements of the exact meaning of a word ,
+    subsenses (Array[Sense], optional): Ordered list of subsenses of a sense ,
+    thesaurusLinks (Array[thesaurusLink], optional): Ordered list of links to the Thesaurus Dictionary ,
+    variantForms (VariantFormsList, optional): Various words that are used interchangeably depending on the context, e.g 'duck' and 'duck boat'
+    }
+    Inline Model 3 {
+    id (string),
+    text (string),
+    type (string)
+    }
+    Inline Model 4 {
+    id (string, optional): The identifier of the word ,
+    text (string): A note text ,
+    type (string): The descriptive category of the text
+    }
+    Inline Model 5 {
+    domains (domainsList, optional): A subject, discipline, or branch of knowledge particular to the Sense ,
+    notes (CategorizedTextList, optional),
+    pronunciations (PronunciationsList, optional): A grouping of pronunciation information ,
+    regions (regionsList, optional): A particular area in which the variant form occurs, e.g. 'Great Britain' ,
+    registers (registersList, optional): A level of language usage, typically with respect to formality. e.g. 'offensive', 'informal' ,
+    text (string)
+    }
+    regionsList [
+    Inline Model 6
+    ]
+    registersList [
+    Inline Model 7
+    ]
+    domainsList [
+    Inline Model 8
+    ]
+    inline_model_3 {
+    domains (domainsList, optional),
+    examples (Array[ExampleText], optional),
+    notes (CategorizedTextList, optional),
+    regions (regionsList, optional),
+    registers (registersList, optional),
+    text (string): The construction text
+    }
+    CrossReferencesList [
+    Inline Model 9
+    ]
+    ExamplesList [
+    Inline Model 10
+    ]
+    thesaurusLink {
+    entry_id (string): identifier of a word ,
+    sense_id (string): identifier of a sense
+    }
+    Inline Model 6 {
+    id (string),
+    text (string)
+    }
+    Inline Model 7 {
+    id (string),
+    text (string)
+    }
+    Inline Model 8 {
+    id (string),
+    text (string)
+    }
+    ExampleText [
+    string
+    ]
+    Inline Model 9 {
+    id (string): The word id of the co-occurrence ,
+    text (string): The word of the co-occurrence ,
+    type (string): The type of relation between the two words. Possible values are 'close match', 'related', 'see also', 'variant spelling', and 'abbreviation' in case of crossreferences, or 'pre', 'post' in case of collocates.
+    }
+    Inline Model 10 {
+    definitions (arrayofstrings, optional): A list of statements of the exact meaning of a word ,
+    domains (domainsList, optional): A subject, discipline, or branch of knowledge particular to the Sense ,
+    notes (CategorizedTextList, optional),
+    regions (regionsList, optional): A particular area in which the pronunciation occurs, e.g. 'Great Britain' ,
+    registers (registersList, optional): A level of language usage, typically with respect to formality. e.g. 'offensive', 'informal' ,
+    senseIds (arrayofstrings, optional): The list of sense identifiers related to the example. Provided in the sentences endpoint only. ,
+    text (string)
+    }
