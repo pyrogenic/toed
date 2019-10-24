@@ -3,8 +3,8 @@ import './App.css';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
-import Badge from 'react-bootstrap/Badge';
+import Button, { ButtonProps } from 'react-bootstrap/Button';
+import Badge, { BadgeProps } from 'react-bootstrap/Badge';
 import Dropdown from 'react-bootstrap/Dropdown';
 import DropdownButton from 'react-bootstrap/DropdownButton';
 import Card from 'react-bootstrap/Card';
@@ -43,7 +43,9 @@ interface IProps {
 
 }
 
-interface FlagMap { [domain: string]: boolean }
+type Pass = 1 | 2 | 3 | 0;
+
+interface FlagMap { [domain: string]: Pass }
 
 interface IState {
   apiBaseUrl: string;
@@ -74,11 +76,11 @@ interface IDictionaryEntry {
   example: string,
 }
 
-function needsMoreDefinitions(result: Partial<IDictionaryEntry>, partOfSpeech: string, short: boolean, finalPass: boolean) {
+function needsMoreDefinitions(result: Partial<IDictionaryEntry>, partOfSpeech: string, short: boolean, pass: Pass) {
   const max = short ? 1 : 2;
   if (!result.definitions) {
     return true;
-  } else if (finalPass) {
+  } else if (pass > 1) {
     return false;
   } else if (!result.definitions[partOfSpeech]) {
     return Object.keys(result.definitions).length < max;
@@ -95,7 +97,7 @@ export default class App extends React.Component<IProps, IState> {
   constructor(props: Readonly<IProps>) {
     super(props);
     const interfaceSettings = FLAG_PROPS.map((prop) => {
-      const value = localStorage.getItem("oed/flags/" + prop);
+      const value = localStorage.getItem("oed/passes/" + prop);
       const effective = JSON.parse(value || "{}");
       const result = { [prop]: effective }
       console.log({prop, value, effective, result})
@@ -122,7 +124,7 @@ export default class App extends React.Component<IProps, IState> {
 
   public componentDidUpdate() {
     FLAG_PROPS.forEach((prop) => {
-      localStorage.setItem("oed/flags/" + prop, JSON.stringify(this.state[prop] || {}));
+      localStorage.setItem("oed/passes/" + prop, JSON.stringify(this.state[prop] || {}));
     });
     if (this.state.app_id) {
       localStorage.setItem("oed/app_id", this.state.app_id);
@@ -197,16 +199,18 @@ export default class App extends React.Component<IProps, IState> {
       </Col>
       {
         Object.keys(this.state[prop]).sort().map((flag) =>
-          <Col><Form.Check inline={true} label={flag} checked={this.state[prop][flag] === true}
-            onChange={() =>
-              this.setState((state) => {
+          {
+            const value = this.state[prop][flag];
+            const variants: Array<BadgeProps['variant']> = ['danger', 'success', 'secondary', 'warning'];
+            const variant = variants[value];
+            return <Col><Badge variant={variant} onClick={() => this.setState((state) => {
                 const flags = state[prop];
-                const newFlags: FlagMap = { ...flags, [flag]: !flags[flag] };
+                const newFlags: FlagMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass};
                 const newState: any = { [prop]: newFlags };
                 return newState;
-              }
-              )}
-          /></Col>)
+              })}
+              >{flag}</Badge></Col>;
+          })
       }
     </Row>
   }
@@ -233,12 +237,13 @@ export default class App extends React.Component<IProps, IState> {
           if (variantForms && baseWord && result.entry_rich !== baseWord && variantForms.find((vf) => vf.text === baseWord)) {
             result.entry_rich = this.state.q;
           }
-          lentry.senses && lentry.senses.forEach(this.processSense.bind(this, result, { partOfSpeech, short: false, finalPass: false }))
+          lentry.senses && lentry.senses.forEach(this.processSense.bind(this, result, { partOfSpeech, short: false, pass: 1 }))
         });
       })
     });
 
-    [{ short: true, finalPass: false }, { short: false, finalPass: true }, { short: true, finalPass: true }].forEach((pass) => {
+    [{ short: true, pass: 1 as Pass }, { short: false, pass: 2 as Pass },
+      { short: true, pass: 2 as Pass }].forEach((pass) => {
       entries.forEach((entry) => {
         entry.lexicalEntries.forEach((lexicalEntry) => {
           const { lexicalCategory: { id: partOfSpeech } } = lexicalEntry;
@@ -252,15 +257,15 @@ export default class App extends React.Component<IProps, IState> {
     return <pre>{JSON.stringify(result, undefined, 2)}</pre>;
   }
 
-  private allowed(prop: FlagPropertyNames<IState>, flag: string): boolean {
+  private allowed(prop: FlagPropertyNames<IState>, flag: string): Pass {
     let allowed = this.state[prop][flag];
     console.log({prop, flag, allowed});
     if (allowed === undefined) {
-      allowed = true;
+      allowed = 1;
       if (typeof flag === "string") {
         setImmediate(() => this.setState(({ [prop]: flags }) => {
           if (flags[flag] === undefined) {
-            return { [prop]: { [flag]: true, ...flags } } as any;
+            return { [prop]: { [flag]: allowed, ...flags } } as any;
           }
           return null;
         }));
@@ -269,19 +274,22 @@ export default class App extends React.Component<IProps, IState> {
     return allowed;
   }
 
-  private processSense(result: Partial<IDictionaryEntry>, { partOfSpeech, short, finalPass }: { partOfSpeech: string, short: boolean, finalPass: boolean }, sense: ISense) {
+  private processSense(result: Partial<IDictionaryEntry>, { partOfSpeech, short, pass }: { partOfSpeech: string, short: boolean, pass: Pass }, sense: ISense) {
     const { pronunciations, subsenses, examples } = sense;
     const definitions = short ? sense.shortDefinitions : sense.definitions;
     this.pullPronunciation(result, pronunciations);
-    const allowedPartOfSpeech = this.allowed('allowedPartsOfSpeech', partOfSpeech);
-    const allowedRegister = sense.registers ? every(sense.registers.map((e) => e.id), this.allowed.bind(this, 'allowedRegisters')) : true;
-    const allowedDomain = sense.domains ? every(sense.domains.map((e) => e.id), this.allowed.bind(this, 'allowedDomains')) : true;
-    const allowed = allowedPartOfSpeech && allowedDomain && allowedRegister;
-    if (allowed == finalPass) {
+    const passes = [
+      this.allowed('allowedPartsOfSpeech', partOfSpeech),
+    ...(sense.registers || []).map((e) => e.id).map(this.allowed.bind(this, 'allowedRegisters')),
+    ...(sense.domains || []).map((e) => e.id).map(this.allowed.bind(this, 'allowedDomains')),
+  ];
+    const allowed = Math.min(...passes) > 0;
+    const requiredPass = Math.max(...passes);
+    if (!allowed || requiredPass !== pass) {
       return;
     }
     definitions && definitions.forEach((definition) => {
-      if (needsMoreDefinitions(result, partOfSpeech, short, finalPass)) {
+      if (needsMoreDefinitions(result, partOfSpeech, short, pass)) {
         result.definitions = result.definitions || {};
         result.definitions[partOfSpeech] = result.definitions[partOfSpeech] || [];
         result.definitions[partOfSpeech].push(definition);
@@ -290,7 +298,7 @@ export default class App extends React.Component<IProps, IState> {
         }
       }
     });
-    subsenses && subsenses.forEach(this.processSense.bind(this, result, { partOfSpeech, short, finalPass }));
+    subsenses && subsenses.forEach(this.processSense.bind(this, result, { partOfSpeech, short, pass }));
   }
 
   private pullPronunciation(result: Partial<IDictionaryEntry>, pronunciations?: IPronunciation[]) {
