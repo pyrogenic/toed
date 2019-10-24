@@ -1,4 +1,4 @@
-import {createModelSchema, list, object, primitive, serializable} from "serializr";
+import {createModelSchema, getDefaultModelSchema, list, object, primitive, serializable} from "serializr";
 import CategorizedText from "./CategorizedText";
 import Construction from "./Construction";
 import CrossReference from "./CrossReference";
@@ -84,6 +84,11 @@ export default class Sense {
 
 }
 
-createModelSchema(Sense, {
+const ex = getDefaultModelSchema(Sense) as any;
+console.log({ex});
+const aft: any = createModelSchema(Sense, {
     subsenses: list(object(Sense)),
 });
+aft.extends = ex;
+console.log({aft});
+console.log(getDefaultModelSchema(Sense));
