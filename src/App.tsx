@@ -194,24 +194,25 @@ export default class App extends React.Component<IProps, IState> {
 
   private renderFilter(label: string, prop: FlagPropertyNames<IState>): React.ReactNode {
     return <Row>
-      <Col xs={2}>
+      <Col xs={3}>
         <Form.Label>{label}</Form.Label>
       </Col>
-      {
+      <Col>{
         Object.keys(this.state[prop]).sort().map((flag) =>
           {
             const value = this.state[prop][flag];
-            const variants: Array<BadgeProps['variant']> = ['danger', 'success', 'secondary', 'warning'];
+            const variants: Array<BadgeProps['variant']> = ['danger', 'light', 'secondary', 'warning'];
             const variant = variants[value];
-            return <Col><Badge variant={variant} onClick={() => this.setState((state) => {
+            return <Badge variant={variant} onClick={() => this.setState((state) => {
                 const flags = state[prop];
                 const newFlags: FlagMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass};
                 const newState: any = { [prop]: newFlags };
                 return newState;
               })}
-              >{flag}</Badge></Col>;
+              >{flag}</Badge>;
           })
       }
+      </Col>
     </Row>
   }
 
