@@ -34,4 +34,3 @@ export default interface ILexicalEntry {
     variantForms?: IVariantForm[];
 
 }
-
