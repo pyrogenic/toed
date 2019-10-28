@@ -66,14 +66,9 @@ interface IState {
   allowedDomains: IPassMap;
 }
 
-class WordRecord {
-  @observable()
-  dictionaryEntry: IDictionaryEntry;
-}
-
 type FlagPropertyNames<T> = { [K in keyof Required<T>]: T[K] extends IPassMap ? K : never }[keyof T];
 
-interface IDictionaryEntry {
+export interface IDictionaryEntry {
   entry_rich: string;
   definitions: {
     [partOfSpeech: string]: string[],
@@ -99,7 +94,9 @@ function needsMoreDefinitions(result: Partial<IDictionaryEntry>, partOfSpeech: s
 
 const FLAG_PROPS: Array<FlagPropertyNames<IState>> = ["allowedPartsOfSpeech", "allowedRegisters", "allowedDomains"];
 
-interface IResultMetadata {
+interface IRenderResult {
+  result: Partial<IDictionaryEntry>;
+  notes: string[];
 }
 
 export default class App extends React.Component<IProps, IState> {
@@ -190,7 +187,8 @@ export default class App extends React.Component<IProps, IState> {
 
       <Row>
         <Col>
-          {this.state.re && this.state.re.results && this.renderResult(this.state.re.results)}
+          {this.state.re && this.state.q && this.state.re.results &&
+             this.renderResult(this.state.q, this.state.re.results)}
         </Col>
       </Row>
       <Row>
@@ -224,8 +222,13 @@ export default class App extends React.Component<IProps, IState> {
     </Row>;
   }
 
-  private renderResult = (entries: IHeadwordEntry[]) => {
-    const result: Partial<IDictionaryEntry> = {};
+  private renderResult = (query: string, entries: IHeadwordEntry[]) => {
+    const { result, notes }: IRenderResult = { result: {}, notes: [] };
+    const allEntryTexts = flatten(flatten(entries.map(({lexicalEntries}) => lexicalEntries)).map(({text}) => text));
+    const matchingEntryTexts = allEntryTexts.some((text) => query.toLocaleLowerCase() === text.toLocaleLowerCase());
+    // tslint:disable-next-line:no-console
+    console.log({allEntryTexts, matchingEntryTexts});
+    const rejectedLexicalEntries: ILexicalEntry[] = [];
     entries.forEach((entry) => {
       const { pronunciations } = entry;
 
@@ -233,6 +236,13 @@ export default class App extends React.Component<IProps, IState> {
       entry.lexicalEntries.forEach((lexicalEntry) => {
         const { lexicalCategory: { id: partOfSpeech }, text } = lexicalEntry;
         if (text.match(/[A-Z]/)) {
+          rejectedLexicalEntries.push(lexicalEntry);
+          notes.push(`‘${text}’ rejected because of capitalization`);
+          return;
+        }
+        if (matchingEntryTexts && text.length !== query.length) {
+          rejectedLexicalEntries.push(lexicalEntry);
+          notes.push(`‘${text}’ rejected because exact matches of the query are present`);
           return;
         }
         if (!result.entry_rich) {
@@ -246,22 +256,33 @@ export default class App extends React.Component<IProps, IState> {
             const { etymologies, senses, variantForms } = lentry;
             if (variantForms && baseWord && result.entry_rich !== baseWord
               && variantForms.find((vf) => vf.text === baseWord)) {
-              result.entry_rich = this.state.q;
+              result.entry_rich = baseWord;
             }
             // pass down etymologies so we only take them from entries with first-pass acceptable senses
             if (senses) {
               senses.forEach(this.processSense.bind(
-                this, result, { partOfSpeech, short: false, pass: 1, etymologies }));
+                this, result, { partOfSpeech, short: false, subsenses: false, pass: 1, etymologies }));
             }
           });
         }
       });
     });
 
-    [{ short: true, pass: 1 as Pass }, { short: false, pass: 2 as Pass },
-    { short: true, pass: 2 as Pass }].forEach((pass) => {
+    [
+      { short: true, subsenses: false, pass: 1 as Pass },
+      { short: false, subsenses: true, pass: 1 as Pass },
+      { short: true, subsenses: true, pass: 1 as Pass },
+
+      { short: false, subsenses: false, pass: 2 as Pass },
+      { short: false, subsenses: true, pass: 2 as Pass },
+      { short: true, subsenses: false, pass: 2 as Pass },
+      { short: true, subsenses: true, pass: 2 as Pass }
+    ].forEach((pass) => {
       entries.forEach((entry) => {
         entry.lexicalEntries.forEach((lexicalEntry) => {
+          if (rejectedLexicalEntries.includes(lexicalEntry)) {
+            return;
+          }
           const { lexicalCategory: { id: partOfSpeech } } = lexicalEntry;
           if (!lexicalEntry.entries) { return; }
           lexicalEntry.entries.forEach((lentry) => {
@@ -273,7 +294,15 @@ export default class App extends React.Component<IProps, IState> {
       });
     });
 
-    return <pre>{JSON.stringify(result, undefined, 2)}</pre>;
+    return <><Row><Col as='ul'>
+      {notes.map((note) => <li>{note}</li>)}
+      </Col>
+      </Row>
+      <Row>
+      <Col>
+      <pre>{JSON.stringify(result, undefined, 2)}</pre>
+      </Col>
+      </Row></>;
   }
 
   private allowed(prop: FlagPropertyNames<IState>, flag: string): Pass {
@@ -294,8 +323,8 @@ export default class App extends React.Component<IProps, IState> {
 
   private processSense(
     result: Partial<IDictionaryEntry>,
-    { partOfSpeech, short, pass, etymologies: entryEtymologies }:
-      { partOfSpeech: string, short: boolean, pass: Pass, etymologies?: string[] },
+    { partOfSpeech, short, pass, subsenses: onlySubsenses, etymologies: entryEtymologies }:
+      { partOfSpeech: string, short: boolean, pass: Pass, subsenses: boolean, etymologies?: string[] },
     sense: ISense) {
     const { pronunciations, subsenses, examples, etymologies: senseEtymologies } = sense;
     const definitions = short ? sense.shortDefinitions : sense.definitions;
@@ -314,20 +343,26 @@ export default class App extends React.Component<IProps, IState> {
     if (!result.etymology && etymologies) {
       result.etymology = etymologies[0];
     }
+    if (onlySubsenses) {
+      if (subsenses) {
+        subsenses.forEach(this.processSense.bind(this, result, { partOfSpeech, short, pass, subsenses: true }));
+      }
+      return;
+    }
     if (definitions) {
       definitions.forEach((definition) => {
         if (needsMoreDefinitions(result, partOfSpeech, short, pass)) {
           result.definitions = result.definitions || {};
           result.definitions[partOfSpeech] = result.definitions[partOfSpeech] || [];
           result.definitions[partOfSpeech].push(definition);
+          // if (!result.entry_rich) {
+          //   result.entry_rich = sense.t;
+          // }
           if (!result.example && examples) {
             result.example = examples[0].text;
           }
         }
       });
-    }
-    if (subsenses) {
-      subsenses.forEach(this.processSense.bind(this, result, { partOfSpeech, short, pass }));
     }
   }
 
@@ -383,9 +418,9 @@ export default class App extends React.Component<IProps, IState> {
   private maybeFollow = () => {
     if (this.state.re && this.state.re.results) {
       const derivativeOf = flatten(flatten(flatten(this.state.re.results.map((result) =>
-      compact(result.lexicalEntries.map((entry) => entry.derivativeOf)))))).map((re) => re.id);
+        compact(result.lexicalEntries.map((entry) => entry.derivativeOf)))))).map((re) => re.id);
       if (derivativeOf.length === 1) {
-        this.setState({q: derivativeOf[0]}, this.go);
+        this.setState({ q: derivativeOf[0] }, this.go);
       }
     }
   }
