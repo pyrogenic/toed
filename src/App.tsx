@@ -22,7 +22,7 @@ import ILexicalEntry from "./types/gen/ILexicalEntry";
 import IPronunciation from "./types/gen/IPronunciation";
 import ISense from "./types/gen/ISense";
 import RetrieveEntry from "./types/gen/RetrieveEntry";
-import { OxfordLanguage } from "./types/OxfordDictionariesAPI";
+import { OxfordLanguage } from "./types/OxfordLanguage";
 
 async function fetchJson(url: string) {
   // tslint:disable: variable-name
