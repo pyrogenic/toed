@@ -1,13 +1,25 @@
-import { observable } from "mobx";
-import { IDictionaryEntry } from "./App";
-class WordRecord {
+import { computed, observable } from "mobx";
+import IWordRecord from "./IWordRecord";
+import OxfordDictionariesPipeline from "./OxfordDictionariesPipeline";
+import RetrieveEntry from "./types/gen/RetrieveEntry";
+
+export default class WordRecord implements IWordRecord {
+  public readonly q: string;
+  public readonly re: RetrieveEntry;
+
+  public readonly pipeline: OxfordDictionariesPipeline;
+
+  @computed
+  public get result() {
+    return this.pipeline.process({notes: this.notes});
+  }
+
   @observable
-  public word: string;
-  @observable
-  public dictionaryEntry: Partial<IDictionaryEntry> = {};
-  @observable
-  public notes: string = "";
-  constructor(word: string) {
-    this.word = word;
+  public readonly notes: string[] = [];
+
+  constructor(query: string, re: RetrieveEntry, pipeline: OxfordDictionariesPipeline) {
+    this.q = query;
+    this.re = re;
+    this.pipeline = pipeline;
   }
 }

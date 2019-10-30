@@ -1,4 +1,4 @@
-export enum OxfordLanguage {
+enum OxfordLanguage {
     de = "de",
     el = "el",
     americanEnglish = "en-us",
@@ -29,3 +29,5 @@ export enum OxfordLanguage {
     zh = "zh",
     zu = "zu"
 }
+
+export default OxfordLanguage;

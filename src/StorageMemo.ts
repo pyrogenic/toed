@@ -1,5 +1,5 @@
 
-interface IOptions {
+export interface IOptions {
     cache?: boolean;
     bypass?: boolean;
 }

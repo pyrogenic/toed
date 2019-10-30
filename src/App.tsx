@@ -1,7 +1,6 @@
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
 import unique from "lodash/intersection";
-import merge from "lodash/merge";
 import omit from "lodash/omit";
 import React from "react";
 import Badge, { BadgeProps } from "react-bootstrap/Badge";
@@ -13,41 +12,24 @@ import Dropdown from "react-bootstrap/Dropdown";
 import DropdownButton from "react-bootstrap/DropdownButton";
 import Form from "react-bootstrap/Form";
 import Row from "react-bootstrap/Row";
-import { deserialize } from "serializr";
 import "./App.css";
-import StorageMemo from "./StorageMemo";
+import fetchWord from "./fetchWord";
+import IWordRecord from "./IWordRecord";
+import OxfordDictionariesPipeline, {
+  FlagPropertyNames, IPassMap, IPipelineConfig,
+} from "./OxfordDictionariesPipeline";
+import Pass from "./Pass";
 import IEntry from "./types/gen/IEntry";
 import IHeadwordEntry from "./types/gen/IHeadwordEntry";
 import ILexicalEntry from "./types/gen/ILexicalEntry";
-import IPronunciation from "./types/gen/IPronunciation";
-import ISense from "./types/gen/ISense";
-import RetrieveEntry from "./types/gen/RetrieveEntry";
-import { OxfordLanguage } from "./types/OxfordLanguage";
-
-async function fetchJson(url: string) {
-  // tslint:disable: variable-name
-  const app_id = localStorage.getItem("oed/app_id");
-  const app_key = localStorage.getItem("oed/app_key");
-  // tslint:enable: variable-name
-  if (!app_id || !app_key) {
-    throw new Error("missing app id or key");
-  }
-  const queryResult = await fetch(url, { headers: { Accept: "application/json", app_id, app_key } });
-  const result = await queryResult.json();
-  return result;
-}
+import IRetrieveEntry from "./types/gen/IRetrieveEntry";
+import OxfordLanguage from "./types/OxfordLanguage";
+import WordRecord from "./WordRecord";
+import WordTable from "./WordTable";
 
 interface IProps {
 
 }
-
-enum Pass {
-  primary = 1,
-  secondary = 2,
-  banned = 0,
-}
-
-interface IPassMap { [key: string]: Pass; }
 
 interface IState {
   apiBaseUrl: string;
@@ -58,68 +40,48 @@ interface IState {
   q?: string;
 
   history: string[];
+  records: IWordRecord[];
 
-  re?: RetrieveEntry;
+  re?: IRetrieveEntry;
 
-  allowedPartsOfSpeech: IPassMap;
-  allowedRegisters: IPassMap;
-  allowedDomains: IPassMap;
+  config: IPipelineConfig;
 }
 
-type FlagPropertyNames<T> = { [K in keyof Required<T>]: T[K] extends IPassMap ? K : never }[keyof T];
+type ConfigFlagPropertyNames = FlagPropertyNames<IState["config"]>;
 
-export interface IDictionaryEntry {
-  entry_rich: string;
-  definitions: {
-    [partOfSpeech: string]: string[],
-  };
-  pronunciation_ipa: string;
-  audio_file: string;
-  example: string;
-  etymology: string;
-}
-
-function needsMoreDefinitions(result: Partial<IDictionaryEntry>, partOfSpeech: string, short: boolean, pass: Pass) {
-  const max = short ? 1 : 2;
-  if (!result.definitions) {
-    return true;
-  } else if (pass > 1) {
-    return false;
-  } else if (!result.definitions[partOfSpeech]) {
-    return Object.keys(result.definitions).length < max;
-  } else {
-    return result.definitions[partOfSpeech].length < max;
-  }
-}
-
-const FLAG_PROPS: Array<FlagPropertyNames<IState>> = ["allowedPartsOfSpeech", "allowedRegisters", "allowedDomains"];
-
-interface IRenderResult {
-  result: Partial<IDictionaryEntry>;
-  notes: string[];
-}
+const FLAG_PROPS: ConfigFlagPropertyNames[] = ["allowedPartsOfSpeech", "allowedRegisters", "allowedDomains"];
 
 export default class App extends React.Component<IProps, IState> {
-  private fetchMemo = new StorageMemo(localStorage, "fetchJson", fetchJson);
-
   constructor(props: Readonly<IProps>) {
     super(props);
-    const interfaceSettings = FLAG_PROPS.map((prop) => {
+    const config: IPipelineConfig = {
+      allowedDomains: {},
+      allowedPartsOfSpeech: {},
+      allowedRegisters: {},
+    };
+    FLAG_PROPS.forEach((prop) => {
       const value = localStorage.getItem("oed/passes/" + prop);
-      const effective = JSON.parse(value || "{}");
-      const result = { [prop]: effective };
-      return result;
+      if (value) {
+        try {
+          const effective = JSON.parse(value);
+          config[prop] = effective;
+        } catch (e) {
+          // tslint:disable-next-line:no-console
+          console.error(e);
+        }
+      }
     });
     const history = JSON.parse(localStorage.getItem("oed/history") || "[]");
-    const state0 = merge({
+    this.state = {
       apiBaseUrl: "/api/v2",
       app_id: localStorage.getItem("oed/app_id") || undefined,
       app_key: localStorage.getItem("oed/app_key") || undefined,
+      config,
       history,
       language: OxfordLanguage.americanEnglish,
       q: sessionStorage.getItem("oed/q") || undefined,
-    }, ...interfaceSettings);
-    this.state = state0;
+      records: [],
+    };
   }
 
   public componentDidMount() {
@@ -130,7 +92,7 @@ export default class App extends React.Component<IProps, IState> {
 
   public componentDidUpdate() {
     FLAG_PROPS.forEach((prop) => {
-      localStorage.setItem("oed/passes/" + prop, JSON.stringify(this.state[prop] || {}));
+      localStorage.setItem("oed/passes/" + prop, JSON.stringify(this.state.config[prop] || {}));
     });
     if (this.state.app_id) {
       localStorage.setItem("oed/app_id", this.state.app_id);
@@ -185,12 +147,21 @@ export default class App extends React.Component<IProps, IState> {
       {this.renderFilter("Registers", "allowedRegisters")}
       {this.renderFilter("Domains", "allowedDomains")}
 
-      <Row>
-        <Col>
-          {this.state.re && this.state.q && this.state.re.results &&
-             this.renderResult(this.state.q, this.state.re.results)}
-        </Col>
-      </Row>
+      {this.state.re && this.state.q && this.state.re.results &&
+        <Row>
+          <Col>
+            <pre>{
+              JSON.stringify(
+                new OxfordDictionariesPipeline(this.state.q, this.state.re.results, this.allowed)
+                  .process(), undefined, 2)
+            }
+            </pre>
+          </Col>
+        </Row>
+      }
+
+      <Row><Col><WordTable records={this.state.records} /></Col></Row>
+
       <Row>
         <Col>
           {this.state.re && this.state.re.results && this.state.re.results.map(this.renderResponse)}
@@ -199,118 +170,12 @@ export default class App extends React.Component<IProps, IState> {
     </Container>;
   }
 
-  private renderFilter(label: string, prop: FlagPropertyNames<IState>): React.ReactNode {
-    return <Row>
-      <Col xs={3}>
-        <Form.Label>{label}</Form.Label>
-      </Col>
-      <Col>{
-        Object.keys(this.state[prop]).sort().map((flag) => {
-          const value = this.state[prop][flag];
-          const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
-          const variant = variants[value];
-          return <Badge variant={variant} onClick={() => this.setState((state) => {
-            const flags = state[prop];
-            const newFlags: IPassMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass };
-            const newState: any = { [prop]: newFlags };
-            return newState;
-          })}
-          >{flag}</Badge>;
-        })
-      }
-      </Col>
-    </Row>;
-  }
-
-  private renderResult = (query: string, entries: IHeadwordEntry[]) => {
-    const { result, notes }: IRenderResult = { result: {}, notes: [] };
-    const allEntryTexts = flatten(flatten(entries.map(({lexicalEntries}) => lexicalEntries)).map(({text}) => text));
-    const matchingEntryTexts = allEntryTexts.some((text) => query.toLocaleLowerCase() === text.toLocaleLowerCase());
-    // tslint:disable-next-line:no-console
-    console.log({allEntryTexts, matchingEntryTexts});
-    const rejectedLexicalEntries: ILexicalEntry[] = [];
-    entries.forEach((entry) => {
-      const { pronunciations } = entry;
-
-      this.pullPronunciation(result, pronunciations);
-      entry.lexicalEntries.forEach((lexicalEntry) => {
-        const { lexicalCategory: { id: partOfSpeech }, text } = lexicalEntry;
-        if (text.match(/[A-Z]/)) {
-          rejectedLexicalEntries.push(lexicalEntry);
-          notes.push(`‘${text}’ rejected because of capitalization`);
-          return;
-        }
-        if (matchingEntryTexts && text.length !== query.length) {
-          rejectedLexicalEntries.push(lexicalEntry);
-          notes.push(`‘${text}’ rejected because exact matches of the query are present`);
-          return;
-        }
-        if (!result.entry_rich) {
-          result.entry_rich = text;
-        }
-        this.pullPronunciation(result, lexicalEntry.pronunciations);
-        if (lexicalEntry.entries) {
-          lexicalEntry.entries.forEach((lentry) => {
-            this.pullPronunciation(result, lentry.pronunciations);
-            const baseWord = this.state.q;
-            const { etymologies, senses, variantForms } = lentry;
-            if (variantForms && baseWord && result.entry_rich !== baseWord
-              && variantForms.find((vf) => vf.text === baseWord)) {
-              result.entry_rich = baseWord;
-            }
-            // pass down etymologies so we only take them from entries with first-pass acceptable senses
-            if (senses) {
-              senses.forEach(this.processSense.bind(
-                this, result, { partOfSpeech, short: false, subsenses: false, pass: 1, etymologies }));
-            }
-          });
-        }
-      });
-    });
-
-    [
-      { short: true, subsenses: false, pass: 1 as Pass },
-      { short: false, subsenses: true, pass: 1 as Pass },
-      { short: true, subsenses: true, pass: 1 as Pass },
-
-      { short: false, subsenses: false, pass: 2 as Pass },
-      { short: false, subsenses: true, pass: 2 as Pass },
-      { short: true, subsenses: false, pass: 2 as Pass },
-      { short: true, subsenses: true, pass: 2 as Pass }
-    ].forEach((pass) => {
-      entries.forEach((entry) => {
-        entry.lexicalEntries.forEach((lexicalEntry) => {
-          if (rejectedLexicalEntries.includes(lexicalEntry)) {
-            return;
-          }
-          const { lexicalCategory: { id: partOfSpeech } } = lexicalEntry;
-          if (!lexicalEntry.entries) { return; }
-          lexicalEntry.entries.forEach((lentry) => {
-            const { senses } = lentry;
-            if (!senses) { return; }
-            senses.forEach(this.processSense.bind(this, result, { partOfSpeech, ...pass }));
-          });
-        });
-      });
-    });
-
-    return <><Row><Col as='ul'>
-      {notes.map((note) => <li>{note}</li>)}
-      </Col>
-      </Row>
-      <Row>
-      <Col>
-      <pre>{JSON.stringify(result, undefined, 2)}</pre>
-      </Col>
-      </Row></>;
-  }
-
-  private allowed(prop: FlagPropertyNames<IState>, flag: string): Pass {
-    let allowed = this.state[prop][flag];
+  public allowed = (prop: ConfigFlagPropertyNames, flag: string): Pass => {
+    let allowed = this.state.config[prop][flag];
     if (allowed === undefined) {
       allowed = Pass.primary;
       if (typeof flag === "string") {
-        setImmediate(() => this.setState(({ [prop]: flags }) => {
+        setImmediate(() => this.setState(({ config: { [prop]: flags } }) => {
           if (flags[flag] === undefined) {
             return { [prop]: { [flag]: allowed, ...flags } } as any;
           }
@@ -321,62 +186,27 @@ export default class App extends React.Component<IProps, IState> {
     return allowed;
   }
 
-  private processSense(
-    result: Partial<IDictionaryEntry>,
-    { partOfSpeech, short, pass, subsenses: onlySubsenses, etymologies: entryEtymologies }:
-      { partOfSpeech: string, short: boolean, pass: Pass, subsenses: boolean, etymologies?: string[] },
-    sense: ISense) {
-    const { pronunciations, subsenses, examples, etymologies: senseEtymologies } = sense;
-    const definitions = short ? sense.shortDefinitions : sense.definitions;
-    this.pullPronunciation(result, pronunciations);
-    const passes = [
-      this.allowed("allowedPartsOfSpeech", partOfSpeech),
-      ...(sense.registers || []).map((e) => e.id).map(this.allowed.bind(this, "allowedRegisters")),
-      ...(sense.domains || []).map((e) => e.id).map(this.allowed.bind(this, "allowedDomains")),
-    ];
-    const banned = Math.min(...passes) === 0;
-    const requiredPass = Math.max(...passes);
-    if (banned || requiredPass !== pass) {
-      return;
-    }
-    const etymologies = entryEtymologies || senseEtymologies;
-    if (!result.etymology && etymologies) {
-      result.etymology = etymologies[0];
-    }
-    if (onlySubsenses) {
-      if (subsenses) {
-        subsenses.forEach(this.processSense.bind(this, result, { partOfSpeech, short, pass, subsenses: true }));
+  private renderFilter(label: string, prop: ConfigFlagPropertyNames): React.ReactNode {
+    return <Row>
+      <Col xs={3}>
+        <Form.Label>{label}</Form.Label>
+      </Col>
+      <Col>{
+        Object.keys(this.state.config[prop]).sort().map((flag) => {
+          const value = this.state.config[prop][flag];
+          const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
+          const variant = variants[value];
+          return <Badge variant={variant} onClick={() => this.setState((state) => {
+            const flags = state.config[prop];
+            const newFlags: IPassMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass };
+            const newState: any = { [prop]: newFlags };
+            return newState;
+          })}
+          >{flag}</Badge>;
+        })
       }
-      return;
-    }
-    if (definitions) {
-      definitions.forEach((definition) => {
-        if (needsMoreDefinitions(result, partOfSpeech, short, pass)) {
-          result.definitions = result.definitions || {};
-          result.definitions[partOfSpeech] = result.definitions[partOfSpeech] || [];
-          result.definitions[partOfSpeech].push(definition);
-          // if (!result.entry_rich) {
-          //   result.entry_rich = sense.t;
-          // }
-          if (!result.example && examples) {
-            result.example = examples[0].text;
-          }
-        }
-      });
-    }
-  }
-
-  private pullPronunciation(result: Partial<IDictionaryEntry>, pronunciations?: IPronunciation[]) {
-    if (pronunciations) {
-      pronunciations.forEach((p) => {
-        if (!result.pronunciation_ipa && p.phoneticNotation === "IPA") {
-          result.pronunciation_ipa = p.phoneticSpelling;
-          if (!result.audio_file) {
-            result.audio_file = p.audioFile;
-          }
-        }
-      });
-    }
+      </Col>
+    </Row>;
   }
 
   private renderResponse = (entry: IHeadwordEntry, index: number) => {
@@ -415,12 +245,12 @@ export default class App extends React.Component<IProps, IState> {
     </Col>;
   }
 
-  private maybeFollow = () => {
-    if (this.state.re && this.state.re.results) {
-      const derivativeOf = flatten(flatten(flatten(this.state.re.results.map((result) =>
+  private derivativeOf = (results?: IHeadwordEntry[]) => {
+    if (results) {
+      const derivativeOf = flatten(flatten(flatten(results.map((result) =>
         compact(result.lexicalEntries.map((entry) => entry.derivativeOf)))))).map((re) => re.id);
       if (derivativeOf.length === 1) {
-        this.setState({ q: derivativeOf[0] }, this.go);
+        return derivativeOf[0];
       }
     }
   }
@@ -430,18 +260,28 @@ export default class App extends React.Component<IProps, IState> {
     if (!q) {
       return;
     }
-    this.fetchMemo.get(`${apiBaseUrl}/words${language ? `/${language}` : ""}?q=${q}`, {
-      // bypass: true,
-    }).then((json) => {
-      return deserialize(RetrieveEntry, json);
-    }).then((re) => this.setState({ re }, () => {
+    this.get(q).then((re) => this.setState({ re }));
+  }
+
+  private get = (q: string, redirect?: string): Promise<IRetrieveEntry> => {
+    const { apiBaseUrl, language } = this.state;
+    return fetchWord(apiBaseUrl, language, redirect || q).then((re) => {
       if (!this.state.history.includes(q)) {
         setImmediate(() => this.setState(({ history }) => {
           const newHistory = unique(history.concat(q)).sort();
           return { history: newHistory };
         }));
       }
-      this.maybeFollow();
-    }));
+      redirect = this.derivativeOf(re.results);
+      if (redirect) {
+        return this.get(q, redirect);
+      }
+      if (!this.state.records.find((e) => e.q === q)) {
+        const pipeline = new OxfordDictionariesPipeline(q, re.results || [], this.allowed);
+        const wr = new WordRecord(q, re, pipeline);
+        this.state.records.push(wr);
+      }
+      return re;
+    });
   }
 }
