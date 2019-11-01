@@ -11,22 +11,11 @@ export type Comparer<T> = Parameters<T[]["sort"]>;
 
 type ElementType<T> = T extends Array<infer E> ? E : never;
 
-// type S = ElementType<string[]>;
-// type TC = { a?: string[], b?: number };
-// type TE = string;
-// type OptionalArrayPropertyNamesOfType<TContainer, TElement> = OptionalPropertyNamesOfType<TContainer, TElement[]>;
-// function arrayTest<TCC, TEE, K extends OptionalPropertyNamesOfType<TCC, TEE[]>, C extends {[_K in K]: TEE[]}>(
-//     c: C,
-//     k: K,
-//     v: TEE) {
-//     const a: TEE[] | undefined = c[k];
-// }
-
 /** array set add */
 export function arraySetAdd<
     TContainer,
     TElement,
-    TKey extends ArrayPropNames<TContainer> & PropertyNamesOfType<TContainer, TElement[] | undefined>>(
+    TKey extends ArrayPropertyNames<TContainer> & PropertyNamesOfType<TContainer, TElement[] | undefined>>(
         container: TContainer,
         key: TKey,
         value: ElementType<TContainer[TKey]>,
@@ -63,22 +52,17 @@ export function ensure<
     return value;
 }
 
-type ArrayPropElementTypes<TContainer> = {
-    [K in keyof TContainer]: TContainer[K] extends (Array<infer E> | undefined) ? E : never
+type ArrayPropertyNames<TContainer> = {
+    [K in keyof TContainer]: TContainer[K] extends (any[] | undefined) ? K : never
 }[keyof TContainer];
-type ArrayPropNames<TContainer> = {
-    [K in keyof TContainer]: TContainer[K] extends (Array<infer E> | undefined) ? K : never
-}[keyof TContainer];
-type ArrayProps<TContainer> = Pick<TContainer, ArrayPropNames<TContainer>>;
+type ArrayProperties<TContainer> = Pick<TContainer, ArrayPropertyNames<TContainer>>;
+type ArrayPropertyElementTypes<TContainer> = {
+    [K in ArrayPropertyNames<TContainer>]: ElementType<TContainer[K]>
+}[keyof ArrayProperties<TContainer>];
 
-// type ITest = { a: string[], b: number, c?: Date[] };
-// const t0: ArrayPropElementTypes<ITest> = "hi";
-// const t1: ArrayPropElementTypes<ITest> = new Date();
-// const t2: ArrayPropElementTypes<ITest> = 394;
-// const t3: ArrayProps<ITest> = {};
 export function ensureArray<
     TContainer,
-    TKey extends ArrayPropNames<TContainer>,
+    TKey extends ArrayPropertyNames<TContainer>,
     TElement extends ElementType<TContainer[TKey]>>(
         container: TContainer,
         key: TKey): TElement[] {
