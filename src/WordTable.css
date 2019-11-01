@@ -1,0 +1,9 @@
+.word-table {
+    font-size: 50%;
+}
+
+.word-table input {
+    padding: 0;
+    
+    font-size: 50% !important;
+}

@@ -1,8 +1,8 @@
 import React from "react";
 import Form from "react-bootstrap/Form";
-import Spinner from "react-bootstrap/Spinner";
 import Table from "react-bootstrap/Table";
 import IWordRecord from "./IWordRecord";
+import "./WordTable.css";
 
 interface IProps {
     records: IWordRecord[];
@@ -13,22 +13,52 @@ interface IProps {
 // }
 
 function WordRow({ record }: { record: IWordRecord }) {
+    const result = record.result || {};
+    const { etymology, example } = result;
+    const definitions = result.definitions || {};
+    const partsOfSpeech = Object.keys(definitions);
+    let partOfSpeech: string | undefined;
+    const {pipelineNotes} = record;
+    let pipelineNoteList: React.ReactChild = <></>;
+    if (pipelineNotes.length > 0) {
+        const elements: React.ReactChild[] = [];
+        pipelineNotes.forEach((note, index) => {
+            elements.push(<li key={index}>{note}</li>);
+        });
+        pipelineNoteList = <ul>{elements}</ul>;
+    }
     return <>
-    <tr>
-        <td rowSpan={2}>{record.q}</td>
-        <td>{record.result
-            ? JSON.stringify(record.result, undefined, 2).split("\n").map((t) => <p>{t}</p>)
-            : <Spinner animation="border" />}</td>
-        <td><ul>
-            {record.notes.map((note, index) =>
-                <Form.Control value={note} onChange={(e: any) =>
-                    record.notes[index] = e.target.value} />)}
-        </ul></td>
-    </tr>
-    <tr>
-        <td>x</td>
-        <td>y</td>
-    </tr>
+        <tr>{/* row 1 */}
+            <td rowSpan={6}>
+                <b>{result.entry_rich}</b>
+                <br />
+                <i>{result.pronunciation_ipa}</i>
+            </td>
+            <td rowSpan={2}>{partOfSpeech = partsOfSpeech.pop()}</td>
+            <td>{partOfSpeech && definitions[partOfSpeech][0]}</td>
+            <td><small>{record.q}</small></td>
+        </tr>
+        <tr>{/* row 2 */}
+            <td>{partOfSpeech && definitions[partOfSpeech][1]}</td>
+            <td rowSpan={5}>
+                {pipelineNoteList}
+                <Form.Control value={record.notes} onChange={(e: any) =>
+                    record.notes = e.target.value} />)
+            </td>
+        </tr>
+        <tr>{/* row 3 */}
+            <td rowSpan={2}>{partOfSpeech = partsOfSpeech.pop()}</td>
+            <td>{partOfSpeech && definitions[partOfSpeech][0]}</td>
+        </tr>
+        <tr>{/* row 4 */}
+            <td>{partOfSpeech && definitions[partOfSpeech][1]}</td>
+        </tr>
+        <tr>{/* row 5 */}
+            <td>Etymology</td><td>{etymology}</td>
+        </tr>
+        <tr>{/* row 6 */}
+            <td>Example</td><td>{example}</td>
+        </tr>
     </>;
 }
 
@@ -37,10 +67,10 @@ export default class WordTable extends React.Component<IProps, {}> {
     //     super(props);
     // }
     public render() {
-        return <Table striped={true} bordered={true} hover={true} responsive={true}>
+        return <Table striped={false} bordered={false} hover={true} responsive={true} size="sm" className="word-table">
             <thead>
-                <th>Query</th>
-                <th>Data</th>
+                <th>Word</th>
+                <th colSpan={2}>Definition</th>
                 <th>Notes</th>
             </thead>
             <tbody>

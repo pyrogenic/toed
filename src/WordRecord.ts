@@ -11,11 +11,14 @@ export default class WordRecord implements IWordRecord {
 
   @computed
   public get result() {
-    return this.pipeline.process({notes: this.notes});
+    return this.pipeline.process({pipelineNotes: this.pipelineNotes});
   }
 
   @observable
-  public readonly notes: string[] = [];
+  public readonly pipelineNotes = [];
+
+  @observable
+  public readonly notes = "";
 
   constructor(query: string, re: RetrieveEntry, pipeline: OxfordDictionariesPipeline) {
     this.q = query;

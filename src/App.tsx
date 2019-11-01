@@ -199,7 +199,7 @@ export default class App extends React.Component<IProps, IState> {
           return <Badge variant={variant} onClick={() => this.setState((state) => {
             const flags = state.config[prop];
             const newFlags: IPassMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass };
-            const newState: any = { [prop]: newFlags };
+            const newState = { config: { ...state.config, [prop]: newFlags } };
             return newState;
           })}
           >{flag}</Badge>;

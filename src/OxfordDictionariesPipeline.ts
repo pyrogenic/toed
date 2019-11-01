@@ -2,6 +2,7 @@ import flatten from "lodash/flatten";
 import App from "./App";
 import IDictionaryEntry from "./IDictionaryEntry";
 import IWordRecord from "./IWordRecord";
+import { arraySetAdd, arraySetClear, ensure } from "./Magic";
 import map from "./map";
 import needsMoreDefinitions from "./needsMoreDefinitions";
 import Pass from "./Pass";
@@ -33,10 +34,12 @@ export default class OxfordDictionariesPipeline {
         this.allEntryTexts = flatten(map(flatten(map(entries, "lexicalEntries")), "text"));
     }
 
-    public process(record?: Pick<IWordRecord, "result" | "notes">): IWordRecord["result"] {
+    public process(record?: Pick<IWordRecord, "result" | "pipelineNotes">): IWordRecord["result"] {
         const { entries, query } = this;
-        const result = record ? record.result !== undefined ? record.result : {} : {};
-        const notes = record ? record.notes !== undefined ? record.notes : [] : [];
+        record = record || {};
+        const result = ensure(record, "result", Object);
+        const notes = record ? (record.pipelineNotes = record.pipelineNotes || []) : [];
+        arraySetClear(notes);
         const matchingEntryTexts = this.allEntryTexts.some((text) =>
             query.toLocaleLowerCase() === text.toLocaleLowerCase());
         // tslint:disable-next-line:no-console
@@ -50,12 +53,12 @@ export default class OxfordDictionariesPipeline {
                 const { lexicalCategory: { id: partOfSpeech }, text } = lexicalEntry;
                 if (text.match(/[A-Z]/)) {
                     rejectedLexicalEntries.push(lexicalEntry);
-                    notes.push(`‘${text}’ rejected because of capitalization`);
+                    arraySetAdd(result, "pipelineNotes", `‘${text}’ rejected because of capitalization`);
                     return;
                 }
                 if (matchingEntryTexts && text.length !== query.length) {
                     rejectedLexicalEntries.push(lexicalEntry);
-                    notes.push(`‘${text}’ rejected because exact matches of the query are present`);
+                    arraySetAdd(notes, "pipelineNotes", `‘${text}’ rejected because exact matches of the query are present`);
                     return;
                 }
                 if (!result.entry_rich) {
