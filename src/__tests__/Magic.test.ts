@@ -1,4 +1,4 @@
-import { arraySetAdd, ensure } from "../Magic";
+import { arraySetAdd, ensure, ensureArray } from "../Magic";
 
 class Container {
     public req: string[] = [];
@@ -6,12 +6,17 @@ class Container {
 }
 
 describe("ensure", () => {
-
     test("simple", () => {
         const cc: {c?: Container} = {};
         expect(cc).toHaveProperty("c", undefined);
         expect(ensure(cc, "c", Container)).toBeInstanceOf(Container);
         expect(cc.c).toHaveProperty("req", []);
+    });
+
+    test("array", () => {
+        const cc: {c?: string[]} = {};
+        expect(cc).toHaveProperty("c", undefined);
+        expect(ensureArray(cc, "c")).toEqual([]);
     });
 });
 
