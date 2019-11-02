@@ -33,8 +33,21 @@ export function arraySetAdd<
     return true;
 }
 
-export function arraySetClear<TContainer>(container: Pick<TContainer[], "slice" | "length">) {
-    container.slice(0, container.length);
+// type IQ = {a?: string[]};
+// type tt = PropertyNamesOfType<IQ, Pick<any[], "slice" | "length"> | undefined>;
+// const ttt: tt = "a";
+// const iq: IQ = {};
+// const q = iq[ttt];
+
+export function arraySetClear<
+    TContainer,
+    TKey extends PropertyNamesOfType<TContainer, Pick<any[], "slice" | "length"> | undefined>>(
+        container: TContainer,
+        key: TKey) {
+    const set: Pick<any[], "slice" | "length"> | undefined = container[key];
+    if (set !== undefined) {
+        set.slice(0, set.length);
+    }
 }
 
 export function ensure<
@@ -43,7 +56,7 @@ export function ensure<
     TKey extends PropertyNamesOfType<TContainer, TResult | undefined>>(
         container: TContainer,
         key: TKey,
-        factory: new () => TContainer[TKey]) {
+        factory: new () => Required<TContainer>[TKey]): Required<TContainer>[TKey] {
     let value = container[key];
     if (container[key] === undefined) {
         value = new factory();

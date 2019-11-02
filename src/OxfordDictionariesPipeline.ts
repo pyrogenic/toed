@@ -21,6 +21,8 @@ export interface IPipelineConfig {
 
 export type FlagPropertyNames<T> = { [K in keyof Required<T>]: T[K] extends IPassMap ? K : never }[keyof T];
 
+type PartialWordRecord = Pick<IWordRecord, "result" | "resultTags" | "allTags" | "pipelineNotes">;
+
 export default class OxfordDictionariesPipeline {
     public readonly query: string;
     public readonly entries: IHeadwordEntry[];
@@ -34,12 +36,11 @@ export default class OxfordDictionariesPipeline {
         this.allEntryTexts = flatten(map(flatten(map(entries, "lexicalEntries")), "text"));
     }
 
-    public process(record?: Pick<IWordRecord, "result" | "pipelineNotes">): IWordRecord["result"] {
+    public process(precord?: PartialWordRecord): IWordRecord["result"] {
         const { entries, query } = this;
-        record = record || {};
+        const record = precord || {};
         const result = ensure(record, "result", Object);
-        const notes = record ? (record.pipelineNotes = record.pipelineNotes || []) : [];
-        arraySetClear(notes);
+        arraySetClear(record, "pipelineNotes");
         const matchingEntryTexts = this.allEntryTexts.some((text) =>
             query.toLocaleLowerCase() === text.toLocaleLowerCase());
         // tslint:disable-next-line:no-console
@@ -53,12 +54,12 @@ export default class OxfordDictionariesPipeline {
                 const { lexicalCategory: { id: partOfSpeech }, text } = lexicalEntry;
                 if (text.match(/[A-Z]/)) {
                     rejectedLexicalEntries.push(lexicalEntry);
-                    arraySetAdd(result, "pipelineNotes", `‘${text}’ rejected because of capitalization`);
+                    arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because of capitalization`);
                     return;
                 }
                 if (matchingEntryTexts && text.length !== query.length) {
                     rejectedLexicalEntries.push(lexicalEntry);
-                    arraySetAdd(notes, "pipelineNotes", `‘${text}’ rejected because exact matches of the query are present`);
+                    arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because exact matches of the query are present`);
                     return;
                 }
                 if (!result.entry_rich) {
@@ -77,7 +78,7 @@ export default class OxfordDictionariesPipeline {
                         // pass down etymologies so we only take them from entries with first-pass acceptable senses
                         if (senses) {
                             senses.forEach(this.processSense.bind(
-                                this, result, { partOfSpeech, short: false, subsenses: false, pass: 1, etymologies }));
+                                this, record, { partOfSpeech, short: false, subsenses: false, pass: 1, etymologies }));
                         }
                     });
                 }
@@ -104,7 +105,7 @@ export default class OxfordDictionariesPipeline {
                     lexicalEntry.entries.forEach((lentry) => {
                         const { senses } = lentry;
                         if (!senses) { return; }
-                        senses.forEach(this.processSense.bind(this, result, { partOfSpeech, ...pass }));
+                        senses.forEach(this.processSense.bind(this, record, { partOfSpeech, ...pass }));
                     });
                 });
             });
@@ -113,13 +114,17 @@ export default class OxfordDictionariesPipeline {
     }
 
     private processSense(
-        result: Partial<IDictionaryEntry>,
+        record: PartialWordRecord,
         { partOfSpeech, short, pass, subsenses: onlySubsenses, etymologies: entryEtymologies }:
             { partOfSpeech: string, short: boolean, pass: Pass, subsenses: boolean, etymologies?: string[] },
         sense: ISense) {
+        const result = record.result!;
         const { pronunciations, subsenses, examples, etymologies: senseEtymologies } = sense;
         const definitions = short ? sense.shortDefinitions : sense.definitions;
         this.pullPronunciation(result, pronunciations);
+        const resultTags = ensure(record, "resultTags", Object);
+        const allTags = ensure(record, "allTags", Object);
+        arraySetAdd(allTags, "partOfSpeech", partOfSpeech);
         const passes = [
             this.allowed("allowedPartsOfSpeech", partOfSpeech),
             ...(sense.registers || []).map((e) => e.id).map(this.allowed.bind(this, "allowedRegisters")),
@@ -136,7 +141,7 @@ export default class OxfordDictionariesPipeline {
         }
         if (onlySubsenses) {
             if (subsenses) {
-                subsenses.forEach(this.processSense.bind(this, result, { partOfSpeech, short, pass, subsenses: true }));
+                subsenses.forEach(this.processSense.bind(this, record, { partOfSpeech, short, pass, subsenses: true }));
             }
             return;
         }

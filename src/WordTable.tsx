@@ -19,14 +19,9 @@ function WordRow({ record }: { record: IWordRecord }) {
     const partsOfSpeech = Object.keys(definitions);
     let partOfSpeech: string | undefined;
     const {pipelineNotes} = record;
-    let pipelineNoteList: React.ReactChild = <></>;
-    if (pipelineNotes.length > 0) {
-        const elements: React.ReactChild[] = [];
-        pipelineNotes.forEach((note, index) => {
-            elements.push(<li key={index}>{note}</li>);
-        });
-        pipelineNoteList = <ul>{elements}</ul>;
-    }
+    const pipelineNoteList = pipelineNotes && pipelineNotes.length && <ul>{
+        pipelineNotes.map((note, index) => <li key={index}>{note}</li>)
+    }</ul>;
     return <>
         <tr>{/* row 1 */}
             <td rowSpan={6}>
@@ -43,7 +38,7 @@ function WordRow({ record }: { record: IWordRecord }) {
             <td rowSpan={5}>
                 {pipelineNoteList}
                 <Form.Control value={record.notes} onChange={(e: any) =>
-                    record.notes = e.target.value} />)
+                    record.notes = e.target.value} />
             </td>
         </tr>
         <tr>{/* row 3 */}

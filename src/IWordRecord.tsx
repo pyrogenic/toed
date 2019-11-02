@@ -2,7 +2,7 @@ import IDictionaryEntry from "./IDictionaryEntry";
 import RetrieveEntry from "./types/gen/RetrieveEntry";
 
 interface ITags {
-    partsOfSpeech?: string[];
+    partOfSpeech?: string[];
     registers?: string[];
     domains?: string[];
 }
@@ -12,6 +12,7 @@ export default interface IWordRecord {
     re: RetrieveEntry;
     result?: Partial<IDictionaryEntry>;
     resultTags?: { [K in keyof IDictionaryEntry]?: ITags };
+    allTags?: ITags;
     pipelineNotes?: string[];
     notes: string;
 }

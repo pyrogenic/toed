@@ -13,10 +13,32 @@ describe("ensure", () => {
         expect(cc.c).toHaveProperty("req", []);
     });
 
+    test("partial", () => {
+        const cc: Partial<{c: Container}> = {};
+        expect(cc).toHaveProperty("c", undefined);
+        expect(ensure(cc, "c", Container)).toBeInstanceOf(Container);
+        expect(cc.c).toHaveProperty("req", []);
+    });
+
     test("array", () => {
         const cc: {c?: string[]} = {};
         expect(cc).toHaveProperty("c", undefined);
         expect(ensureArray(cc, "c")).toEqual([]);
+        expect(cc).toHaveProperty("c", []);
+    });
+
+    test("array partial", () => {
+        const cc: Partial<{c: string[]}> = {};
+        expect(cc).toHaveProperty("c", undefined);
+        expect(ensureArray(cc, "c")).toEqual([]);
+        expect(cc).toHaveProperty("c", []);
+    });
+
+    test("array Pick", () => {
+        const cc: Pick<{c?: string[]}, "c"> = {};
+        expect(cc).toHaveProperty("c", undefined);
+        expect(ensureArray(cc, "c")).toEqual([]);
+        expect(cc).toHaveProperty("c", []);
     });
 });
 
