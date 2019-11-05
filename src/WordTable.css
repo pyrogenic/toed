@@ -1,9 +1,30 @@
 .word-table {
-    font-size: 50%;
+    font-size: 80%;
+}
+
+.word-table>:first-child.row {
+    font-weight: bolder;
+}
+
+.word-table .entry {
+    border-top: 1px grey solid;
+}
+
+.word-table .partOfSpeech, .word-table .headword {
+    font-weight: bold;
+}
+
+.word-table .pronunciation {
+    font-style: italic;
+    color: grey;
+}
+
+.word-table .not-found {
+    color: red;
 }
 
 .word-table input {
     padding: 0;
-    
+
     font-size: 50% !important;
 }

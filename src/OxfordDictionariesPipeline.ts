@@ -43,8 +43,6 @@ export default class OxfordDictionariesPipeline {
         arraySetClear(record, "pipelineNotes");
         const matchingEntryTexts = this.allEntryTexts.some((text) =>
             query.toLocaleLowerCase() === text.toLocaleLowerCase());
-        // tslint:disable-next-line:no-console
-        console.log({ allEntryTexts: this.allEntryTexts, matchingEntryTexts });
         const rejectedLexicalEntries: ILexicalEntry[] = [];
         entries.forEach((entry) => {
             const { pronunciations } = entry;

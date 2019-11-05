@@ -20,6 +20,7 @@ export default interface ILexicalEntry {
     /** IANA language code  */
     language: string;
 
+    // tslint:disable-next-line:max-line-length
     /** A linguistic category of words (or more precisely lexical items), generally defined by the syntactic or morphological behaviour of the lexical item in question, such as noun or verb  */
     lexicalCategory: ILexicalCategory;
 

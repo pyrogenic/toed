@@ -15,6 +15,7 @@ import Row from "react-bootstrap/Row";
 import "./App.css";
 import fetchWord from "./fetchWord";
 import IWordRecord from "./IWordRecord";
+import { arraySetAdd } from "./Magic";
 import OxfordDictionariesPipeline, {
   FlagPropertyNames, IPassMap, IPipelineConfig,
 } from "./OxfordDictionariesPipeline";
@@ -40,7 +41,7 @@ interface IState {
   q?: string;
 
   history: string[];
-  records: IWordRecord[];
+  records: WordRecord[];
 
   re?: IRetrieveEntry;
 
@@ -85,9 +86,25 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   public componentDidMount() {
-    if (this.state.q) {
-      this.go();
-    }
+    let cont: (history: string[]) => Promise<void> | undefined;
+    cont = (history: string[]) => {
+      // tslint:disable-next-line:no-console
+      console.log({ history });
+      if (history.length > 0) {
+        return this.get(history.shift()!).then((re) => {
+          // tslint:disable-next-line:no-console
+          console.log({ done: re.results ? re.results[0].word : "not found" });
+          if (history.length > 0) {
+            cont(history);
+          }
+        });
+      } else {
+        if (this.state.q) {
+          this.go();
+        }
+      }
+    };
+    cont([...this.state.history]);
   }
 
   public componentDidUpdate() {
@@ -201,12 +218,16 @@ export default class App extends React.Component<IProps, IState> {
             const newFlags: IPassMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass };
             const newState = { config: { ...state.config, [prop]: newFlags } };
             return newState;
-          })}
+          }, this.refreshRecords)}
           >{flag}</Badge>;
         })
       }
       </Col>
     </Row>;
+  }
+
+  private refreshRecords = () => {
+    this.state.records.forEach((record) => record.refresh());
   }
 
   private renderResponse = (entry: IHeadwordEntry, index: number) => {
@@ -260,28 +281,29 @@ export default class App extends React.Component<IProps, IState> {
     if (!q) {
       return;
     }
-    this.get(q).then((re) => this.setState({ re }));
+    this.setState((state) => {
+      if (arraySetAdd(state, "history", q, true)) {
+        return { history: state.history };
+      }
+      return null;
+    }, () => this.get(q).then((re) => this.setState({ re })));
   }
 
-  private get = (q: string, redirect?: string): Promise<IRetrieveEntry> => {
+  private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
     const { apiBaseUrl, language } = this.state;
-    return fetchWord(apiBaseUrl, language, redirect || q).then((re) => {
-      if (!this.state.history.includes(q)) {
-        setImmediate(() => this.setState(({ history }) => {
-          const newHistory = unique(history.concat(q)).sort();
-          return { history: newHistory };
-        }));
-      }
-      redirect = this.derivativeOf(re.results);
-      if (redirect) {
-        return this.get(q, redirect);
-      }
-      if (!this.state.records.find((e) => e.q === q)) {
+    const re = await fetchWord(apiBaseUrl, language, redirect || q);
+    redirect = this.derivativeOf(re.results);
+    if (redirect) {
+      return this.get(q, redirect);
+    }
+    this.setState((state) => {
+      if (!state.records.find((e) => e.q === q)) {
         const pipeline = new OxfordDictionariesPipeline(q, re.results || [], this.allowed);
         const wr = new WordRecord(q, re, pipeline);
-        this.state.records.push(wr);
+        state.records.push(wr);
       }
-      return re;
+      return { records: state.records };
     });
+    return re;
   }
 }
