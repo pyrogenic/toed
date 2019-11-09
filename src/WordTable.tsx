@@ -1,64 +1,19 @@
 import React from "react";
+import Badge from "react-bootstrap/Badge";
 import Col from "react-bootstrap/Col";
+import OverlayTrigger from "react-bootstrap/OverlayTrigger";
+import Popover from "react-bootstrap/Popover";
 import Row from "react-bootstrap/Row";
-import IWordRecord from "./IWordRecord";
+import IWordRecord, { ITags } from "./IWordRecord";
 import "./WordTable.css";
 
 interface IProps {
     records: IWordRecord[];
 }
 
-// interface IState {
-//     /* */
-// }
-
-// function WordRow({ record }: { record: IWordRecord }) {
-//     const result = record.result || {};
-//     const { etymology, example } = result;
-//     const definitions = result.definitions || {};
-//     const partsOfSpeech = Object.keys(definitions);
-//     let partOfSpeech: string | undefined;
-//     const {pipelineNotes} = record;
-//     const pipelineNoteList = pipelineNotes && pipelineNotes.length && <ul>{
-//         pipelineNotes.map((note, index) => <li key={index}>{note}</li>)
-//     }</ul>;
-//     return <>
-//         <tr>{/* row 1 */}
-//             <td rowSpan={6}>
-//                 <b>{result.entry_rich}</b>
-//                 <br />
-//                 <i>{result.pronunciation_ipa}</i>
-//             </td>
-//             <td rowSpan={2}>{partOfSpeech = partsOfSpeech.pop()}</td>
-//             <td>{partOfSpeech && definitions[partOfSpeech][0]}</td>
-//             <td><small>{record.q}</small></td>
-//         </tr>
-//         <tr>{/* row 2 */}
-//             <td>{partOfSpeech && definitions[partOfSpeech][1]}</td>
-//             <td rowSpan={5}>
-//                 {pipelineNoteList}
-//                 <Form.Control value={record.notes} onChange={(e: any) =>
-//                     record.notes = e.target.value} />
-//             </td>
-//         </tr>
-//         <tr>{/* row 3 */}
-//             <td rowSpan={2}>{partOfSpeech = partsOfSpeech.pop()}</td>
-//             <td>{partOfSpeech && definitions[partOfSpeech][0]}</td>
-//         </tr>
-//         <tr>{/* row 4 */}
-//             <td>{partOfSpeech && definitions[partOfSpeech][1]}</td>
-//         </tr>
-//         <tr>{/* row 5 */}
-//             <td>Etymology</td><td>{etymology}</td>
-//         </tr>
-//         <tr>{/* row 6 */}
-//             <td>Example</td><td>{example}</td>
-//         </tr>
-//     </>;
-// }
-
 function WordRow({ record }: { record: IWordRecord }) {
     const result = record.result || {};
+    const resultTags = record.resultTags || {};
     const { etymology, example } = result;
     const definitions = result.definitions || {};
     const partsOfSpeech = Object.keys(definitions);
@@ -67,14 +22,34 @@ function WordRow({ record }: { record: IWordRecord }) {
         pipelineNotes.map((note, index) => <li key={index}>{note}</li>)
     }</ul>) || false;
     const notFound = !(partsOfSpeech.length || etymology || example);
+
+    function popover(id: string, tags?: ITags) {
+        return tags && <Popover id={id}>
+            <Popover.Title as="h3">{id}</Popover.Title>
+            <Popover.Content>
+                {tags.partOfSpeech && <Row><Col>Part of Speech</Col>
+                    <Col><Badge>{tags.partOfSpeech}</Badge></Col></Row>}
+                {tags.domains && <Row><Col>Domains</Col>
+                    <Col>{tags.domains.map((t) => <Badge>{t}</Badge>)}</Col></Row>}
+                {tags.registers && <Row><Col>Registers</Col>
+                    <Col>{tags.registers.map((t) => <Badge>{t}</Badge>)}</Col></Row>}
+            </Popover.Content>
+        </Popover>;
+    }
+
     return <>
         <Row className="entry">
             <Col xs={1}>
-                <Row className={result.entry_rich ? "headword" : "headword not-found"}>
-                    {result.entry_rich || record.q}
-                </Row>
+                <OverlayTrigger trigger="click" overlay={popover("Rich Entry", resultTags.entry_rich)} rootClose={true}>
+                    <Row className={result.entry_rich ? "headword" : "headword not-found"}>
+                        {result.entry_rich || record.q}
+                    </Row>
+                </OverlayTrigger>
                 <Row className="pronunciation">
                     {result.pronunciation_ipa}
+                </Row>
+                <Row>
+                    {JSON.stringify(record.resultTags!.entry_rich!)}
                 </Row>
             </Col>
             {notFound ? <Col>{pipelineNoteList}</Col> : <>
@@ -102,21 +77,7 @@ function WordRow({ record }: { record: IWordRecord }) {
 }
 
 export default class WordTable extends React.Component<IProps, {}> {
-    // constructor(props Readonly<IProps>) {
-    //     super(props);
-    // }
     public render() {
-        //     return <Table striped={false} bordered={false} hover={true}
-        //                   responsive={true} size="sm" className="word-table">
-        //         <thead>
-        //             <th>Word</th>
-        //             <th colSpan={2}>Definition</th>
-        //             <th>Notes</th>
-        //         </thead>
-        //         <tbody>
-        //             {this.props.records.map((record) => <WordTableRow record={record} />)}
-        //         </tbody>
-        //     </Table>;
         return <div className="word-table">
             <Row>
                 <Col xs={1}>Word</Col>

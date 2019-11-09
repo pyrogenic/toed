@@ -1,4 +1,4 @@
-import { arraySetAdd, ensure, ensureArray } from "../Magic";
+import { arraySetAdd, arraySetAddAll, ensure, ensureArray } from "../Magic";
 
 class Container {
     public req: string[] = [];
@@ -63,6 +63,19 @@ describe("Array Sets", () => {
                 expect(arraySetAdd(container, prop, "2")).toBeTruthy();
                 expect(container).toHaveProperty(prop, ["1", "2"]);
                 expect(arraySetAdd(container, prop, "2")).toBeFalsy();
+                expect(container).toHaveProperty(prop, ["1", "2"]);
+                expect(arraySetAdd(container, prop, "1")).toBeFalsy();
+                expect(container).toHaveProperty(prop, ["1", "2"]);
+            });
+
+            it("multiple adds", () => {
+                expect(arraySetAdd(container, prop, "1")).toBeTruthy();
+                expect(container).toHaveProperty(prop, ["1"]);
+                expect(arraySetAdd(container, prop, "1")).toBeFalsy();
+                expect(container).toHaveProperty(prop, ["1"]);
+                expect(arraySetAddAll(container, prop, ["2", "2"])).toBeTruthy();
+                expect(container).toHaveProperty(prop, ["1", "2"]);
+                expect(arraySetAddAll(container, prop, ["2", "1"])).toBeFalsy();
                 expect(container).toHaveProperty(prop, ["1", "2"]);
                 expect(arraySetAdd(container, prop, "1")).toBeFalsy();
                 expect(container).toHaveProperty(prop, ["1", "2"]);

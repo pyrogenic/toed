@@ -8,4 +8,3 @@ export default interface IRetrieveEntry {
     results?: IHeadwordEntry[];
 
 }
-

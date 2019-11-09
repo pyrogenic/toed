@@ -11,11 +11,26 @@ export type Comparer<T> = Parameters<T[]["sort"]>;
 
 type ElementType<T> = T extends Array<infer E> ? E : never;
 
+export function arraySetAddAll<
+    TContainer,
+    TElement,
+    TKey extends ArrayPropertyNames<TContainer> &
+    PropertyNamesOfType<TContainer, TElement[] | undefined>>(
+        container: TContainer,
+        key: TKey,
+        value: Array<ElementType<TContainer[TKey]>>,
+        sorted?: boolean | Comparer<TElement>) {
+    const result = value.map((i) => arraySetAdd(container, key, i, sorted)).includes(true);
+    if (result) { return true; }
+    return false;
+}
+
 /** array set add */
 export function arraySetAdd<
     TContainer,
     TElement,
-    TKey extends ArrayPropertyNames<TContainer> & PropertyNamesOfType<TContainer, TElement[] | undefined>>(
+    TKey extends ArrayPropertyNames<TContainer> &
+    PropertyNamesOfType<TContainer, TElement[] | undefined>>(
         container: TContainer,
         key: TKey,
         value: ElementType<TContainer[TKey]>,
@@ -48,6 +63,7 @@ export function arraySetClear<
     if (set !== undefined) {
         set.slice(0, set.length);
     }
+    return set;
 }
 
 export function ensure<
@@ -65,11 +81,23 @@ export function ensure<
     return value;
 }
 
-type ArrayPropertyNames<TContainer> = {
+export type ArrayPropertyNames<TContainer> = {
     [K in keyof TContainer]: TContainer[K] extends (any[] | undefined) ? K : never
 }[keyof TContainer];
-type ArrayProperties<TContainer> = Pick<TContainer, ArrayPropertyNames<TContainer>>;
-type ArrayPropertyElementTypes<TContainer> = {
+export type MapPropertyNames<TContainer> = {
+    [K in keyof TContainer]: TContainer[K] extends ({ [key: string]: any } | undefined) ? K : never
+}[keyof TContainer];
+export type NonArrayPropertyNames<TContainer> = {
+    [K in keyof TContainer]: TContainer[K] extends (any[] | undefined) ? never : K
+}[keyof TContainer];
+export type PlainPropertyNames<TContainer> = {
+    [K in keyof TContainer]: TContainer[K] extends (any[] | undefined) | ({ [key: string]: any } | undefined) ? never : K
+}[keyof TContainer];
+export type ArrayProperties<TContainer> = Pick<TContainer, ArrayPropertyNames<TContainer>>;
+export type MapProperties<TContainer> = Pick<TContainer, MapPropertyNames<TContainer>>;
+export type NonArrayProperties<TContainer> = Pick<TContainer, NonArrayPropertyNames<TContainer>>;
+export type PlainProperties<TContainer> = Pick<TContainer, PlainPropertyNames<TContainer>>;
+export type ArrayPropertyElementTypes<TContainer> = {
     [K in ArrayPropertyNames<TContainer>]: ElementType<TContainer[K]>
 }[keyof ArrayProperties<TContainer>];
 

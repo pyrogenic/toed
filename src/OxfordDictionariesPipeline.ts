@@ -1,8 +1,8 @@
 import flatten from "lodash/flatten";
 import App from "./App";
 import IDictionaryEntry from "./IDictionaryEntry";
-import IWordRecord from "./IWordRecord";
-import { arraySetAdd, arraySetClear, ensure } from "./Magic";
+import IWordRecord, { ITags } from "./IWordRecord";
+import { arraySetAdd, arraySetAddAll, ensure } from "./Magic";
 import map from "./map";
 import needsMoreDefinitions from "./needsMoreDefinitions";
 import Pass from "./Pass";
@@ -40,7 +40,7 @@ export default class OxfordDictionariesPipeline {
         const { entries, query } = this;
         const record = precord || {};
         const result = ensure(record, "result", Object);
-        arraySetClear(record, "pipelineNotes");
+        const resultTags = ensure(record, "resultTags", Object);
         const matchingEntryTexts = this.allEntryTexts.some((text) =>
             query.toLocaleLowerCase() === text.toLocaleLowerCase());
         const rejectedLexicalEntries: ILexicalEntry[] = [];
@@ -50,6 +50,12 @@ export default class OxfordDictionariesPipeline {
             this.pullPronunciation(result, pronunciations);
             entry.lexicalEntries.forEach((lexicalEntry) => {
                 const { lexicalCategory: { id: partOfSpeech }, text } = lexicalEntry;
+                const allowedForPass = this.allowed("allowedPartsOfSpeech", partOfSpeech);
+                if (allowedForPass > 1) {
+                    rejectedLexicalEntries.push(lexicalEntry);
+                    arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because ${partOfSpeech} is disallowed for pass 1`);
+                    return;
+                }
                 if (text.match(/[A-Z]/)) {
                     rejectedLexicalEntries.push(lexicalEntry);
                     arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because of capitalization`);
@@ -62,6 +68,7 @@ export default class OxfordDictionariesPipeline {
                 }
                 if (!result.entry_rich) {
                     result.entry_rich = text;
+                    resultTags.entry_rich = { partOfSpeech: [partOfSpeech] };
                 }
                 this.pullPronunciation(result, lexicalEntry.pronunciations);
                 if (lexicalEntry.entries) {
@@ -72,6 +79,7 @@ export default class OxfordDictionariesPipeline {
                         if (variantForms && baseWord && result.entry_rich !== baseWord
                             && variantForms.find((vf) => vf.text === baseWord)) {
                             result.entry_rich = baseWord;
+                            resultTags.entry_rich = { partOfSpeech: [partOfSpeech] };
                         }
                         // pass down etymologies so we only take them from entries with first-pass acceptable senses
                         if (senses) {
@@ -121,12 +129,18 @@ export default class OxfordDictionariesPipeline {
         const definitions = short ? sense.shortDefinitions : sense.definitions;
         this.pullPronunciation(result, pronunciations);
         const resultTags = ensure(record, "resultTags", Object);
+        const tags: ITags = {};
         const allTags = ensure(record, "allTags", Object);
         arraySetAdd(allTags, "partOfSpeech", partOfSpeech);
+        arraySetAdd(tags, "partOfSpeech", partOfSpeech);
+        const registers = tags.registers = (sense.registers || []).map((e) => e.id);
+        const domains = tags.domains = (sense.domains || []).map((e) => e.id);
+        arraySetAddAll(allTags, "registers", registers);
+        arraySetAddAll(allTags, "domains", domains);
         const passes = [
             this.allowed("allowedPartsOfSpeech", partOfSpeech),
-            ...(sense.registers || []).map((e) => e.id).map(this.allowed.bind(this, "allowedRegisters")),
-            ...(sense.domains || []).map((e) => e.id).map(this.allowed.bind(this, "allowedDomains")),
+            ...registers.map(this.allowed.bind(this, "allowedRegisters")),
+            ...domains.map(this.allowed.bind(this, "allowedDomains")),
         ];
         const banned = Math.min(...passes) === 0;
         const requiredPass = Math.max(...passes);
@@ -136,6 +150,7 @@ export default class OxfordDictionariesPipeline {
         const etymologies = entryEtymologies || senseEtymologies;
         if (!result.etymology && etymologies) {
             result.etymology = etymologies[0];
+            resultTags.etymology = tags;
         }
         if (onlySubsenses) {
             if (subsenses) {
@@ -149,11 +164,11 @@ export default class OxfordDictionariesPipeline {
                     result.definitions = result.definitions || {};
                     result.definitions[partOfSpeech] = result.definitions[partOfSpeech] || [];
                     result.definitions[partOfSpeech].push(definition);
-                    // if (!result.entry_rich) {
-                    //   result.entry_rich = sense.t;
-                    // }
+                    resultTags.definitions = resultTags.definitions || {};
+                    resultTags.definitions[partOfSpeech] = tags;
                     if (!result.example && examples) {
                         result.example = examples[0].text;
+                        resultTags.example = tags;
                     }
                 }
             });

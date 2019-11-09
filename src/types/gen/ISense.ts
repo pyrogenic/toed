@@ -10,6 +10,7 @@ import IThesaurusLink from "./IThesaurusLink";
 import IVariantForm from "./IVariantForm";
 
 export default interface ISense {
+    // tslint:disable-next-line:max-line-length
     /** A construction provides information about typical syntax used of this sense. Each construction may optionally have one or more examples.  */
     constructions?: IConstruction[][];
 

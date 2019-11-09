@@ -9,13 +9,13 @@ export default class WordRecord implements IWordRecord {
   public readonly pipeline: OxfordDictionariesPipeline;
 
   @observable
-  public result?: Partial<import("./IDictionaryEntry").default> | undefined;
+  public result = {};
 
   @observable
   public resultTags = {};
 
   @observable
-  public allTags?: {};
+  public allTags = {};
 
   @observable
   public pipelineNotes = [];

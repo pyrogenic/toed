@@ -1,7 +1,9 @@
+import _ from "lodash";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
-import unique from "lodash/intersection";
 import omit from "lodash/omit";
+import { observable } from "mobx";
+import { observer } from "mobx-react";
 import React from "react";
 import Badge, { BadgeProps } from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
@@ -14,7 +16,6 @@ import Form from "react-bootstrap/Form";
 import Row from "react-bootstrap/Row";
 import "./App.css";
 import fetchWord from "./fetchWord";
-import IWordRecord from "./IWordRecord";
 import { arraySetAdd } from "./Magic";
 import OxfordDictionariesPipeline, {
   FlagPropertyNames, IPassMap, IPipelineConfig,
@@ -52,7 +53,11 @@ type ConfigFlagPropertyNames = FlagPropertyNames<IState["config"]>;
 
 const FLAG_PROPS: ConfigFlagPropertyNames[] = ["allowedPartsOfSpeech", "allowedRegisters", "allowedDomains"];
 
+@observer
 export default class App extends React.Component<IProps, IState> {
+  @observable
+  private busy: string[] = [];
+
   constructor(props: Readonly<IProps>) {
     super(props);
     const config: IPipelineConfig = {
@@ -145,7 +150,7 @@ export default class App extends React.Component<IProps, IState> {
           </Col>
         </Form.Row>
         <Form.Row>
-          <Form.Group>
+          <Form.Group as={Col}>
             <Form.Control placeholder="Search" value={this.state.q}
               onChange={(e: any) => this.setState({ q: e.target.value ? e.target.value : undefined })} />
             <Button onClick={this.go} disabled={!this.state.q || this.state.q.length < 2}>Go</Button>
@@ -291,19 +296,24 @@ export default class App extends React.Component<IProps, IState> {
 
   private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
     const { apiBaseUrl, language } = this.state;
-    const re = await fetchWord(apiBaseUrl, language, redirect || q);
-    redirect = this.derivativeOf(re.results);
-    if (redirect) {
-      return this.get(q, redirect);
-    }
-    this.setState((state) => {
-      if (!state.records.find((e) => e.q === q)) {
-        const pipeline = new OxfordDictionariesPipeline(q, re.results || [], this.allowed);
-        const wr = new WordRecord(q, re, pipeline);
-        state.records.push(wr);
+    this.busy.push(q);
+    try {
+      const re = await fetchWord(apiBaseUrl, language, redirect || q);
+      redirect = this.derivativeOf(re.results);
+      if (redirect) {
+        return this.get(q, redirect);
       }
-      return { records: state.records };
-    });
-    return re;
+      this.setState((state) => {
+        if (!state.records.find((e) => e.q === q)) {
+          const pipeline = new OxfordDictionariesPipeline(q, re.results || [], this.allowed);
+          const wr = new WordRecord(q, re, pipeline);
+          state.records.push(wr);
+        }
+        return { records: state.records };
+      });
+      return re;
+    } finally {
+      _.pull(this.busy, q);
+    }
   }
 }
