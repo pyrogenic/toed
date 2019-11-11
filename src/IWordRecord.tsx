@@ -8,16 +8,17 @@ export interface ITags {
     domains?: string[];
 }
 
-export type ResultTags =
+export type ResultTags<T> =
 { [K in keyof PlainProperties<IDictionaryEntry>]?: ITags } &
-{ [K in keyof MapProperties<IDictionaryEntry>]?: {[key: string]: ITags }} &
+{ [K in keyof MapProperties<IDictionaryEntry>]?: {[key: string]:
+     IDictionaryEntry[K] extends {[key: string]: any[]} ? ITags[] : ITags }} &
 { [K in keyof ArrayProperties<IDictionaryEntry>]?: ITags[] };
 
 export default interface IWordRecord {
     q: string;
     re: RetrieveEntry;
     result?: Partial<IDictionaryEntry>;
-    resultTags?: ResultTags;
+    resultTags?: ResultTags<IDictionaryEntry>;
     allTags?: ITags;
     pipelineNotes?: string[];
     notes: string;

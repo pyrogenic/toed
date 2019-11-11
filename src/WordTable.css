@@ -32,3 +32,7 @@
 .trigger-click {
     cursor: pointer;
 }
+
+.popover.tags>*{
+    font-size: 75%;
+}

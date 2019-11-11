@@ -16,7 +16,8 @@ import Form from "react-bootstrap/Form";
 import Row from "react-bootstrap/Row";
 import "./App.css";
 import fetchWord from "./fetchWord";
-import { arraySetAdd } from "./Magic";
+import { ITags } from "./IWordRecord";
+import { arraySetAdd, PropertyNamesOfType } from "./Magic";
 import OxfordDictionariesPipeline, {
   FlagPropertyNames, IPassMap, IPipelineConfig,
 } from "./OxfordDictionariesPipeline";
@@ -213,20 +214,8 @@ export default class App extends React.Component<IProps, IState> {
       <Col xs={3}>
         <Form.Label>{label}</Form.Label>
       </Col>
-      <Col>{
-        Object.keys(this.state.config[prop]).sort().map((flag) => {
-          const value = this.state.config[prop][flag];
-          const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
-          const variant = variants[value];
-          return <Badge variant={variant} onClick={() => this.setState((state) => {
-            const flags = state.config[prop];
-            const newFlags: IPassMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass };
-            const newState = { config: { ...state.config, [prop]: newFlags } };
-            return newState;
-          }, this.refreshRecords)}
-          >{flag}</Badge>;
-        })
-      }
+      <Col>
+        {Object.keys(this.state.config[prop]).sort().map((flag) => <this.FilterBadge prop={prop} flag={flag} />)}
       </Col>
     </Row>;
   }
@@ -315,5 +304,20 @@ export default class App extends React.Component<IProps, IState> {
     } finally {
       _.pull(this.busy, q);
     }
+  }
+
+  private FilterBadge = ({ prop, flag }: {
+    prop: PropertyNamesOfType<IPipelineConfig, IPassMap>,
+    flag: keyof IPassMap,
+  }) => {
+    const value = this.state.config[prop][flag];
+    const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
+    const variant = variants[value];
+    return <Badge variant={variant} onClick={() => this.setState((state) => {
+      const flags = state.config[prop];
+      const newFlags: IPassMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass };
+      const newState = { config: { ...state.config, [prop]: newFlags } };
+      return newState;
+    }, this.refreshRecords)}>{flag}</Badge>;
   }
 }

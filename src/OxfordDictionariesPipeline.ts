@@ -162,10 +162,11 @@ export default class OxfordDictionariesPipeline {
             definitions.forEach((definition) => {
                 if (needsMoreDefinitions(result, partOfSpeech, short, pass)) {
                     result.definitions = result.definitions || {};
-                    result.definitions[partOfSpeech] = result.definitions[partOfSpeech] || [];
-                    result.definitions[partOfSpeech].push(definition);
                     resultTags.definitions = resultTags.definitions || {};
-                    resultTags.definitions[partOfSpeech] = tags;
+                    result.definitions[partOfSpeech] = result.definitions[partOfSpeech] || [];
+                    resultTags.definitions[partOfSpeech] = resultTags.definitions[partOfSpeech] || [];
+                    result.definitions[partOfSpeech].push(definition);
+                    resultTags.definitions[partOfSpeech].push(tags);
                     if (!result.example && examples) {
                         result.example = examples[0].text;
                         resultTags.example = tags;

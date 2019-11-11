@@ -47,16 +47,17 @@ function WordRow({ record }: { record: IWordRecord }) {
     }</ul>) || false;
     const notFound = !(partsOfSpeech.length || etymology || example);
 
+    const word = result.entry_rich || record.q;
     // const cell = TaggedComponent({title: "Rich Entry", tags: resultTags.entry_rich, content: row});
     return <>
         <Row className="entry">
             <Col xs={1}>
-                <TaggedComponent title="Rich Entry" tags={resultTags.entry_rich}>
+                <TaggedComponent word={word} title="Rich Entry" tags={resultTags.entry_rich}>
                     <Row className={result.entry_rich ? "headword" : "headword not-found"}>
-                        {result.entry_rich || record.q}
+                        {word}
                     </Row>
                 </TaggedComponent>
-                <TaggedComponent title="Pronunciation" tags={resultTags.pronunciation_ipa}>
+                <TaggedComponent word={word}  title="Pronunciation" tags={resultTags.pronunciation_ipa}>
                     <Maybe when={result.pronunciation_ipa && result.pronunciation_ipa.length > 0}>
                         <Row className="pronunciation">
                             {result.pronunciation_ipa}
@@ -69,7 +70,18 @@ function WordRow({ record }: { record: IWordRecord }) {
                     {partsOfSpeech.map((partOfSpeech) => <Row>
                         <Col xs={2} className="partOfSpeech">{partOfSpeech}</Col>
                         <Col>
-                            {definitions[partOfSpeech].map((definition) => <Row><Col>{definition}</Col></Row>)}
+                            {definitions[partOfSpeech].map((definition, index) =>
+                                <Row>
+                                    <Col>
+                                        <TaggedComponent
+                                            word={`${word} (${partOfSpeech})`}
+                                            title="Definition"
+                                            tags={resultTags.definitions![partOfSpeech][index]}>
+                                            {definition}
+                                        </TaggedComponent>
+                                    </Col>
+                                </Row>)
+                            }
                         </Col>
                     </Row>)}
                     {etymology && <Row>
@@ -101,29 +113,32 @@ export default class WordTable extends React.Component<IProps, {}> {
     }
 }
 
-function TaggedComponent({ title, children, tags }:
-    { title: string, children?: JSX.Element | false, tags?: ITags }) {
+function TaggedComponent({ word, title, children, tags }:
+    React.PropsWithChildren<{ word: string, title: string | false, tags?: ITags }>) {
     if (!children) {
         return null;
     }
     if (!tags) {
-        return children;
+        return <>{children}</>;
     }
-    return <OverlayTrigger trigger="click" overlay={popover(title)} rootClose={true}>
+    return <OverlayTrigger trigger="click" overlay={popover(`${word}-${title}`)} rootClose={true}>
         <div className="trigger-click">
             {children}
         </div>
     </OverlayTrigger>;
     function popover(id: string) {
-        return tags && <Popover id={id}>
-            <Popover.Title as="h3">{id}</Popover.Title>
+        return tags && <Popover id={id} className="tags">
+            {title && <Popover.Title>{title}</Popover.Title>}
             <Popover.Content>
-                {tags.partOfSpeech && <Row><Col>Part of Speech</Col>
+                {/* {tags.partOfSpeech && <Row><Col>Part of Speech</Col>
                     <Col><Badge>{tags.partOfSpeech}</Badge></Col></Row>}
                 {tags.domains && <Row><Col>Domains</Col>
                     <Col>{tags.domains.map((t) => <Badge>{t}</Badge>)}</Col></Row>}
                 {tags.registers && <Row><Col>Registers</Col>
-                    <Col>{tags.registers.map((t) => <Badge>{t}</Badge>)}</Col></Row>}
+                    <Col>{tags.registers.map((t) => <Badge>{t}</Badge>)}</Col></Row>} */}
+                {tags.partOfSpeech && <Badge>{tags.partOfSpeech}</Badge>}
+                {tags.domains && tags.domains.map((t) => <Badge>{t}</Badge>)}
+                {tags.registers && tags.registers.map((t) => <Badge>{t}</Badge>)}
             </Popover.Content>
         </Popover>;
     }
