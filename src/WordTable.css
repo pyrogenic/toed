@@ -28,3 +28,7 @@
 
     font-size: 50% !important;
 }
+
+.trigger-click {
+    cursor: pointer;
+}
