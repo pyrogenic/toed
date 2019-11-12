@@ -3,7 +3,7 @@ import { ArrayProperties, MapProperties, PlainProperties } from "./Magic";
 import RetrieveEntry from "./types/gen/RetrieveEntry";
 
 export interface ITags {
-    partOfSpeech?: string[];
+    partOfSpeech?: [string];
     registers?: string[];
     domains?: string[];
 }

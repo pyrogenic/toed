@@ -183,7 +183,7 @@ export default class App extends React.Component<IProps, IState> {
         </Row>
       }
 
-      <Row><Col><WordTable records={this.state.records} /></Col></Row>
+      <Row><Col><WordTable records={this.state.records} TagControl={this.FilterBadge}/></Col></Row>
 
       <Row>
         <Col>
@@ -321,3 +321,5 @@ export default class App extends React.Component<IProps, IState> {
     }, this.refreshRecords)}>{flag}</Badge>;
   }
 }
+
+export type TagControlFactory = App["FilterBadge"];

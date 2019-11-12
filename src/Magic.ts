@@ -91,7 +91,11 @@ export type NonArrayPropertyNames<TContainer> = {
     [K in keyof TContainer]: TContainer[K] extends (any[] | undefined) ? never : K
 }[keyof TContainer];
 export type PlainPropertyNames<TContainer> = {
-    [K in keyof TContainer]: TContainer[K] extends (any[] | undefined) | ({ [key: string]: any } | undefined) ? never : K
+    [K in keyof TContainer]: TContainer[K] extends
+    (any[] |
+        undefined) |
+    ({ [key: string]: any } |
+        undefined) ? never : K
 }[keyof TContainer];
 export type ArrayProperties<TContainer> = Pick<TContainer, ArrayPropertyNames<TContainer>>;
 export type MapProperties<TContainer> = Pick<TContainer, MapPropertyNames<TContainer>>;
