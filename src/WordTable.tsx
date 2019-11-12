@@ -37,6 +37,38 @@ function Maybe({ when, children }: React.PropsWithChildren<{ when: any }>):
     return <>{children}</>;
 }
 
+function taggedComponent({ word, title, children, tags, TagControl }:
+    React.PropsWithChildren<{
+        word: string,
+        title: string | false,
+        tags?: ITags,
+        TagControl: TagControlFactory,
+    }>) {
+    if (!children) {
+        return null;
+    }
+    if (!tags) {
+        return <>{children}</>;
+    }
+    return <OverlayTrigger trigger="click" overlay={popover(`${word}-${title}`)} rootClose={true}>
+        <div className="trigger-click">
+            {children}
+        </div>
+    </OverlayTrigger>;
+    function popover(id: string) {
+        return tags && <Popover id={id} className="tags">
+            {title && <Popover.Title>{title}</Popover.Title>}
+            <Popover.Content>
+                {tags.partOfSpeech && tags.partOfSpeech.map((t) => <TagControl prop="allowedPartsOfSpeech" flag={t}/>)}
+                {tags.domains && tags.domains.map((t) => <TagControl prop="allowedDomains" flag={t}/>)}
+                {tags.registers && tags.registers.map((t) => <TagControl prop="allowedRegisters" flag={t}/>)}
+            </Popover.Content>
+        </Popover>;
+    }
+}
+
+const TaggedComponent = React.memo(taggedComponent);
+
 function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagControlFactory }) {
     const result = record.result || {};
     const resultTags = record.resultTags || {};
@@ -114,41 +146,5 @@ export default class WordTable extends React.Component<IProps, {}> {
             </Row>
             {this.props.records.map((record) => <WordRow record={record} TagControl={this.props.TagControl}/>)}
         </div>;
-    }
-}
-
-function TaggedComponent({ word, title, children, tags, TagControl }:
-    React.PropsWithChildren<{
-        word: string,
-        title: string | false,
-        tags?: ITags,
-        TagControl: TagControlFactory,
-    }>) {
-    if (!children) {
-        return null;
-    }
-    if (!tags) {
-        return <>{children}</>;
-    }
-    return <OverlayTrigger trigger="click" overlay={popover(`${word}-${title}`)} rootClose={true}>
-        <div className="trigger-click">
-            {children}
-        </div>
-    </OverlayTrigger>;
-    function popover(id: string) {
-        return tags && <Popover id={id} className="tags">
-            {title && <Popover.Title>{title}</Popover.Title>}
-            <Popover.Content>
-                {/* {tags.partOfSpeech && <Row><Col>Part of Speech</Col>
-                    <Col><Badge>{tags.partOfSpeech}</Badge></Col></Row>}
-                {tags.domains && <Row><Col>Domains</Col>
-                    <Col>{tags.domains.map((t) => <Badge>{t}</Badge>)}</Col></Row>}
-                {tags.registers && <Row><Col>Registers</Col>
-                    <Col>{tags.registers.map((t) => <Badge>{t}</Badge>)}</Col></Row>} */}
-                {tags.partOfSpeech && tags.partOfSpeech.map((t) => <TagControl prop="allowedPartsOfSpeech" flag={t}/>)}
-                {tags.domains && tags.domains.map((t) => <TagControl prop="allowedDomains" flag={t}/>)}
-                {tags.registers && tags.registers.map((t) => <TagControl prop="allowedRegisters" flag={t}/>)}
-            </Popover.Content>
-        </Popover>;
     }
 }
