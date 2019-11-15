@@ -48,6 +48,21 @@ export function arraySetAdd<
     return true;
 }
 
+/** array set has */
+export function arraySetHas<
+    TContainer,
+    TElement,
+    TKey extends keyof ArrayPropertiesOfType<TContainer, TElement>>(
+        container: ArrayPropertiesOfType<TContainer, TElement>,
+        key: TKey,
+        value: TElement) {
+    const list = container[key];
+    if (list === undefined) {
+        return false;
+    }
+    return list.includes(value);
+}
+
 // type IQ = {a?: string[]};
 // type tt = PropertyNamesOfType<IQ, Pick<any[], "slice" | "length"> | undefined>;
 // const ttt: tt = "a";
@@ -82,22 +97,27 @@ export function ensure<
 }
 
 export type ArrayPropertyNames<TContainer> = {
-    [K in keyof TContainer]: TContainer[K] extends (any[] | undefined) ? K : never
+    [K in keyof TContainer]: Required<TContainer>[K] extends any[] ? K : never
+}[keyof TContainer];
+export type ArrayPropertyNamesOfType<TContainer, TElement> = {
+    [K in keyof TContainer]: Required<TContainer>[K] extends TElement[] ? K : never
 }[keyof TContainer];
 export type MapPropertyNames<TContainer> = {
-    [K in keyof TContainer]: TContainer[K] extends ({ [key: string]: any } | undefined) ? K : never
+    [K in keyof TContainer]: Required<TContainer>[K] extends { [key: string]: any } ? K : never
 }[keyof TContainer];
 export type NonArrayPropertyNames<TContainer> = {
-    [K in keyof TContainer]: TContainer[K] extends (any[] | undefined) ? never : K
+    [K in keyof TContainer]: Required<TContainer>[K] extends any[] ? never : K
 }[keyof TContainer];
 export type PlainPropertyNames<TContainer> = {
-    [K in keyof TContainer]: TContainer[K] extends
-    (any[] |
-        undefined) |
-    ({ [key: string]: any } |
-        undefined) ? never : K
+    [K in keyof TContainer]: Required<TContainer>[K] extends
+    any[] | { [key: string]: any } ? never : K
 }[keyof TContainer];
+
 export type ArrayProperties<TContainer> = Pick<TContainer, ArrayPropertyNames<TContainer>>;
+export type ArrayPropertiesOfType<TContainer, TElement> = {
+    [K in keyof ArrayPropertyNamesOfType<TContainer, TElement>]?: TElement[];
+};
+
 export type MapProperties<TContainer> = Pick<TContainer, MapPropertyNames<TContainer>>;
 export type NonArrayProperties<TContainer> = Pick<TContainer, NonArrayPropertyNames<TContainer>>;
 export type PlainProperties<TContainer> = Pick<TContainer, PlainPropertyNames<TContainer>>;

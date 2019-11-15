@@ -36,3 +36,11 @@
 .popover.tags>*{
     font-size: 75%;
 }
+
+.badge-light {
+    border: 1px dotted #21252940;
+}
+
+.badge:not(:last-of-type) {
+    margin-right: 0.2rem;
+}

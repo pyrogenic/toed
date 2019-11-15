@@ -85,10 +85,10 @@ export default class Sense {
 }
 
 const ex = getDefaultModelSchema(Sense) as any;
-console.log({ex});
+//console.log({ex});
 const aft: any = createModelSchema(Sense, {
     subsenses: list(object(Sense)),
 });
 aft.extends = ex;
-console.log({aft});
-console.log(getDefaultModelSchema(Sense));
+//console.log({aft});
+//console.log(getDefaultModelSchema(Sense));

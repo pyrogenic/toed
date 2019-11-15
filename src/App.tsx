@@ -2,6 +2,7 @@ import _ from "lodash";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
 import omit from "lodash/omit";
+import uniq from "lodash/uniq";
 import { observable } from "mobx";
 import { observer } from "mobx-react";
 import React from "react";
@@ -17,7 +18,7 @@ import Row from "react-bootstrap/Row";
 import "./App.css";
 import fetchWord from "./fetchWord";
 import { ITags } from "./IWordRecord";
-import { arraySetAdd, PropertyNamesOfType } from "./Magic";
+import { arraySetAdd, arraySetHas, PropertyNamesOfType } from "./Magic";
 import OxfordDictionariesPipeline, {
   FlagPropertyNames, IPassMap, IPipelineConfig,
 } from "./OxfordDictionariesPipeline";
@@ -78,7 +79,7 @@ export default class App extends React.Component<IProps, IState> {
         }
       }
     });
-    const history = JSON.parse(localStorage.getItem("oed/history") || "[]");
+    const history: string[] = uniq(JSON.parse(localStorage.getItem("oed/history") || "[]"));
     this.state = {
       apiBaseUrl: "/api/v2",
       app_id: localStorage.getItem("oed/app_id") || undefined,
@@ -94,14 +95,10 @@ export default class App extends React.Component<IProps, IState> {
   public componentDidMount() {
     let cont: (history: string[]) => Promise<void> | undefined;
     cont = (history: string[]) => {
-      // tslint:disable-next-line:no-console
-      console.log({ history });
       if (history.length > 0) {
         return this.get(history.shift()!).then((re) => {
-          // tslint:disable-next-line:no-console
-          console.log({ done: re.results ? re.results[0].word : "not found" });
           if (history.length > 0) {
-            cont(history);
+            setImmediate(cont, history);
           }
         });
       } else {
@@ -158,7 +155,7 @@ export default class App extends React.Component<IProps, IState> {
             <DropdownButton id="dropdown-basic-button" title="History">
               {
                 this.state.history.map((q) =>
-                  <Dropdown.Item onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
+                  <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
                 )
               }
             </DropdownButton>
@@ -183,7 +180,7 @@ export default class App extends React.Component<IProps, IState> {
         </Row>
       }
 
-      <Row><Col><WordTable records={this.state.records} TagControl={this.FilterBadge}/></Col></Row>
+      <Row><Col><WordTable records={this.state.records} TagControl={this.TagControl} /></Col></Row>
 
       <Row>
         <Col>
@@ -210,18 +207,15 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private renderFilter(label: string, prop: ConfigFlagPropertyNames): React.ReactNode {
+    const flags = Object.keys(this.state.config[prop]).sort();
     return <Row>
       <Col xs={3}>
         <Form.Label>{label}</Form.Label>
       </Col>
       <Col>
-        {Object.keys(this.state.config[prop]).sort().map((flag) => <this.FilterBadge prop={prop} flag={flag} />)}
+        {flags.map((flag) => <this.TagControl key={`${prop}${flag}`} prop={prop} flag={flag} />)}
       </Col>
     </Row>;
-  }
-
-  private refreshRecords = () => {
-    this.state.records.forEach((record) => record.refresh());
   }
 
   private renderResponse = (entry: IHeadwordEntry, index: number) => {
@@ -271,7 +265,7 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private go = () => {
-    const { apiBaseUrl, language, q } = this.state;
+    const { q } = this.state;
     if (!q) {
       return;
     }
@@ -306,11 +300,25 @@ export default class App extends React.Component<IProps, IState> {
     }
   }
 
-  private FilterBadge = ({ prop, flag }: {
+  private TagControl = ({ prop, flag }: {
     prop: PropertyNamesOfType<IPipelineConfig, IPassMap>,
     flag: keyof IPassMap,
   }) => {
     const value = this.state.config[prop][flag];
+    let realName: keyof ITags;
+    switch (prop) {
+      case "allowedDomains":
+        realName = "domains";
+        break;
+      case "allowedPartsOfSpeech":
+        realName = "partOfSpeech";
+        break;
+      case "allowedRegisters":
+        realName = "registers";
+        break;
+      default:
+        throw new Error(prop);
+    }
     const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
     const variant = variants[value];
     return <Badge variant={variant} onClick={() => this.setState((state) => {
@@ -318,8 +326,17 @@ export default class App extends React.Component<IProps, IState> {
       const newFlags: IPassMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass };
       const newState = { config: { ...state.config, [prop]: newFlags } };
       return newState;
-    }, this.refreshRecords)}>{flag}</Badge>;
+    }, () => {
+      this.state.records.forEach((record) => {
+        const hasIt = arraySetHas(record.allTags, realName, flag);
+        if (hasIt) {
+          // tslint:disable-next-line:no-console
+          console.log({record, hasIt, what: flag});
+          record.refresh();
+        }
+      });
+    })}>{flag}</Badge>;
   }
 }
 
-export type TagControlFactory = App["FilterBadge"];
+export type TagControlFactory = App["TagControl"];

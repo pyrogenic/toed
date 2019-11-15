@@ -1,5 +1,4 @@
 import React from "react";
-import Badge from "react-bootstrap/Badge";
 import Col from "react-bootstrap/Col";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Popover from "react-bootstrap/Popover";
@@ -59,9 +58,14 @@ function taggedComponent({ word, title, children, tags, TagControl }:
         return tags && <Popover id={id} className="tags">
             {title && <Popover.Title>{title}</Popover.Title>}
             <Popover.Content>
-                {tags.partOfSpeech && tags.partOfSpeech.map((t) => <TagControl prop="allowedPartsOfSpeech" flag={t}/>)}
-                {tags.domains && tags.domains.map((t) => <TagControl prop="allowedDomains" flag={t}/>)}
-                {tags.registers && tags.registers.map((t) => <TagControl prop="allowedRegisters" flag={t}/>)}
+                {tags.partOfSpeech && tags.partOfSpeech.map((t) =>
+                    <TagControl key={t} prop="allowedPartsOfSpeech" flag={t} />)}
+
+                {tags.domains && tags.domains.map((t) =>
+                    <TagControl key={t} prop="allowedDomains" flag={t} />)}
+
+                {tags.registers && tags.registers.map((t) =>
+                    <TagControl key={t} prop="allowedRegisters" flag={t} />)}
             </Popover.Content>
         </Popover>;
     }
@@ -84,7 +88,7 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
     const word = result.entry_rich || record.q;
     // const cell = TaggedComponent({title: "Rich Entry", tags: resultTags.entry_rich, content: row});
     return <>
-        <Row className="entry">
+        <Row className="entry" key={`${record.q}`}>
             <Col xs={1}>
                 <TaggedComponent word={word} title="Rich Entry" tags={resultTags.entry_rich} TagControl={TagControl}>
                     <Row className={result.entry_rich ? "headword" : "headword not-found"}>
@@ -92,7 +96,7 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
                     </Row>
                 </TaggedComponent>
                 <TaggedComponent word={word} title="Pronunciation"
-                tags={resultTags.pronunciation_ipa} TagControl={TagControl}>
+                    tags={resultTags.pronunciation_ipa} TagControl={TagControl}>
                     <Maybe when={result.pronunciation_ipa && result.pronunciation_ipa.length > 0}>
                         <Row className="pronunciation">
                             {result.pronunciation_ipa}
@@ -102,11 +106,11 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
             </Col>
             {notFound ? <Col>{pipelineNoteList}</Col> : <>
                 <Col>
-                    {partsOfSpeech.map((partOfSpeech) => <Row>
+                    {partsOfSpeech.map((partOfSpeech) => <Row key={partOfSpeech}>
                         <Col xs={2} className="partOfSpeech">{partOfSpeech}</Col>
                         <Col>
                             {definitions[partOfSpeech].map((definition, index) =>
-                                <Row>
+                                <Row key={index}>
                                     <Col>
                                         <TaggedComponent
                                             word={`${word} (${partOfSpeech})`}
@@ -144,7 +148,8 @@ export default class WordTable extends React.Component<IProps, {}> {
                 <Col>Definition</Col>
                 <Col xs={1}>Notes</Col>
             </Row>
-            {this.props.records.map((record) => <WordRow record={record} TagControl={this.props.TagControl}/>)}
+            {this.props.records.map((record) =>
+                <WordRow key={record.q} record={record} TagControl={this.props.TagControl} />)}
         </div>;
     }
 }
