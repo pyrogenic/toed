@@ -57,6 +57,10 @@ const FLAG_PROPS: ConfigFlagPropertyNames[] = ["allowedPartsOfSpeech", "allowedR
 
 @observer
 export default class App extends React.Component<IProps, IState> {
+  public static stylesheet?: CSSStyleSheet;
+  private static highlightedTag?: string;
+  private static ruleIndex: Map<string, CSSStyleRule> = new Map();
+
   @observable
   private busy: string[] = [];
 
@@ -93,6 +97,19 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   public componentDidMount() {
+    if (App.stylesheet === undefined) {
+      const sheet = document.createElement("style");
+      document.body.appendChild(sheet);
+      setImmediate(() => {
+        // tslint:disable-next-line:prefer-for-of
+        for (let i = 0; i < document.styleSheets.length; i++) {
+          const ss = document.styleSheets[i];
+          if (!ss.href && ss.ownerNode.childNodes.length === 0) {
+            App.stylesheet = ss as CSSStyleSheet;
+          }
+        }
+      });
+    }
     let cont: (history: string[]) => Promise<void> | undefined;
     cont = (history: string[]) => {
       if (history.length > 0) {
@@ -206,6 +223,50 @@ export default class App extends React.Component<IProps, IState> {
     return allowed;
   }
 
+  private onEnterBadge = (tag: string) => {
+    if (App.stylesheet) {
+      if (App.highlightedTag === tag) {
+        return;
+      }
+      let rule = App.ruleIndex.get(tag);
+      if (rule === undefined) {
+        const ruleIndex = App.stylesheet.insertRule(`.tag-${tag} {}`);
+        rule = App.stylesheet.rules.item(ruleIndex) as CSSStyleRule;
+        App.ruleIndex.set(tag, rule);
+        // tslint:disable-next-line:no-console
+        console.log({op: "tag not in ruleIndex", tag, rule, ruleIndex});
+      } else {
+        // tslint:disable-next-line:no-console
+        console.log({op: "tag in ruleIndex", tag, rule});
+      }
+      if (App.highlightedTag) {
+        const highlightedRule = App.ruleIndex.get(App.highlightedTag);
+        if (highlightedRule) {
+          highlightedRule.style.outline = "";
+        }
+      }
+      if (rule) {
+        // tslint:disable-next-line:no-console
+        console.log({tag, style: rule.style});
+        rule.style.outline = "1px solid red";
+        // tslint:disable-next-line:no-console
+        console.log({tag, style: rule.style});
+      }
+    }
+  }
+
+  private onExitBadge = (tag: string) => {
+    if (App.highlightedTag === tag) {
+      App.highlightedTag = undefined;
+    }
+    if (App.stylesheet) {
+      const rule = App.ruleIndex.get(tag);
+      if (rule !== undefined) {
+        rule.style.outline = "";
+      }
+    }
+  }
+
   private renderFilter(label: string, prop: ConfigFlagPropertyNames): React.ReactNode {
     const flags = Object.keys(this.state.config[prop]).sort();
     return <Row>
@@ -302,7 +363,7 @@ export default class App extends React.Component<IProps, IState> {
 
   private TagControl = ({ prop, flag }: {
     prop: PropertyNamesOfType<IPipelineConfig, IPassMap>,
-    flag: keyof IPassMap,
+    flag: keyof IPassMap & string,
   }) => {
     const value = this.state.config[prop][flag];
     let realName: keyof ITags;
@@ -321,21 +382,24 @@ export default class App extends React.Component<IProps, IState> {
     }
     const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
     const variant = variants[value];
-    return <Badge variant={variant} onClick={() => this.setState((state) => {
-      const flags = state.config[prop];
-      const newFlags: IPassMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass };
-      const newState = { config: { ...state.config, [prop]: newFlags } };
-      return newState;
-    }, () => {
-      this.state.records.forEach((record) => {
-        const hasIt = arraySetHas(record.allTags, realName, flag);
-        if (hasIt) {
-          // tslint:disable-next-line:no-console
-          console.log({record, hasIt, what: flag});
-          record.refresh();
-        }
-      });
-    })}>{flag}</Badge>;
+    return <Badge variant={variant}
+      onMouseEnter={() => this.onEnterBadge(flag)}
+      onMouseLeave={() => this.onExitBadge(flag)}
+      onClick={() => this.setState((state) => {
+        const flags = state.config[prop];
+        const newFlags: IPassMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass };
+        const newState = { config: { ...state.config, [prop]: newFlags } };
+        return newState;
+      }, () => {
+        this.state.records.forEach((record) => {
+          const hasIt = arraySetHas(record.allTags, realName, flag);
+          if (hasIt) {
+            // tslint:disable-next-line:no-console
+            console.log({ record, hasIt, what: flag });
+            record.refresh();
+          }
+        });
+      })}>{flag}</Badge>;
   }
 }
 

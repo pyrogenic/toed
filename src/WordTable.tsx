@@ -1,3 +1,5 @@
+import compact from "lodash/compact";
+import flatten from "lodash/flatten";
 import React from "react";
 import Col from "react-bootstrap/Col";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
@@ -49,8 +51,13 @@ function taggedComponent({ word, title, children, tags, TagControl }:
     if (!tags) {
         return <>{children}</>;
     }
+    let className = ["trigger-click"];
+    const tagf = flatten(compact(
+        Object.values(tags).map((x) => x.slice()),
+        ));
+    className = className.concat(...tagf.map((tag) => `tag-${tag}`));
     return <OverlayTrigger trigger="click" overlay={popover(`${word}-${title}`)} rootClose={true}>
-        <div className="trigger-click">
+        <div className={className.join(" ")}>
             {children}
         </div>
     </OverlayTrigger>;
