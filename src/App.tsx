@@ -243,14 +243,12 @@ export default class App extends React.Component<IProps, IState> {
         const highlightedRule = App.ruleIndex.get(App.highlightedTag);
         if (highlightedRule) {
           highlightedRule.style.outline = "";
+          rule.style.backgroundColor = null;
         }
       }
       if (rule) {
-        // tslint:disable-next-line:no-console
-        console.log({tag, style: rule.style});
-        rule.style.outline = "1px solid red";
-        // tslint:disable-next-line:no-console
-        console.log({tag, style: rule.style});
+        rule.style.outline = "5px solid #ffff0044";
+        rule.style.backgroundColor = "#ffff0088";
       }
     }
   }
@@ -263,6 +261,7 @@ export default class App extends React.Component<IProps, IState> {
       const rule = App.ruleIndex.get(tag);
       if (rule !== undefined) {
         rule.style.outline = "";
+        rule.style.backgroundColor = null;
       }
     }
   }
