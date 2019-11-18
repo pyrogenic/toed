@@ -44,6 +44,7 @@ interface IState {
   q?: string;
 
   history: string[];
+  hidden: string[];
   records: WordRecord[];
 
   re?: IRetrieveEntry;
@@ -84,11 +85,13 @@ export default class App extends React.Component<IProps, IState> {
       }
     });
     const history: string[] = uniq(JSON.parse(localStorage.getItem("oed/history") || "[]"));
+    const hidden: string[] = uniq(JSON.parse(localStorage.getItem("oed/hidden") || "[]"));
     this.state = {
       apiBaseUrl: "/api/v2",
       app_id: localStorage.getItem("oed/app_id") || undefined,
       app_key: localStorage.getItem("oed/app_key") || undefined,
       config,
+      hidden,
       history,
       language: OxfordLanguage.americanEnglish,
       q: sessionStorage.getItem("oed/q") || undefined,

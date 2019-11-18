@@ -97,6 +97,9 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
     return <>
         <Row className="entry" key={`${record.q}`}>
             <Col xs={1}>
+                {result.entry_rich && record.q !== result.entry_rich && <Row className="text-muted">
+                    {record.q}
+                </Row>}
                 <TaggedComponent word={word} title="Rich Entry" tags={resultTags.entry_rich} TagControl={TagControl}>
                     <Row className={result.entry_rich ? "headword" : "headword not-found"}>
                         {word}
