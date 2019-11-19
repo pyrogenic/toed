@@ -19,11 +19,13 @@ export function arraySetAddAll<
         container: TContainer,
         key: TKey,
         value: Array<ElementType<TContainer[TKey]>>,
-        sorted?: boolean | Comparer<TElement>) {
+        sorted?: ArraySetOrderRule<TElement>) {
     const result = value.map((i) => arraySetAdd(container, key, i, sorted)).includes(true);
     if (result) { return true; }
     return false;
 }
+
+export type ArraySetOrderRule<TElement> = boolean | "mru" | Comparer<TElement>;
 
 /** array set add */
 export function arraySetAdd<
@@ -34,7 +36,7 @@ export function arraySetAdd<
         container: TContainer,
         key: TKey,
         value: ElementType<TContainer[TKey]>,
-        sorted?: boolean | "mru" | Comparer<TElement>) {
+        sorted?: ArraySetOrderRule<TElement>) {
     const list = ensureArray(container, key);
     const index = list.indexOf(value);
     if (index >= 0) {

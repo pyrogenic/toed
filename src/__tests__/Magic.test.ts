@@ -68,6 +68,25 @@ describe("Array Sets", () => {
                 expect(container).toHaveProperty(prop, ["1", "2"]);
             });
 
+            describe("addAll", () => {
+                it("multiple adds", () => {
+                    expect(arraySetAddAll(container, prop, ["1"])).toBeTruthy();
+                    expect(container).toHaveProperty(prop, ["1"]);
+                    expect(arraySetAddAll(container, prop, ["1"])).toBeFalsy();
+                    expect(container).toHaveProperty(prop, ["1"]);
+                    expect(arraySetAddAll(container, prop, ["2"])).toBeTruthy();
+                    expect(container).toHaveProperty(prop, ["1", "2"]);
+                    expect(arraySetAddAll(container, prop, ["2"])).toBeFalsy();
+                    expect(container).toHaveProperty(prop, ["1", "2"]);
+                    expect(arraySetAddAll(container, prop, ["2", "1"])).toBeFalsy();
+                    expect(container).toHaveProperty(prop, ["1", "2"]);
+                    expect(arraySetAddAll(container, prop, ["2", "1", "0"], true)).toBeTruthy();
+                    expect(container).toHaveProperty(prop, ["0", "1", "2"]);
+                    expect(arraySetAddAll(container, prop, ["2", "4", "0"], "mru")).toBeTruthy();
+                    expect(container).toHaveProperty(prop, ["1", "2", "4", "0"]);
+                });
+            });
+
             it("multiple adds", () => {
                 expect(arraySetAdd(container, prop, "1")).toBeTruthy();
                 expect(container).toHaveProperty(prop, ["1"]);

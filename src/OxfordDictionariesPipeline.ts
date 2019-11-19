@@ -43,24 +43,22 @@ export default class OxfordDictionariesPipeline {
         const record = precord || {};
         const result = ensure(record, "result", Object);
         const resultTags = ensure(record, "resultTags", Object);
+        const allTags = ensure(record, "allTags", Object);
         const matchingEntryTexts = this.allEntryTexts.some((text) =>
           query.toLocaleLowerCase() === text);
 //        query.toLocaleLowerCase() === text.toLocaleLowerCase());
         const rejectedLexicalEntries: ILexicalEntry[] = [];
         entries.forEach((entry) => {
             const { pronunciations } = entry;
-
             this.pullPronunciation(result, pronunciations);
             entry.lexicalEntries.forEach((lexicalEntry) => {
                 const { lexicalCategory: { id: partOfSpeech }, text } = lexicalEntry;
-                const allowedForPass = this.allowed("allowedPartsOfSpeech", partOfSpeech);
-                if (allowedForPass === Pass.banned) {
-                    rejectedLexicalEntries.push(lexicalEntry);
-                    arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because ${partOfSpeech} is banned`);
-                    return;
-                }
+                let grammaticalFeatures: string[] = [];
+                // tslint:disable-next-line:no-console
+                console.log({query, grammaticalFeatures: lexicalEntry.grammaticalFeatures});
                 if (lexicalEntry.grammaticalFeatures) {
-                    const grammaticalFeatures = lexicalEntry.grammaticalFeatures.map((e) => e.id);
+                    grammaticalFeatures = lexicalEntry.grammaticalFeatures.map((e) => e.id);
+                    arraySetAddAll(allTags, "grammaticalFeatures", grammaticalFeatures);
                     const disallowed = grammaticalFeatures.filter((tag) => {
                         const tagAllowedForPass = this.allowed("allowedGrammaticalFeatures", tag);
                         return tagAllowedForPass === Pass.banned;
@@ -70,11 +68,17 @@ export default class OxfordDictionariesPipeline {
                         return;
                     }
                 }
-                if (text.match(/[A-Z]/)) {
+                const allowedForPass = this.allowed("allowedPartsOfSpeech", partOfSpeech);
+                if (allowedForPass === Pass.banned) {
                     rejectedLexicalEntries.push(lexicalEntry);
-                    arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because of capitalization`);
+                    arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because ${partOfSpeech} is banned`);
                     return;
                 }
+                // if (text.match(/[A-Z]/)) {
+                //     rejectedLexicalEntries.push(lexicalEntry);
+                //     arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because of capitalization`);
+                //     return;
+                // }
                 if (matchingEntryTexts && text.length !== query.length) {
                     rejectedLexicalEntries.push(lexicalEntry);
                     arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because exact matches of the query are present`);
@@ -82,11 +86,28 @@ export default class OxfordDictionariesPipeline {
                 }
                 if (!result.entry_rich) {
                     result.entry_rich = text;
-                    resultTags.entry_rich = { partOfSpeech: [partOfSpeech] };
+                    resultTags.entry_rich = { partOfSpeech: [partOfSpeech], grammaticalFeatures };
                 }
                 this.pullPronunciation(result, lexicalEntry.pronunciations);
                 if (lexicalEntry.entries) {
                     lexicalEntry.entries.forEach((lentry) => {
+                        // tslint:disable-next-line:no-console
+                        console.log({query, grammaticalFeatures: lentry.grammaticalFeatures});
+                        if (lentry.grammaticalFeatures) {
+                            grammaticalFeatures = [
+                                ...grammaticalFeatures,
+                                ...lentry.grammaticalFeatures.map((e) => e.id),
+                            ];
+                            arraySetAddAll(allTags, "grammaticalFeatures", grammaticalFeatures);
+                            const disallowed = grammaticalFeatures.filter((tag) => {
+                                const tagAllowedForPass = this.allowed("allowedGrammaticalFeatures", tag);
+                                return tagAllowedForPass === Pass.banned;
+                            });
+                            if (disallowed.length > 0) {
+                                arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because ${disallowed.join(" & ")} is/are banned`);
+                                return;
+                            }
+                        }
                         this.pullPronunciation(result, lentry.pronunciations);
                         const baseWord = this.query;
                         const { etymologies, senses, variantForms } = lentry;
@@ -98,7 +119,14 @@ export default class OxfordDictionariesPipeline {
                         // pass down etymologies so we only take them from entries with first-pass acceptable senses
                         if (senses) {
                             senses.forEach(this.processSense.bind(
-                                this, record, { partOfSpeech, short: false, subsenses: false, pass: 1, etymologies }));
+                                this, record, {
+                                etymologies,
+                                grammaticalFeatures,
+                                partOfSpeech,
+                                pass: 1,
+                                short: false,
+                                subsenses: false,
+                            }));
                         }
                     });
                 }
@@ -122,8 +150,12 @@ export default class OxfordDictionariesPipeline {
                     }
                     const { lexicalCategory: { id: partOfSpeech } } = lexicalEntry;
                     if (!lexicalEntry.entries) { return; }
+                    let grammaticalFeatures: string[] = [];
                     if (lexicalEntry.grammaticalFeatures) {
-                        const grammaticalFeatures = lexicalEntry.grammaticalFeatures.map((e) => e.id);
+                        grammaticalFeatures = lexicalEntry.grammaticalFeatures.map((e) => e.id);
+                        // tslint:disable-next-line:no-console
+                        console.log({query, grammaticalFeatures});
+                        arraySetAddAll(allTags, "grammaticalFeatures", grammaticalFeatures);
                         const disallowed = grammaticalFeatures.filter((tag) => {
                             const tagAllowedForPass = this.allowed("allowedGrammaticalFeatures", tag);
                             return tagAllowedForPass > pass.pass;
@@ -133,10 +165,31 @@ export default class OxfordDictionariesPipeline {
                             return;
                         }
                     }
-                    lexicalEntry.entries.forEach((lentry) => {
+                    lexicalEntry.entries.forEach((lentry, lentryIndex) => {
                         const { senses } = lentry;
                         if (!senses) { return; }
-                        senses.forEach(this.processSense.bind(this, record, { partOfSpeech, ...pass }));
+                        if (lentry.grammaticalFeatures) {
+                            grammaticalFeatures = [
+                                ...grammaticalFeatures,
+                                ...lentry.grammaticalFeatures.map((e) => e.id),
+                            ];
+                            // tslint:disable-next-line:no-console
+                            console.log({query, grammaticalFeatures});
+                            arraySetAddAll(allTags, "grammaticalFeatures", grammaticalFeatures);
+                            const disallowed = grammaticalFeatures.filter((tag) => {
+                                const tagAllowedForPass = this.allowed("allowedGrammaticalFeatures", tag);
+                                return tagAllowedForPass > pass.pass;
+                            });
+                            if (disallowed.length > 0) {
+                                arraySetAdd(record, "pipelineNotes", `entry ${entryIndex}.${lentryIndex} rejected because ${disallowed.join(" & ")} is/are disallowed for pass ${pass.pass}`);
+                                return;
+                            }
+                        }
+                        senses.forEach(this.processSense.bind(this, record, {
+                            grammaticalFeatures,
+                            partOfSpeech,
+                            ...pass,
+                        }));
                     });
                 });
             });
@@ -146,8 +199,11 @@ export default class OxfordDictionariesPipeline {
 
     private processSense(
         record: PartialWordRecord,
-        { partOfSpeech, short, pass, subsenses: onlySubsenses, etymologies: entryEtymologies }:
-            { partOfSpeech: string, short: boolean, pass: Pass, subsenses: boolean, etymologies?: string[] },
+        { partOfSpeech, grammaticalFeatures, short, pass, subsenses: onlySubsenses, etymologies: entryEtymologies }:
+            {
+                partOfSpeech: string, grammaticalFeatures: string[],
+                short: boolean, pass: Pass, subsenses: boolean, etymologies?: string[],
+            },
         sense: ISense) {
         const result = record.result!;
         const { pronunciations, subsenses, examples, etymologies: senseEtymologies } = sense;
@@ -158,8 +214,12 @@ export default class OxfordDictionariesPipeline {
         const allTags = ensure(record, "allTags", Object);
         arraySetAdd(allTags, "partOfSpeech", partOfSpeech);
         arraySetAdd(tags, "partOfSpeech", partOfSpeech);
+        arraySetAddAll(tags, "grammaticalFeatures", grammaticalFeatures);
+        // tslint:disable-next-line:no-console
+        console.log({query: record.result && record.result.entry_rich, grammaticalFeatures});
         const registers = tags.registers = (sense.registers || []).map((e) => e.id);
         const domains = tags.domains = (sense.domains || []).map((e) => e.id);
+        arraySetAddAll(allTags, "grammaticalFeatures", grammaticalFeatures);
         arraySetAddAll(allTags, "registers", registers);
         arraySetAddAll(allTags, "domains", domains);
         const passes = [
@@ -184,7 +244,13 @@ export default class OxfordDictionariesPipeline {
         }
         if (onlySubsenses) {
             if (subsenses) {
-                subsenses.forEach(this.processSense.bind(this, record, { partOfSpeech, short, pass, subsenses: true }));
+                subsenses.forEach(this.processSense.bind(this, record, {
+                    grammaticalFeatures,
+                    partOfSpeech,
+                    pass,
+                    short,
+                    subsenses: true,
+                }));
             }
             return;
         }

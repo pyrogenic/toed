@@ -30,6 +30,7 @@ import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
+import PassComponent from "./PassComponent";
 
 interface IProps {
 
@@ -161,33 +162,37 @@ export default class App extends React.Component<IProps, IState> {
 
   public render() {
     return <Container>
-      <Form inline={true}>
-        <Form.Row>
-          <Col>
-            <Form.Control placeholder="App ID" value={this.state.app_id || undefined}
-              onChange={(e: any) => this.setState({ app_id: e.target.value })} />
+      <Row>
+        <Col>
+          <Form inline={true}>
+            <Form.Row>
+              <Col>
+                <Form.Control placeholder="App ID" value={this.state.app_id || undefined}
+                  onChange={(e: any) => this.setState({ app_id: e.target.value })} />
 
-          </Col>
-          <Col>
-            <Form.Control placeholder="App Key" value={this.state.app_key || undefined}
-              onChange={(e: any) => this.setState({ app_key: e.target.value })} />
-          </Col>
-        </Form.Row>
-        <Form.Row>
-          <Form.Group as={Col}>
-            <Form.Control placeholder="Search" value={this.state.q}
-              onChange={(e: any) => this.setState({ q: e.target.value ? e.target.value : undefined })} />
-            <Button onClick={this.go} disabled={!this.state.q || this.state.q.length < 2}>Go</Button>
-            <DropdownButton id="dropdown-basic-button" title="History">
-              {
-                [...this.state.history].sort().map((q) =>
-                  <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
-                )
-              }
-            </DropdownButton>
-          </Form.Group>
-        </Form.Row>
-      </Form>
+              </Col>
+              <Col>
+                <Form.Control placeholder="App Key" value={this.state.app_key || undefined}
+                  onChange={(e: any) => this.setState({ app_key: e.target.value })} />
+              </Col>
+            </Form.Row>
+            <Form.Row>
+              <Form.Group as={Col}>
+                <Form.Control placeholder="Search" value={this.state.q}
+                  onChange={(e: any) => this.setState({ q: e.target.value ? e.target.value : undefined })} />
+                <Button onClick={this.go} disabled={!this.state.q || this.state.q.length < 2}>Go</Button>
+                <DropdownButton id="dropdown-basic-button" title="History">
+                  {
+                    [...this.state.history].sort().map((q) =>
+                      <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
+                    )
+                  }
+                </DropdownButton>
+              </Form.Group>
+            </Form.Row>
+          </Form>
+        </Col>
+      </Row>
 
       {this.renderFilter("Parts of Speech", "allowedPartsOfSpeech")}
       {this.renderFilter("Grammatical Features", "allowedGrammaticalFeatures")}
@@ -226,8 +231,8 @@ export default class App extends React.Component<IProps, IState> {
           let { config } = state;
           let { [prop]: flags } = config;
           if (flags[flag] === undefined) {
-            flags = {[flag]: allowed, ...flags};
-            config = {...config, [prop]: flags };
+            flags = { [flag]: allowed, ...flags };
+            config = { ...config, [prop]: flags };
             return { config };
           }
           return null;
@@ -286,7 +291,7 @@ export default class App extends React.Component<IProps, IState> {
   private renderFilter(label: string, prop: ConfigFlagPropertyNames): React.ReactNode {
     const flags = Object.keys(this.state.config[prop]).sort();
     return <Row>
-      <Col xs={3}>
+      <Col xs={4}>
         <Form.Label>{label}</Form.Label>
       </Col>
       <Col>
@@ -395,32 +400,43 @@ export default class App extends React.Component<IProps, IState> {
       case "allowedGrammaticalFeatures":
         realName = "grammaticalFeatures";
         break;
-        case "allowedRegisters":
+      case "allowedRegisters":
         realName = "registers";
         break;
       default:
         throw new Error(prop);
     }
-    const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
-    const variant = variants[value];
-    return <Badge variant={variant}
-      onMouseEnter={() => this.onEnterBadge(flag)}
-      onMouseLeave={() => this.onExitBadge(flag)}
-      onClick={() => this.setState((state) => {
-        const flags = state.config[prop];
-        const newFlags: IPassMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass };
-        const newState = { config: { ...state.config, [prop]: newFlags } };
-        return newState;
-      }, () => {
-        this.state.records.forEach((record) => {
-          const hasIt = arraySetHas(record.allTags, realName, flag);
-          if (hasIt) {
-            // tslint:disable-next-line:no-console
-            console.log({ record, hasIt, what: flag });
-            record.refresh();
-          }
-        });
-      })}>{flag}</Badge>;
+    return <>
+      {flag}
+      <PassComponent value={value} change={(newValue) =>
+        this.setState((state) => {
+          const flags = state.config[prop];
+          const newFlags: IPassMap = { ...flags, [flag]: newValue };
+          const newState = { config: { ...state.config, [prop]: newFlags } };
+          return newState;
+        })
+      } />
+    </>;
+    // const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
+    // const variant = variants[value];
+    // return <Badge variant={variant}
+    //   onMouseEnter={() => this.onEnterBadge(flag)}
+    //   onMouseLeave={() => this.onExitBadge(flag)}
+    //   onClick={() => this.setState((state) => {
+    //     const flags = state.config[prop];
+    //     const newFlags: IPassMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass };
+    //     const newState = { config: { ...state.config, [prop]: newFlags } };
+    //     return newState;
+    //   }, () => {
+    //     this.state.records.forEach((record) => {
+    //       const hasIt = arraySetHas(record.allTags, realName, flag);
+    //       if (hasIt) {
+    //         // tslint:disable-next-line:no-console
+    //         console.log({ record, hasIt, what: flag });
+    //         record.refresh();
+    //       }
+    //     });
+    //   })}>{flag}</Badge>;
   }
 }
 
