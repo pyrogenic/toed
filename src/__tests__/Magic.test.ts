@@ -88,6 +88,18 @@ describe("Array Sets", () => {
                 arraySetAdd(container, prop, "d", true);
                 expect(container).toHaveProperty(prop, ["a", "c", "d"]);
             });
+
+            it("mru", () => {
+                arraySetAdd(container, prop, "c");
+                arraySetAdd(container, prop, "a");
+                expect(container).toHaveProperty(prop, ["c", "a"]);
+                arraySetAdd(container, prop, "c", "mru");
+                expect(container).toHaveProperty(prop, ["a", "c"]);
+                arraySetAdd(container, prop, "d", "mru");
+                expect(container).toHaveProperty(prop, ["a", "c", "d"]);
+                arraySetAdd(container, prop, "a", "mru");
+                expect(container).toHaveProperty(prop, ["c", "d", "a"]);
+            });
         });
     });
 });

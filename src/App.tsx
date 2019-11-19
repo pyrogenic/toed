@@ -54,7 +54,12 @@ interface IState {
 
 type ConfigFlagPropertyNames = FlagPropertyNames<IState["config"]>;
 
-const FLAG_PROPS: ConfigFlagPropertyNames[] = ["allowedPartsOfSpeech", "allowedRegisters", "allowedDomains"];
+const FLAG_PROPS: ConfigFlagPropertyNames[] = [
+  "allowedPartsOfSpeech",
+  "allowedGrammaticalFeatures",
+  "allowedRegisters",
+  "allowedDomains",
+];
 
 @observer
 export default class App extends React.Component<IProps, IState> {
@@ -69,6 +74,7 @@ export default class App extends React.Component<IProps, IState> {
     super(props);
     const config: IPipelineConfig = {
       allowedDomains: {},
+      allowedGrammaticalFeatures: {},
       allowedPartsOfSpeech: {},
       allowedRegisters: {},
     };
@@ -127,7 +133,7 @@ export default class App extends React.Component<IProps, IState> {
         }
       }
     };
-    cont([...this.state.history]);
+    cont([...this.state.history.slice(-10)].sort());
   }
 
   public componentDidUpdate() {
@@ -174,7 +180,7 @@ export default class App extends React.Component<IProps, IState> {
             <Button onClick={this.go} disabled={!this.state.q || this.state.q.length < 2}>Go</Button>
             <DropdownButton id="dropdown-basic-button" title="History">
               {
-                this.state.history.map((q) =>
+                [...this.state.history].sort().map((q) =>
                   <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
                 )
               }
@@ -184,21 +190,22 @@ export default class App extends React.Component<IProps, IState> {
       </Form>
 
       {this.renderFilter("Parts of Speech", "allowedPartsOfSpeech")}
+      {this.renderFilter("Grammatical Features", "allowedGrammaticalFeatures")}
       {this.renderFilter("Registers", "allowedRegisters")}
       {this.renderFilter("Domains", "allowedDomains")}
 
-      {this.state.re && this.state.q && this.state.re.results &&
+      {/* {this.state.re && this.state.re.results &&
         <Row>
           <Col>
             <pre>{
               JSON.stringify(
-                new OxfordDictionariesPipeline(this.state.q, this.state.re.results, this.allowed)
+                new OxfordDictionariesPipeline(this.state.q!, this.state.re.results, this.allowed)
                   .process(), undefined, 2)
             }
             </pre>
           </Col>
         </Row>
-      }
+      } */}
 
       <Row><Col><WordTable records={this.state.records} TagControl={this.TagControl} /></Col></Row>
 
@@ -215,12 +222,19 @@ export default class App extends React.Component<IProps, IState> {
     if (allowed === undefined) {
       allowed = Pass.primary;
       if (typeof flag === "string") {
-        setImmediate(() => this.setState(({ config: { [prop]: flags } }) => {
+        setImmediate(() => this.setState((state) => {
+          let { config } = state;
+          let { [prop]: flags } = config;
           if (flags[flag] === undefined) {
-            return { [prop]: { [flag]: allowed, ...flags } } as any;
+            flags = {[flag]: allowed, ...flags};
+            config = {...config, [prop]: flags };
+            return { config };
           }
           return null;
         }));
+      } else {
+        // tslint:disable-next-line:no-console
+        console.error("Flag is not a string", flag);
       }
     }
     return allowed;
@@ -237,10 +251,10 @@ export default class App extends React.Component<IProps, IState> {
         rule = App.stylesheet.rules.item(ruleIndex) as CSSStyleRule;
         App.ruleIndex.set(tag, rule);
         // tslint:disable-next-line:no-console
-        console.log({op: "tag not in ruleIndex", tag, rule, ruleIndex});
+        console.log({ op: "tag not in ruleIndex", tag, rule, ruleIndex });
       } else {
         // tslint:disable-next-line:no-console
-        console.log({op: "tag in ruleIndex", tag, rule});
+        console.log({ op: "tag in ruleIndex", tag, rule });
       }
       if (App.highlightedTag) {
         const highlightedRule = App.ruleIndex.get(App.highlightedTag);
@@ -333,7 +347,7 @@ export default class App extends React.Component<IProps, IState> {
       return;
     }
     this.setState((state) => {
-      if (arraySetAdd(state, "history", q, true)) {
+      if (arraySetAdd(state, "history", q, "mru")) {
         return { history: state.history };
       }
       return null;
@@ -350,10 +364,12 @@ export default class App extends React.Component<IProps, IState> {
         return this.get(q, redirect);
       }
       this.setState((state) => {
-        if (!state.records.find((e) => e.q === q)) {
+        let records = state.records;
+        if (!records.find((e) => e.q === q)) {
           const pipeline = new OxfordDictionariesPipeline(q, re.results || [], this.allowed);
           const wr = new WordRecord(q, re, pipeline);
-          state.records.push(wr);
+          records = records.sort((a, b) => a.q.localeCompare(b.q));
+          records.unshift(wr);
         }
         return { records: state.records };
       });
@@ -376,7 +392,10 @@ export default class App extends React.Component<IProps, IState> {
       case "allowedPartsOfSpeech":
         realName = "partOfSpeech";
         break;
-      case "allowedRegisters":
+      case "allowedGrammaticalFeatures":
+        realName = "grammaticalFeatures";
+        break;
+        case "allowedRegisters":
         realName = "registers";
         break;
       default:

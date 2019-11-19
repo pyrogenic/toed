@@ -1,3 +1,4 @@
+import compact from "lodash/compact";
 import flatten from "lodash/flatten";
 import App from "./App";
 import IDictionaryEntry from "./IDictionaryEntry";
@@ -15,13 +16,14 @@ export interface IPassMap { [key: string]: Pass; }
 
 export interface IPipelineConfig {
     allowedPartsOfSpeech: IPassMap;
+    allowedGrammaticalFeatures: IPassMap;
     allowedRegisters: IPassMap;
     allowedDomains: IPassMap;
 }
 
 export type FlagPropertyNames<T> = { [K in keyof Required<T>]: T[K] extends IPassMap ? K : never }[keyof T];
 
-type PartialWordRecord = Pick<IWordRecord, "result" | "resultTags" | "allTags" | "pipelineNotes">;
+type PartialWordRecord = Pick<IWordRecord, "result" | "resultTags" | "resultOriginal" | "resultDiscarded" | "allTags" | "pipelineNotes">;
 
 export default class OxfordDictionariesPipeline {
     public readonly query: string;
@@ -42,7 +44,8 @@ export default class OxfordDictionariesPipeline {
         const result = ensure(record, "result", Object);
         const resultTags = ensure(record, "resultTags", Object);
         const matchingEntryTexts = this.allEntryTexts.some((text) =>
-            query.toLocaleLowerCase() === text.toLocaleLowerCase());
+          query.toLocaleLowerCase() === text);
+//        query.toLocaleLowerCase() === text.toLocaleLowerCase());
         const rejectedLexicalEntries: ILexicalEntry[] = [];
         entries.forEach((entry) => {
             const { pronunciations } = entry;
@@ -51,10 +54,21 @@ export default class OxfordDictionariesPipeline {
             entry.lexicalEntries.forEach((lexicalEntry) => {
                 const { lexicalCategory: { id: partOfSpeech }, text } = lexicalEntry;
                 const allowedForPass = this.allowed("allowedPartsOfSpeech", partOfSpeech);
-                if (allowedForPass > 1) {
+                if (allowedForPass === Pass.banned) {
                     rejectedLexicalEntries.push(lexicalEntry);
-                    arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because ${partOfSpeech} is disallowed for pass 1`);
+                    arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because ${partOfSpeech} is banned`);
                     return;
+                }
+                if (lexicalEntry.grammaticalFeatures) {
+                    const grammaticalFeatures = lexicalEntry.grammaticalFeatures.map((e) => e.id);
+                    const disallowed = grammaticalFeatures.filter((tag) => {
+                        const tagAllowedForPass = this.allowed("allowedGrammaticalFeatures", tag);
+                        return tagAllowedForPass === Pass.banned;
+                    });
+                    if (disallowed.length > 0) {
+                        arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because ${disallowed.join(" & ")} is/are banned`);
+                        return;
+                    }
                 }
                 if (text.match(/[A-Z]/)) {
                     rejectedLexicalEntries.push(lexicalEntry);
@@ -101,13 +115,24 @@ export default class OxfordDictionariesPipeline {
             { short: true, subsenses: false, pass: 2 as Pass },
             { short: true, subsenses: true, pass: 2 as Pass },
         ].forEach((pass) => {
-            entries.forEach((entry) => {
-                entry.lexicalEntries.forEach((lexicalEntry) => {
+            entries.forEach((entry, entryIndex) => {
+                entry.lexicalEntries.forEach((lexicalEntry, lexicalEntryIndex) => {
                     if (rejectedLexicalEntries.includes(lexicalEntry)) {
                         return;
                     }
                     const { lexicalCategory: { id: partOfSpeech } } = lexicalEntry;
                     if (!lexicalEntry.entries) { return; }
+                    if (lexicalEntry.grammaticalFeatures) {
+                        const grammaticalFeatures = lexicalEntry.grammaticalFeatures.map((e) => e.id);
+                        const disallowed = grammaticalFeatures.filter((tag) => {
+                            const tagAllowedForPass = this.allowed("allowedGrammaticalFeatures", tag);
+                            return tagAllowedForPass > pass.pass;
+                        });
+                        if (disallowed.length > 0) {
+                            arraySetAdd(record, "pipelineNotes", `entry ${entryIndex}.${lexicalEntryIndex} rejected because ${disallowed.join(" & ")} is/are disallowed for pass ${pass.pass}`);
+                            return;
+                        }
+                    }
                     lexicalEntry.entries.forEach((lentry) => {
                         const { senses } = lentry;
                         if (!senses) { return; }
@@ -149,8 +174,13 @@ export default class OxfordDictionariesPipeline {
         }
         const etymologies = entryEtymologies || senseEtymologies;
         if (!result.etymology && etymologies) {
-            result.etymology = etymologies[0];
+            const etymology = etymologies[0];
+            result.etymology = this.cleanOxfordText(etymology);
             resultTags.etymology = tags;
+            if (result.etymology !== etymology) {
+                const originals = ensure(record, "resultOriginal", Object);
+                originals.etymology = etymology;
+            }
         }
         if (onlySubsenses) {
             if (subsenses) {
@@ -161,19 +191,52 @@ export default class OxfordDictionariesPipeline {
         if (definitions) {
             definitions.forEach((definition) => {
                 if (needsMoreDefinitions(result, partOfSpeech, short, pass)) {
+                    const cleanDefinition = this.cleanOxfordText(definition);
                     result.definitions = result.definitions || {};
-                    resultTags.definitions = resultTags.definitions || {};
                     result.definitions[partOfSpeech] = result.definitions[partOfSpeech] || [];
+                    result.definitions[partOfSpeech].push(cleanDefinition);
+                    resultTags.definitions = resultTags.definitions || {};
                     resultTags.definitions[partOfSpeech] = resultTags.definitions[partOfSpeech] || [];
-                    result.definitions[partOfSpeech].push(definition);
                     resultTags.definitions[partOfSpeech].push(tags);
-                    if (!result.example && examples) {
-                        result.example = examples[0].text;
+                    if (cleanDefinition !== definition) {
+                        const originals = ensure(record, "resultOriginal", Object);
+                        originals.definitions = originals.definitions || {};
+                        originals.definitions[partOfSpeech] = originals.definitions[partOfSpeech] || [];
+                        originals.definitions[partOfSpeech].push(definition);
+                    }
+                    let discardedExamples = examples;
+                    if (!result.example && examples && examples.length > 0) {
+                        const example = examples[0].text;
+                        if (examples.length > 1) {
+                            discardedExamples = discardedExamples!.slice(1);
+                        }
+                        result.example = this.cleanOxfordText(example);
                         resultTags.example = tags;
+                        if (result.example !== example) {
+                            const originals = ensure(record, "resultOriginal", Object);
+                            originals.example = example;
+                        }
+                    }
+                    if (discardedExamples && discardedExamples.length > 0) {
+                        const discards = ensure(record, "resultDiscarded", Object);
+                        discards.example = compact([discards.example, ...discardedExamples.map((example) => `extra: ${example}`)]).join("|");
+                    }
+                } else {
+                    const discards = ensure(record, "resultDiscarded", Object);
+                    discards.definitions = discards.definitions || {};
+                    discards.definitions[partOfSpeech] = discards.definitions[partOfSpeech] || [];
+                    discards.definitions[partOfSpeech].push(definition);
+                    if (examples && examples.length > 0) {
+                        discards.example = compact([discards.example, ...examples.map((example) => `unused definition: ${example}`)]).join("|");
                     }
                 }
             });
         }
+    }
+
+    private cleanOxfordText(example: string): string {
+        example = example.replace(/((?:Middle|Old) English)(\w)/g, "$1 $2");
+        return example;
     }
 
     private pullPronunciation(result: Partial<IDictionaryEntry>, pronunciations?: IPronunciation[]) {

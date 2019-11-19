@@ -34,15 +34,20 @@ export function arraySetAdd<
         container: TContainer,
         key: TKey,
         value: ElementType<TContainer[TKey]>,
-        sorted?: boolean | Comparer<TElement>) {
+        sorted?: boolean | "mru" | Comparer<TElement>) {
     const list = ensureArray(container, key);
-    if (list.includes(value)) {
-        return false;
+    const index = list.indexOf(value);
+    if (index >= 0) {
+        if (sorted !== "mru") {
+            return false;
+        } else {
+            list.splice(index, 1);
+        }
     }
     list.push(value);
     if (typeof sorted === "function") {
         list.sort(sorted);
-    } else if (sorted) {
+    } else if (sorted === true) {
         list.sort();
     }
     return true;
