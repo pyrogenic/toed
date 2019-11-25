@@ -23,6 +23,7 @@ import OxfordDictionariesPipeline, {
   FlagPropertyNames, IPassMap, IPipelineConfig,
 } from "./OxfordDictionariesPipeline";
 import Pass from "./Pass";
+import PassComponent from "./PassComponent";
 import IEntry from "./types/gen/IEntry";
 import IHeadwordEntry from "./types/gen/IHeadwordEntry";
 import ILexicalEntry from "./types/gen/ILexicalEntry";
@@ -30,7 +31,6 @@ import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
-import PassComponent from "./PassComponent";
 
 interface IProps {
 
