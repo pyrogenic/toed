@@ -14,6 +14,8 @@ import Container from "react-bootstrap/Container";
 import Dropdown from "react-bootstrap/Dropdown";
 import DropdownButton from "react-bootstrap/DropdownButton";
 import Form from "react-bootstrap/Form";
+import OverlayTrigger from "react-bootstrap/OverlayTrigger";
+import Popover from "react-bootstrap/Popover";
 import Row from "react-bootstrap/Row";
 import "./App.css";
 import fetchWord from "./fetchWord";
@@ -406,17 +408,27 @@ export default class App extends React.Component<IProps, IState> {
       default:
         throw new Error(prop);
     }
-    return <>
-      {flag}
-      <PassComponent value={value} change={(newValue) =>
-        this.setState((state) => {
-          const flags = state.config[prop];
-          const newFlags: IPassMap = { ...flags, [flag]: newValue };
-          const newState = { config: { ...state.config, [prop]: newFlags } };
-          return newState;
-        })
-      } />
-    </>;
+    const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
+    const variant = variants[value];
+    const key = `app-${realName}-${prop}`;
+    return <OverlayTrigger
+      trigger="click"
+      rootClose={true}
+      key={key}
+      overlay={<Popover id={key}>
+        <Popover.Content>
+          <PassComponent value={value} change={(newValue) =>
+            this.setState((state) => {
+              const flags = state.config[prop];
+              const newFlags: IPassMap = { ...flags, [flag]: newValue };
+              const newState = { config: { ...state.config, [prop]: newFlags } };
+              return newState;
+            })
+          } />
+        </Popover.Content>
+      </Popover>}>
+      <Badge variant={variant}>{flag}</Badge>
+    </OverlayTrigger>;
     // const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
     // const variant = variants[value];
     // return <Badge variant={variant}

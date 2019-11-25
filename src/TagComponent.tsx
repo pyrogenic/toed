@@ -1,8 +1,12 @@
 import * as React from "react";
 import Badge from "react-bootstrap/Badge";
+import { PropertyNamesOfType } from "./Magic";
+import { IPassMap, IPipelineConfig } from "./OxfordDictionariesPipeline";
 
 interface IProps {
-
+    prop: PropertyNamesOfType<IPipelineConfig, IPassMap>;
+    flag: keyof IPassMap & string;
+    // value: IPass;
 }
 
 interface IState {
