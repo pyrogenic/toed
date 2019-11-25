@@ -247,6 +247,9 @@ export default class App extends React.Component<IProps, IState> {
     return allowed;
   }
 
+  private toggleFocus = (tag: string) =>
+    (App.highlightedTag === tag ? this.onExitBadge : this.onEnterBadge)(tag);
+
   private onEnterBadge = (tag: string) => {
     if (App.stylesheet) {
       if (App.highlightedTag === tag) {
@@ -417,7 +420,10 @@ export default class App extends React.Component<IProps, IState> {
       key={key}
       overlay={<Popover id={key}>
         <Popover.Content>
-          <PassComponent value={value} change={(newValue) =>
+          <PassComponent value={value}
+            focus={App.highlightedTag === flag}
+            toggleFocus={this.toggleFocus.bind(this, flag)}
+            change={(newValue) =>
             this.setState((state) => {
               const flags = state.config[prop];
               const newFlags: IPassMap = { ...flags, [flag]: newValue };

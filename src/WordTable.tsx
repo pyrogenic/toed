@@ -57,7 +57,7 @@ function taggedComponent({ word, title, children, tags, TagControl }:
         Object.values(tags).map((x) => x.slice()),
     ));
     className = className.concat(...tagf.map((tag) => `tag-${tag}`));
-    return <OverlayTrigger trigger="click" overlay={popover.bind(`${word}-${title}`)} rootClose={true}>
+    return <OverlayTrigger trigger="click" overlay={popover(`${word}-${title}`)} rootClose={true}>
         <div className={className.join(" ")}>
             {children}
         </div>
@@ -153,7 +153,7 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
                     </TaggedComponent>}
             </Col>
             <Col xs={1}>{(pipelineNotes || resultDiscarded) &&
-                <OverlayTrigger trigger="click" overlay={<MoreInfo/>} rootClose={true}>
+                <OverlayTrigger trigger="click" overlay={popover()} rootClose={true}>
                     <div className="trigger-click">
                         <Badge variant="success">more info</Badge>
                     </div>
@@ -162,7 +162,7 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
         </>}
     </Row>;
 
-    function MoreInfo() {
+    function popover() {
         const { q } = record;
         return <Popover id={q} className="info">
             <Popover.Title>{q}: More Info</Popover.Title>
