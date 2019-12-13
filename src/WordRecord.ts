@@ -18,6 +18,8 @@ export default class WordRecord implements Required<IWordRecord> {
   @observable
   public resultDiscarded: Partial<IDictionaryEntry>;
   @observable
+  public resultDiscardedTags: ResultTags<IDictionaryEntry>;
+  @observable
   public allTags: ITags;
   @observable
   public pipelineNotes: string[];
@@ -33,6 +35,7 @@ export default class WordRecord implements Required<IWordRecord> {
     this.resultTags = {};
     this.resultOriginal = {};
     this.resultDiscarded = {};
+    this.resultDiscardedTags = {};
     this.pipelineNotes = [];
     this.notes = "";
     this.refresh();

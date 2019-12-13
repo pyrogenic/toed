@@ -1,5 +1,7 @@
+import cloneDeep from "lodash/cloneDeep";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
+import uniq from "lodash/uniq";
 import App from "./App";
 import IDictionaryEntry from "./IDictionaryEntry";
 import IWordRecord, { ITags } from "./IWordRecord";
@@ -23,7 +25,10 @@ export interface IPipelineConfig {
 
 export type FlagPropertyNames<T> = { [K in keyof Required<T>]: T[K] extends IPassMap ? K : never }[keyof T];
 
-type PartialWordRecord = Pick<IWordRecord, "result" | "resultTags" | "resultOriginal" | "resultDiscarded" | "allTags" | "pipelineNotes">;
+type PartialWordRecord = Pick<IWordRecord, "result" | "resultTags" | "resultOriginal" | "resultDiscarded" | "resultDiscardedTags" | "allTags" | "pipelineNotes">;
+
+const RECORD_SEP = "///";
+export {RECORD_SEP};
 
 export default class OxfordDictionariesPipeline {
     public readonly query: string;
@@ -46,8 +51,57 @@ export default class OxfordDictionariesPipeline {
         const allTags = ensure(record, "allTags", Object);
         const matchingEntryTexts = this.allEntryTexts.some((text) =>
           query.toLocaleLowerCase() === text);
-//        query.toLocaleLowerCase() === text.toLocaleLowerCase());
+        // tslint:disable-next-line:no-console
+        console.log(`Processing ${query}…`);
         const rejectedLexicalEntries: ILexicalEntry[] = [];
+        const discard = (
+            lexicalEntry: Pick<ILexicalEntry, "entries" | "lexicalCategory" | "text">,
+            reason: string) => {
+            const { lexicalCategory: { id: partOfSpeech } } = lexicalEntry;
+            lexicalEntry.entries?.forEach((lentry) => {
+                const grammaticalFeatures = lentry.grammaticalFeatures?.map((e) => e.id);
+                lentry.senses?.forEach((sense) => {
+                    const tags: ITags = {};
+                    arraySetAdd(tags, "partOfSpeech", partOfSpeech);
+                    arraySetAddAll(tags, "grammaticalFeatures", grammaticalFeatures);
+                    arraySetAddAll(tags, "registers", sense.registers?.map((e) => e.id));
+                    arraySetAddAll(tags, "domains", sense.domains?.map((e) => e.id));
+                    sense.definitions?.forEach((definition) => {
+                        // tslint:disable-next-line:no-console
+                        console.log(`Discarding ${definition}`);
+                        const discards = ensure(record, "resultDiscarded", Object);
+                        discards.definitions = discards.definitions || {};
+                        discards.definitions[partOfSpeech] = discards.definitions[partOfSpeech] || [];
+                        discards.definitions[partOfSpeech].push(definition);
+                        const discardTags = ensure(record, "resultDiscardedTags", Object);
+                        discardTags.definitions = discardTags.definitions || {};
+                        discardTags.definitions[partOfSpeech] = discardTags.definitions[partOfSpeech] || [];
+                        discardTags.definitions[partOfSpeech].push(tags);
+                    });
+                    sense.subsenses?.forEach((subsense) => {
+                        subsense.definitions?.forEach((definition) => {
+                            // tslint:disable-next-line:no-console
+                            console.log(`Discarding subsense ${definition}`);
+                            const discards = ensure(record, "resultDiscarded", Object);
+                            discards.definitions = discards.definitions || {};
+                            discards.definitions[partOfSpeech] = discards.definitions[partOfSpeech] || [];
+                            discards.definitions[partOfSpeech].push(definition);
+                            const subsenseTags = cloneDeep(tags);
+                            arraySetAdd(subsenseTags, "partOfSpeech", partOfSpeech);
+                            arraySetAddAll(subsenseTags, "grammaticalFeatures", grammaticalFeatures);
+                            arraySetAddAll(subsenseTags, "registers", sense.registers?.map((e) => e.id));
+                            arraySetAddAll(subsenseTags, "domains", sense.domains?.map((e) => e.id));
+                            const discardTags = ensure(record, "resultDiscardedTags", Object);
+                            discardTags.definitions = discardTags.definitions || {};
+                            discardTags.definitions[partOfSpeech] = discardTags.definitions[partOfSpeech] || [];
+                            discardTags.definitions[partOfSpeech].push(subsenseTags);
+                        });
+                    });
+                });
+            });
+            arraySetAdd(record, "pipelineNotes", reason);
+            rejectedLexicalEntries.push(lexicalEntry as ILexicalEntry);
+        };
         entries.forEach((entry) => {
             const { pronunciations } = entry;
             this.pullPronunciation(result, pronunciations);
@@ -64,25 +118,18 @@ export default class OxfordDictionariesPipeline {
                         return tagAllowedForPass === Pass.banned;
                     });
                     if (disallowed.length > 0) {
-                        arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because ${disallowed.join(" & ")} is/are banned`);
-                        return;
+                        return discard(lexicalEntry, `‘${text}’ rejected because ${disallowed.join(" & ")} is/are banned`);
                     }
                 }
                 const allowedForPass = this.allowed("allowedPartsOfSpeech", partOfSpeech);
                 if (allowedForPass === Pass.banned) {
-                    rejectedLexicalEntries.push(lexicalEntry);
-                    arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because ${partOfSpeech} is banned`);
-                    return;
+                    return discard(lexicalEntry, `‘${text}’ rejected because ${partOfSpeech} is banned`);
                 }
-                // if (text.match(/[A-Z]/)) {
-                //     rejectedLexicalEntries.push(lexicalEntry);
-                //     arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because of capitalization`);
-                //     return;
-                // }
+                if (text.match(/[A-Z]/)) {
+                    return discard(lexicalEntry, `‘${text}’ rejected because of capitalization`);
+                }
                 if (matchingEntryTexts && text.length !== query.length) {
-                    rejectedLexicalEntries.push(lexicalEntry);
-                    arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because exact matches of the query are present`);
-                    return;
+                    return discard(lexicalEntry, `‘${text}’ rejected because exact matches of the query are present`);
                 }
                 if (!result.entry_rich) {
                     result.entry_rich = text;
@@ -104,8 +151,7 @@ export default class OxfordDictionariesPipeline {
                                 return tagAllowedForPass === Pass.banned;
                             });
                             if (disallowed.length > 0) {
-                                arraySetAdd(record, "pipelineNotes", `‘${text}’ rejected because ${disallowed.join(" & ")} is/are banned`);
-                                return;
+                                return discard({text, lexicalCategory: lexicalEntry.lexicalCategory, entries: [entry]}, `‘${text}’ rejected because ${disallowed.join(" & ")} is/are banned`);
                             }
                         }
                         this.pullPronunciation(result, lentry.pronunciations);
@@ -161,8 +207,7 @@ export default class OxfordDictionariesPipeline {
                             return tagAllowedForPass > pass.pass;
                         });
                         if (disallowed.length > 0) {
-                            arraySetAdd(record, "pipelineNotes", `entry ${entryIndex}.${lexicalEntryIndex} rejected because ${disallowed.join(" & ")} is/are disallowed for pass ${pass.pass}`);
-                            return;
+                            return discard(lexicalEntry, `entry ${entryIndex}.${lexicalEntryIndex} rejected because ${disallowed.join(" & ")} is/are disallowed for pass ${pass.pass}`);
                         }
                     }
                     lexicalEntry.entries.forEach((lentry, lentryIndex) => {
@@ -181,8 +226,7 @@ export default class OxfordDictionariesPipeline {
                                 return tagAllowedForPass > pass.pass;
                             });
                             if (disallowed.length > 0) {
-                                arraySetAdd(record, "pipelineNotes", `entry ${entryIndex}.${lentryIndex} rejected because ${disallowed.join(" & ")} is/are disallowed for pass ${pass.pass}`);
-                                return;
+                                return discard(lexicalEntry, `entry ${entryIndex}.${lentryIndex} rejected because ${disallowed.join(" & ")} is/are disallowed for pass ${pass.pass}`);
                             }
                         }
                         senses.forEach(this.processSense.bind(this, record, {
@@ -285,7 +329,8 @@ export default class OxfordDictionariesPipeline {
                     }
                     if (discardedExamples && discardedExamples.length > 0) {
                         const discards = ensure(record, "resultDiscarded", Object);
-                        discards.example = compact([discards.example, ...discardedExamples.map((example) => `extra: ${example}`)]).join("|");
+                        discards.example = uniq(compact([
+                            discards.example, ...discardedExamples.map((e) => e.text)])).join(RECORD_SEP);
                     }
                 } else {
                     const discards = ensure(record, "resultDiscarded", Object);
@@ -293,7 +338,8 @@ export default class OxfordDictionariesPipeline {
                     discards.definitions[partOfSpeech] = discards.definitions[partOfSpeech] || [];
                     discards.definitions[partOfSpeech].push(definition);
                     if (examples && examples.length > 0) {
-                        discards.example = compact([discards.example, ...examples.map((example) => `unused definition: ${example}`)]).join("|");
+                        discards.example = uniq(compact([
+                            discards.example, ...examples.map((e) => e.text)])).join(RECORD_SEP);
                     }
                 }
             });
@@ -302,6 +348,7 @@ export default class OxfordDictionariesPipeline {
 
     private cleanOxfordText(example: string): string {
         example = example.replace(/((?:Middle|Old) English)(\w)/g, "$1 $2");
+        example = example.replace(/(\S)‘([^’]+)’/g, "$1 ‘$2’");
         return example;
     }
 

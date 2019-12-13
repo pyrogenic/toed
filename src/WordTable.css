@@ -1,8 +1,8 @@
 .word-table {
-    font-size: 80%;
+    font-size: smaller;
 }
 
-.word-table>:first-child.row {
+.word-table>:first-child.row:not(.entry) {
     font-weight: bolder;
 }
 
@@ -43,4 +43,8 @@
 
 .badge:not(:last-of-type) {
     margin-right: 0.2rem;
+}
+
+.popover.info {
+    max-width: 100%;
 }

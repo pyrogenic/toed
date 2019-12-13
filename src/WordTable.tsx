@@ -8,6 +8,7 @@ import Popover from "react-bootstrap/Popover";
 import Row from "react-bootstrap/Row";
 import { TagControlFactory } from "./App";
 import IWordRecord, { ITags } from "./IWordRecord";
+import { RECORD_SEP } from "./OxfordDictionariesPipeline";
 import "./WordTable.css";
 
 interface IProps {
@@ -15,7 +16,7 @@ interface IProps {
     TagControl: TagControlFactory;
 }
 
-function Maybe({ when, children }: React.PropsWithChildren<{ when: any }>):
+function Maybe({ when, children }: React.PropsWithChildren<{ when: any; }>):
     JSX.Element | null {
     if (when === undefined || when === null || !when) {
         return null;
@@ -66,8 +67,8 @@ function taggedComponent({ word, title, children, tags, TagControl }:
         return tags && <Popover id={id} className="tags">
             {title && <Popover.Title>{title}</Popover.Title>}
             <Popover.Content>
-            {tags.partOfSpeech && tags.partOfSpeech.map((t) =>
-                <TagControl key={t} prop="allowedPartsOfSpeech" flag={t} />)}
+                {tags.partOfSpeech && tags.partOfSpeech.map((t) =>
+                    <TagControl key={t} prop="allowedPartsOfSpeech" flag={t} />)}
 
                 {tags.grammaticalFeatures && tags.grammaticalFeatures.map((t) =>
                     <TagControl key={t} prop="allowedGrammaticalFeatures" flag={t} />)}
@@ -84,7 +85,7 @@ function taggedComponent({ word, title, children, tags, TagControl }:
 
 const TaggedComponent = React.memo(taggedComponent);
 
-function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagControlFactory }) {
+function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagControlFactory; }) {
     const result = record.result || {};
     const resultTags = record.resultTags || {};
     const { etymology, example } = result;
@@ -92,10 +93,6 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
     const partsOfSpeech = Object.keys(definitions);
     const { pipelineNotes, resultDiscarded } = record;
     const notFound = !(partsOfSpeech.length || etymology || example);
-    const PipelineNoteList = () => (pipelineNotes && pipelineNotes.length && <ul>{
-        pipelineNotes.map((note, index) => <li key={index}>{note}</li>)
-    }</ul>) || null;
-
     const word = result.entry_rich || record.q;
     // const cell = TaggedComponent({title: "Rich Entry", tags: resultTags.entry_rich, content: row});
     return <Row className="entry" key={`${record.q}`}>
@@ -117,7 +114,7 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
                 </TaggedComponent>
             </Maybe>
         </Col>
-        {notFound ? <Col><PipelineNoteList /></Col> : <>
+        {notFound ? <Col /> : <>
             <Col>
                 {partsOfSpeech.map((partOfSpeech) => <Row key={partOfSpeech}>
                     <Col xs={2} className="partOfSpeech">{partOfSpeech}</Col>
@@ -128,7 +125,7 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
                                     <TaggedComponent
                                         word={`${word} (${partOfSpeech})`}
                                         title="Definition"
-                                        tags={resultTags.definitions![partOfSpeech][index]}
+                                        tags={resultTags.definitions?.[partOfSpeech]?.[index]}
                                         TagControl={TagControl}>
                                         {definition}
                                     </TaggedComponent>
@@ -148,29 +145,33 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
                     <TaggedComponent word={word} title="Example" tags={resultTags.example} TagControl={TagControl}>
                         <Row>
                             <Col xs={2}>example</Col>
-                            <Col>{example}</Col>
+                            <Col>{
+                                example.includes(RECORD_SEP)
+                                    ? example.split(RECORD_SEP).map((s) => <li>{s}</li>)
+                                    : example
+                            }</Col>
                         </Row>
                     </TaggedComponent>}
             </Col>
-            <Col xs={1}>{(pipelineNotes || resultDiscarded) &&
-                <OverlayTrigger trigger="click" overlay={popover()} rootClose={true}>
-                    <div className="trigger-click">
-                        <Badge variant="success">more info</Badge>
-                    </div>
-                </OverlayTrigger>}
-            </Col>
         </>}
+        <Col xs={1}>{(pipelineNotes || resultDiscarded) &&
+            <OverlayTrigger trigger="click" overlay={popover()} rootClose={true}>
+                <div className="trigger-click">
+                    <Badge variant="success">more info</Badge>
+                </div>
+            </OverlayTrigger>}
+        </Col>
     </Row>;
 
     function popover() {
-        const { q } = record;
-        return <Popover id={q} className="info">
-            <Popover.Title>{q}: More Info</Popover.Title>
+        const { q, re, resultDiscardedTags } = record;
+        const discardedRecord = { q, re, result: resultDiscarded, resultTags: resultDiscardedTags, notes: "" };
+        return <Popover id={`${q}/More Info`} className="info">
+            {pipelineNotes?.map((note, index) => <li key={index}>{note}</li>)}
             <Popover.Content>
-                <PipelineNoteList />
-                <pre>
-                    {JSON.stringify(resultDiscarded, undefined, 2)}
-                </pre>
+                <div className="word-table">
+                    <WordRow record={discardedRecord} TagControl={TagControl} />
+                </div>
             </Popover.Content>
         </Popover>;
     }

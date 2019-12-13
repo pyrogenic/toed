@@ -22,6 +22,7 @@ export default interface IWordRecord {
     resultTags?: ResultTags<IDictionaryEntry>;
     resultOriginal?: Partial<IDictionaryEntry>;
     resultDiscarded?: Partial<IDictionaryEntry>;
+    resultDiscardedTags?: ResultTags<IDictionaryEntry>;
     allTags?: ITags;
     pipelineNotes?: string[];
     notes: string;

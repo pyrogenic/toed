@@ -8,16 +8,19 @@ import { observer } from "mobx-react";
 import React from "react";
 import Badge, { BadgeProps } from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
+import ButtonToolbar from "react-bootstrap/ButtonToolbar";
 import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
 import Container from "react-bootstrap/Container";
 import Dropdown from "react-bootstrap/Dropdown";
 import DropdownButton from "react-bootstrap/DropdownButton";
 import Form from "react-bootstrap/Form";
+import InputGroup from "react-bootstrap/InputGroup";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Popover from "react-bootstrap/Popover";
 import Row from "react-bootstrap/Row";
 import "./App.css";
+import badWords from "./badWords";
 import fetchWord from "./fetchWord";
 import { ITags } from "./IWordRecord";
 import { arraySetAdd, arraySetHas, PropertyNamesOfType } from "./Magic";
@@ -179,18 +182,36 @@ export default class App extends React.Component<IProps, IState> {
               </Col>
             </Form.Row>
             <Form.Row>
-              <Form.Group as={Col}>
-                <Form.Control placeholder="Search" value={this.state.q}
+              <Col>
+                <InputGroup>
+                <InputGroup.Prepend>
+                <InputGroup.Text>Search</InputGroup.Text>
+                </InputGroup.Prepend>
+                <Form.Control placeholder="word" value={this.state.q}
                   onChange={(e: any) => this.setState({ q: e.target.value ? e.target.value : undefined })} />
-                <Button onClick={this.go} disabled={!this.state.q || this.state.q.length < 2}>Go</Button>
-                <DropdownButton id="dropdown-basic-button" title="History">
+                  <InputGroup.Append>
+                    <Button onClick={this.go} disabled={!this.state.q || this.state.q.length < 2}>Go</Button>
+                  </InputGroup.Append>
+                </InputGroup>
+                </Col>
+                <Col>
+                <ButtonToolbar>
+                <DropdownButton id="History" title="History">
                   {
                     [...this.state.history].sort().map((q) =>
                       <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
                     )
                   }
                 </DropdownButton>
-              </Form.Group>
+                <DropdownButton id="Bad Words" title="Bad Words">
+                  {
+                    badWords.map((q) =>
+                      <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
+                    )
+                  }
+                </DropdownButton>
+                </ButtonToolbar>
+              </Col>
             </Form.Row>
           </Form>
         </Col>
@@ -247,8 +268,12 @@ export default class App extends React.Component<IProps, IState> {
     return allowed;
   }
 
-  private toggleFocus = (tag: string) =>
+  private toggleFocus = (tag: string) => {
     (App.highlightedTag === tag ? this.onExitBadge : this.onEnterBadge)(tag);
+    // // tslint:disable-next-line:no-console
+    // console.log("highlightedTag", App.high);
+    // this.forceUpdate();
+  }
 
   private onEnterBadge = (tag: string) => {
     if (App.stylesheet) {
@@ -270,7 +295,7 @@ export default class App extends React.Component<IProps, IState> {
         const highlightedRule = App.ruleIndex.get(App.highlightedTag);
         if (highlightedRule) {
           highlightedRule.style.outline = "";
-          rule.style.backgroundColor = null;
+          rule.style.backgroundColor = "inherit";
         }
       }
       if (rule) {
@@ -288,7 +313,7 @@ export default class App extends React.Component<IProps, IState> {
       const rule = App.ruleIndex.get(tag);
       if (rule !== undefined) {
         rule.style.outline = "";
-        rule.style.backgroundColor = null;
+        rule.style.backgroundColor = "inherit";
       }
     }
   }
