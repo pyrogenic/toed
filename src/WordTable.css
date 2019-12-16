@@ -46,5 +46,14 @@
 }
 
 .popover.info {
-    max-width: 100%;
+    max-width: calc(100% - 4rem);
+}
+
+.definition::before {
+    content: "»";
+    position: relative;
+    float: left;
+    transform: translateX(-0.7rem);
+    width: 0;
+    opacity: 0.5;
 }
