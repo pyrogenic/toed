@@ -1,3 +1,7 @@
 .tags {
     font-size: smaller;
 }
+
+.dropdown-menu > .container {
+    min-width: 19.25rem;
+}
