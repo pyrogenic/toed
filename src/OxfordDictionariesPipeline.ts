@@ -259,8 +259,6 @@ export default class OxfordDictionariesPipeline {
         arraySetAdd(allTags, "partOfSpeech", partOfSpeech);
         arraySetAdd(tags, "partOfSpeech", partOfSpeech);
         arraySetAddAll(tags, "grammaticalFeatures", grammaticalFeatures);
-        // tslint:disable-next-line:no-console
-        console.log({query: record.result && record.result.entry_rich, grammaticalFeatures});
         const registers = tags.registers = (sense.registers || []).map((e) => e.id);
         const domains = tags.domains = (sense.domains || []).map((e) => e.id);
         arraySetAddAll(allTags, "grammaticalFeatures", grammaticalFeatures);
