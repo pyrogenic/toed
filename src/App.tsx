@@ -28,7 +28,7 @@ import "./App.css";
 import badWords from "./badWords";
 import fetchWord from "./fetchWord";
 import { ITags } from "./IWordRecord";
-import { arraySetAdd, arraySetHas, PropertyNamesOfType } from "./Magic";
+import { arraySetAdd, PropertyNamesOfType } from "./Magic";
 import OxfordDictionariesPipeline, {
   FlagPropertyNames, IPassMap, IPipelineConfig,
 } from "./OxfordDictionariesPipeline";
@@ -185,17 +185,36 @@ export default class App extends React.Component<IProps, IState> {
         <Navbar.Text> Dictionaries Definition Distiller</Navbar.Text>
         <Navbar.Toggle aria-controls="nav" />
         <Navbar.Collapse id="nav">
-          <Nav className="mr-auto"/>
-            {/*<NavDropdown title="Export" id="nav-export">*/}
-            {/*  {FLAG_PROPS.map((prop) => <NavDropdown.Item*/}
-            {/*      onClick={() =>*/}
-            {/*          console.log({[prop]: this.state.config[prop]})}*/}
-            {/*      href={"#" + prop}>{prop.replace("allowed", "")}*/}
-            {/*  </NavDropdown.Item>)}*/}
-            {/*</NavDropdown>*/}
-          <Nav.Link
-              href={`data:application/json,${JSON.stringify(this.state.config, null, 2)}`}
-              download="OD3.json">Export Config</Nav.Link>
+          <NavDropdown title="Keys" id="nav-import" as={Button}>
+            <Container>
+              <Form>
+                <Form.Group>
+                  <Form.Label>App ID</Form.Label>
+                  <Form.Control placeholder="App ID" value={this.state.app_id || undefined}
+                                style={{fontFamily: "monospace"}}
+                                onChange={(e: any) => this.setState({app_id: e.target.value})}/>
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label>App Key</Form.Label>
+                  <Form.Control placeholder="App Key" value={this.state.app_key || undefined}
+                                style={{fontFamily: "monospace"}}
+                                onChange={(e: any) => this.setState({app_key: e.target.value})}/>
+                </Form.Group>
+              </Form>
+            </Container>
+          </NavDropdown>
+            <NavDropdown title="Config" id="nav-config">
+              <Container>
+                <ConfigImportBox
+                    currentConfig={this.state.config}
+                    setConfig={(config) => this.setState({config})}/>
+              </Container>
+              {/*{FLAG_PROPS.map((prop) => <NavDropdown.Item*/}
+              {/*    onClick={() =>*/}
+              {/*        console.log({[prop]: this.state.config[prop]})}*/}
+              {/*    href={"#" + prop}>{prop.replace("allowed", "")}*/}
+              {/*</NavDropdown.Item>)}*/}
+            </NavDropdown>
           <Nav className="mr-auto"/>
           <Form inline={true}>
             <InputGroup>
@@ -214,17 +233,6 @@ export default class App extends React.Component<IProps, IState> {
       <Row>
         <Col>
           <Form inline={true}>
-            <Form.Row>
-              <Col>
-                <Form.Control placeholder="App ID" value={this.state.app_id || undefined}
-                  onChange={(e: any) => this.setState({ app_id: e.target.value })} />
-
-              </Col>
-              <Col>
-                <Form.Control placeholder="App Key" value={this.state.app_key || undefined}
-                  onChange={(e: any) => this.setState({ app_key: e.target.value })} />
-              </Col>
-            </Form.Row>
             <Form.Row>
               <Col>
                 <ButtonToolbar>
@@ -437,10 +445,10 @@ export default class App extends React.Component<IProps, IState> {
   private TagControl = ({ prop, flag, hidePasses }: {
     prop: PropertyNamesOfType<IPipelineConfig, IPassMap>,
     flag: keyof IPassMap & string,
-    hidePasses: Pass[],
+    hidePasses?: Pass[],
   }) => {
     const value = this.state.config[prop][flag];
-    if (hidePasses.includes(value)) {
+    if (hidePasses?.includes(value)) {
       return null;
     }
     let realName: keyof ITags;
@@ -532,4 +540,49 @@ function FilterRow({ label, flags, prop, TagControl }:
       }
     </Col>
   </Row>;
+}
+
+function ConfigImportBox({currentConfig, setConfig}: {
+  currentConfig: IPipelineConfig,
+  setConfig(config: IPipelineConfig): void,
+}) {
+  const [value, setValue] = React.useState(JSON.stringify(currentConfig, null, 4));
+  const [configError, setConfigError] = React.useState<{config?: IPipelineConfig, error?: Error}>({});
+  React.useEffect(() => {
+    try {
+      setConfigError({config: JSON.parse(value)});
+    } catch (error) {
+      setConfigError({error});
+    }
+  }, [value]);
+  const {config, error} = configError;
+  return <>
+      <Row className="mb-2">
+        <Col>
+        <Form.Control
+            as="textarea"
+            rows={10}
+            cols={24}
+            value={value}
+            onChange={(e: React.SyntheticEvent<HTMLInputElement>) => setValue(e.currentTarget.value)}/>
+        </Col>
+      </Row>
+
+      <Row>
+        <Col>
+      <Button as={"a"} href={`data:application/json,${value}`} download="OD3.json">
+        Download
+      </Button>
+        </Col>
+      <Col className={"mr-auto"}/>
+      <Col>
+      <Button
+          disabled={!!error}
+          title={error ? error.message : undefined}
+          onClick={() => config && setConfig(config)}>
+        Import
+      </Button>
+      </Col>
+      </Row>
+  </>;
 }
