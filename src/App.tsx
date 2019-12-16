@@ -18,6 +18,9 @@ import Dropdown from "react-bootstrap/Dropdown";
 import DropdownButton from "react-bootstrap/DropdownButton";
 import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
+import Nav from "react-bootstrap/Nav";
+import Navbar from "react-bootstrap/Navbar";
+import NavDropdown from "react-bootstrap/NavDropdown";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Popover from "react-bootstrap/Popover";
 import Row from "react-bootstrap/Row";
@@ -143,7 +146,8 @@ export default class App extends React.Component<IProps, IState> {
     };
     cont([...this.state.history
       .slice(-10)
-      ,].sort());
+      ,
+    ].sort());
   }
 
   public componentDidUpdate() {
@@ -175,7 +179,38 @@ export default class App extends React.Component<IProps, IState> {
     // tslint:disable-next-line:no-console
     console.log({ seen, badWordsRemaining });
     const badWord = sample(badWordsRemaining);
-    return <Container>
+    return <>
+      <Navbar bg="light" expand="lg">
+        <Navbar.Brand href="#home">OD³</Navbar.Brand>
+        <Navbar.Text> Dictionaries Definition Distiller</Navbar.Text>
+        <Navbar.Toggle aria-controls="nav" />
+        <Navbar.Collapse id="nav">
+          <Nav className="mr-auto"/>
+            {/*<NavDropdown title="Export" id="nav-export">*/}
+            {/*  {FLAG_PROPS.map((prop) => <NavDropdown.Item*/}
+            {/*      onClick={() =>*/}
+            {/*          console.log({[prop]: this.state.config[prop]})}*/}
+            {/*      href={"#" + prop}>{prop.replace("allowed", "")}*/}
+            {/*  </NavDropdown.Item>)}*/}
+            {/*</NavDropdown>*/}
+          <Nav.Link
+              href={`data:application/json,${JSON.stringify(this.state.config, null, 2)}`}
+              download="OD3.json">Export Config</Nav.Link>
+          <Nav className="mr-auto"/>
+          <Form inline={true}>
+            <InputGroup>
+              <Form.Control placeholder="word" value={this.state.q}
+                            onChange={(e: any) => this.setState({ q: e.target.value ? e.target.value : undefined })} />
+              <InputGroup.Append>
+                <Button
+                    onClick={this.go} variant="outline-primary"
+                    disabled={!this.state.q || this.state.q.length < 2}>Look Up</Button>
+              </InputGroup.Append>
+            </InputGroup>
+          </Form>
+        </Navbar.Collapse>
+      </Navbar>
+      <Container>
       <Row>
         <Col>
           <Form inline={true}>
@@ -191,18 +226,6 @@ export default class App extends React.Component<IProps, IState> {
               </Col>
             </Form.Row>
             <Form.Row>
-              <Col>
-                <InputGroup>
-                  <InputGroup.Prepend>
-                    <InputGroup.Text>Search</InputGroup.Text>
-                  </InputGroup.Prepend>
-                  <Form.Control placeholder="word" value={this.state.q}
-                    onChange={(e: any) => this.setState({ q: e.target.value ? e.target.value : undefined })} />
-                  <InputGroup.Append>
-                    <Button onClick={this.go} disabled={!this.state.q || this.state.q.length < 2}>Go</Button>
-                  </InputGroup.Append>
-                </InputGroup>
-              </Col>
               <Col>
                 <ButtonToolbar>
                   <DropdownButton id="History" title="History">
@@ -245,7 +268,8 @@ export default class App extends React.Component<IProps, IState> {
           {this.state.re && this.state.re.results && this.state.re.results.map(this.renderResponse)}
         </Col>
       </Row>
-    </Container>;
+    </Container>
+      </>;
   }
 
   public allowed = (prop: ConfigFlagPropertyNames, flag: string): Pass => {
@@ -269,14 +293,14 @@ export default class App extends React.Component<IProps, IState> {
       }
     }
     return allowed;
-  };
+  }
 
   private toggleFocus = (tag: string) => {
     (App.highlightedTag === tag ? this.onExitBadge : this.onEnterBadge)(tag);
     // // tslint:disable-next-line:no-console
     // console.log("highlightedTag", App.high);
     // this.forceUpdate();
-  };
+  }
 
   private onEnterBadge = (tag: string) => {
     if (App.stylesheet) {
@@ -306,7 +330,7 @@ export default class App extends React.Component<IProps, IState> {
         rule.style.backgroundColor = "#ffff0088";
       }
     }
-  };
+  }
 
   private onExitBadge = (tag: string) => {
     if (App.highlightedTag === tag) {
@@ -319,7 +343,7 @@ export default class App extends React.Component<IProps, IState> {
         rule.style.backgroundColor = "inherit";
       }
     }
-  };
+  }
 
   private renderFilter(label: string, prop: ConfigFlagPropertyNames): React.ReactNode {
     const flags = Object.keys(this.state.config[prop]).sort();
@@ -338,7 +362,7 @@ export default class App extends React.Component<IProps, IState> {
         {entry.lexicalEntries.map(this.renderLexicalEntry)}
       </Card.Body>
     </Card>;
-  };
+  }
 
   private renderLexicalEntry = (entry: ILexicalEntry, index: number) => {
     return <Row key={index}>
@@ -354,13 +378,13 @@ export default class App extends React.Component<IProps, IState> {
         </Row>
       </Col>
     </Row>;
-  };
+  }
 
   private renderEntry = (entry: IEntry, index: number) => {
     return <Col key={index} as="pre">
       {JSON.stringify(entry, undefined, 2)}
     </Col>;
-  };
+  }
 
   private derivativeOf = (results?: IHeadwordEntry[]) => {
     if (results) {
@@ -370,7 +394,7 @@ export default class App extends React.Component<IProps, IState> {
         return derivativeOf[0];
       }
     }
-  };
+  }
 
   private go = () => {
     const { q } = this.state;
@@ -383,7 +407,7 @@ export default class App extends React.Component<IProps, IState> {
       }
       return null;
     }, () => this.get(q).then((re) => this.setState({ re })));
-  };
+  }
 
   private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
     const { apiBaseUrl, language } = this.state;
@@ -408,7 +432,7 @@ export default class App extends React.Component<IProps, IState> {
     } finally {
       _.pull(this.busy, q);
     }
-  };
+  }
 
   private TagControl = ({ prop, flag, hidePasses }: {
     prop: PropertyNamesOfType<IPipelineConfig, IPassMap>,
@@ -481,7 +505,7 @@ export default class App extends React.Component<IProps, IState> {
     //       }
     //     });
     //   })}>{flag}</Badge>;
-  };
+  }
 }
 
 export type TagControlFactory = App["TagControl"];

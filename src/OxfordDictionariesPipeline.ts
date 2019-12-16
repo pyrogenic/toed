@@ -263,18 +263,18 @@ export default class OxfordDictionariesPipeline {
         const { pronunciations, subsenses, examples, etymologies: senseEtymologies } = sense;
         const definitions = short ? sense.shortDefinitions : sense.definitions;
         this.pullPronunciation(result, pronunciations);
-        const resultTags = ensure(record, "resultTags", Object);
         const tags: ITags = {};
-        const registers = tags.registers = (sense.registers || []).map((e) => e.id);
-        const domains = tags.domains = (sense.domains || []).map((e) => e.id);
-        arraySetAdd(tags, "partOfSpeech", partOfSpeech);
-        arraySetAddAll(tags, "grammaticalFeatures", grammaticalFeatures);
-        arraySetAddAll(tags, "registers", registers);
-        arraySetAddAll(tags, "domains", domains);
+        const resultTags = ensure(record, "resultTags", Object);
         const allTags = ensure(record, "allTags", Object);
         arraySetAdd(allTags, "partOfSpeech", partOfSpeech);
+        arraySetAdd(tags, "partOfSpeech", partOfSpeech);
+        arraySetAddAll(tags, "grammaticalFeatures", grammaticalFeatures);
         arraySetAddAll(allTags, "grammaticalFeatures", grammaticalFeatures);
+        const registers = tags.registers = (sense.registers || []).map((e) => e.id);
+        arraySetAddAll(tags, "registers", registers);
         arraySetAddAll(allTags, "registers", registers);
+        const domains = tags.domains = (sense.domains || []).map((e) => e.id);
+        arraySetAddAll(tags, "domains", domains);
         arraySetAddAll(allTags, "domains", domains);
         const passes = [
             this.allowed("allowedPartsOfSpeech", partOfSpeech),
