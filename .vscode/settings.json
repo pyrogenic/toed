@@ -1,0 +1,8 @@
+{
+    "tslint.alwaysShowRuleFailuresAsWarnings": false,
+    "tslint.alwaysShowStatus": true,
+    "tslint.autoFixOnSave": true,
+    "tslint.packageManager": "yarn",
+    "typescript.format.semicolons": "insert",
+    "typescript.tsdk": "./node_modules/typescript/lib",
+}

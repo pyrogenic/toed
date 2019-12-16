@@ -85,7 +85,8 @@ function taggedComponent({ word, title, children, tags, TagControl }:
 
 const TaggedComponent = React.memo(taggedComponent);
 
-function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagControlFactory; }) {
+function WordRow({ record, TagControl, fluid }:
+    { record: IWordRecord, TagControl: TagControlFactory, fluid?: boolean }) {
     const result = record.result || {};
     const resultTags = record.resultTags || {};
     const { etymology, example } = result;
@@ -94,9 +95,10 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
     const { pipelineNotes, resultDiscarded } = record;
     const notFound = !(partsOfSpeech.length || etymology || example);
     const word = result.entry_rich || record.q;
-    // const cell = TaggedComponent({title: "Rich Entry", tags: resultTags.entry_rich, content: row});
+    const moreInfo = (pipelineNotes && pipelineNotes.length > 0)
+        || (resultDiscarded && Object.values(resultDiscarded).some((x) => x && x.length > 0));
     return <Row className="entry" key={`${record.q}`}>
-        <Col xs={1}>
+        <Col xs={fluid ? "auto" : 1}>
             {result.entry_rich && record.q !== result.entry_rich && <Row className="text-muted">
                 {record.q}
             </Row>}
@@ -117,11 +119,11 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
         {notFound ? <Col /> : <>
             <Col>
                 {partsOfSpeech.map((partOfSpeech) => <Row key={partOfSpeech}>
-                    <Col xs={2} className="partOfSpeech">{partOfSpeech}</Col>
+                    <Col xs={fluid ? "auto" : 2} className="partOfSpeech">{partOfSpeech}</Col>
                     <Col>
                         {definitions[partOfSpeech].map((definition, index) =>
                             <Row key={index}>
-                                <Col>
+                                <Col className="definition">
                                     <TaggedComponent
                                         word={`${word} (${partOfSpeech})`}
                                         title="Definition"
@@ -137,14 +139,14 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
                 {etymology &&
                     <TaggedComponent word={word} title="Etymology" tags={resultTags.etymology} TagControl={TagControl}>
                         <Row>
-                            <Col xs={2}>etymology</Col>
+                            <Col xs={fluid ? "auto" : 2}>etymology</Col>
                             <Col>{etymology}</Col>
                         </Row>
                     </TaggedComponent>}
                 {example &&
                     <TaggedComponent word={word} title="Example" tags={resultTags.example} TagControl={TagControl}>
                         <Row>
-                            <Col xs={2}>example</Col>
+                            <Col xs={fluid ? "auto" : 2}>example</Col>
                             <Col>{
                                 example.includes(RECORD_SEP)
                                     ? example.split(RECORD_SEP).map((s) => <li>{s}</li>)
@@ -154,13 +156,13 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
                     </TaggedComponent>}
             </Col>
         </>}
-        <Col xs={1}>{(pipelineNotes || resultDiscarded) &&
+        {(!fluid || moreInfo) && <Col xs={1}>{moreInfo &&
             <OverlayTrigger trigger="click" overlay={popover()} rootClose={true}>
                 <div className="trigger-click">
                     <Badge variant="success">more info</Badge>
                 </div>
             </OverlayTrigger>}
-        </Col>
+        </Col>}
     </Row>;
 
     function popover() {
@@ -170,7 +172,7 @@ function WordRow({ record, TagControl }: { record: IWordRecord, TagControl: TagC
             {pipelineNotes?.map((note, index) => <li key={index}>{note}</li>)}
             <Popover.Content>
                 <div className="word-table">
-                    <WordRow record={discardedRecord} TagControl={TagControl} />
+                    <WordRow record={discardedRecord} TagControl={TagControl} fluid={true}/>
                 </div>
             </Popover.Content>
         </Popover>;

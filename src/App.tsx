@@ -2,7 +2,9 @@ import _ from "lodash";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
 import omit from "lodash/omit";
+import sample from "lodash/sample";
 import uniq from "lodash/uniq";
+import without from "lodash/without";
 import { observable } from "mobx";
 import { observer } from "mobx-react";
 import React from "react";
@@ -142,7 +144,10 @@ export default class App extends React.Component<IProps, IState> {
         }
       }
     };
-    cont([...this.state.history.slice(-10)].sort());
+    cont([...this.state.history
+      .slice(-10)
+      ,
+    ].sort());
   }
 
   public componentDidUpdate() {
@@ -169,6 +174,11 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   public render() {
+    const seen = this.state.history; // records.map((e) => e.q);
+    const badWordsRemaining = without(badWords, ...seen);
+    // tslint:disable-next-line:no-console
+    console.log({ seen, badWordsRemaining });
+    const badWord = sample(badWordsRemaining);
     return <>
       <Navbar bg="light" expand="lg">
         <Navbar.Brand href="#home">OD³</Navbar.Brand>
@@ -218,20 +228,14 @@ export default class App extends React.Component<IProps, IState> {
             <Form.Row>
               <Col>
                 <ButtonToolbar>
-                <DropdownButton id="History" title="History">
-                  {
-                    [...this.state.history].sort().map((q) =>
-                      <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
-                    )
-                  }
-                </DropdownButton>
-                <DropdownButton id="Bad Words" title="Bad Words">
-                  {
-                    badWords.map((q) =>
-                      <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
-                    )
-                  }
-                </DropdownButton>
+                  <DropdownButton id="History" title="History">
+                    {
+                      [...this.state.history].sort().map((q) =>
+                        <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
+                      )
+                    }
+                  </DropdownButton>
+                  {badWord && <Button onClick={() => this.setState({ q: badWord }, this.go)}>{badWord}</Button>}
                 </ButtonToolbar>
               </Col>
             </Form.Row>
@@ -343,14 +347,7 @@ export default class App extends React.Component<IProps, IState> {
 
   private renderFilter(label: string, prop: ConfigFlagPropertyNames): React.ReactNode {
     const flags = Object.keys(this.state.config[prop]).sort();
-    return <Row>
-      <Col xs={4}>
-        <Form.Label>{label}</Form.Label>
-      </Col>
-      <Col>
-        {flags.map((flag) => <this.TagControl key={`${prop}${flag}`} prop={prop} flag={flag} />)}
-      </Col>
-    </Row>;
+    return <FilterRow label={label} flags={flags} prop={prop} TagControl={this.TagControl} />;
   }
 
   private renderResponse = (entry: IHeadwordEntry, index: number) => {
@@ -437,11 +434,15 @@ export default class App extends React.Component<IProps, IState> {
     }
   }
 
-  private TagControl = ({ prop, flag }: {
+  private TagControl = ({ prop, flag, hidePasses }: {
     prop: PropertyNamesOfType<IPipelineConfig, IPassMap>,
     flag: keyof IPassMap & string,
+    hidePasses: Pass[],
   }) => {
     const value = this.state.config[prop][flag];
+    if (hidePasses.includes(value)) {
+      return null;
+    }
     let realName: keyof ITags;
     switch (prop) {
       case "allowedDomains":
@@ -468,17 +469,18 @@ export default class App extends React.Component<IProps, IState> {
       key={key}
       overlay={<Popover id={key}>
         <Popover.Content>
-          <PassComponent value={value}
+          <PassComponent
+            value={value}
             focus={App.highlightedTag === flag}
             toggleFocus={this.toggleFocus.bind(this, flag)}
             change={(newValue) =>
-            this.setState((state) => {
-              const flags = state.config[prop];
-              const newFlags: IPassMap = { ...flags, [flag]: newValue };
-              const newState = { config: { ...state.config, [prop]: newFlags } };
-              return newState;
-            })
-          } />
+              this.setState((state) => {
+                const flags = state.config[prop];
+                const newFlags: IPassMap = { ...flags, [flag]: newValue };
+                const newState = { config: { ...state.config, [prop]: newFlags } };
+                return newState;
+              })
+            } />
         </Popover.Content>
       </Popover>}>
       <Badge variant={variant}>{flag}</Badge>
@@ -507,3 +509,27 @@ export default class App extends React.Component<IProps, IState> {
 }
 
 export type TagControlFactory = App["TagControl"];
+
+function FilterRow({ label, flags, prop, TagControl }:
+  { label: string, flags: string[], prop: ConfigFlagPropertyNames, TagControl: TagControlFactory; }) {
+  const [open, setOpen] = React.useState(false);
+  let hidden = 0;
+  return <Row>
+    <Col xs={3}>
+      <Form.Label>{label}</Form.Label>
+    </Col>
+    <Col className="tags">
+      {flags.map((flag) => {
+        const x = TagControl({prop, flag, hidePasses: open ? [] : [Pass.primary]});
+        if (x === null) {
+          hidden++;
+          return null;
+        }
+        // TODO: send key to x
+        return <span key={`${prop}${flag}`}>{x}</span>;
+      })}
+      {<a target="#" onClick={() => setOpen(!open)}> {open ? "Hide acceptable tags" : `Show ${hidden} hidden acceptable tags…`}</a>}
+      }
+    </Col>
+  </Row>;
+}
