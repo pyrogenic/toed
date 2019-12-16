@@ -28,7 +28,7 @@ import "./App.css";
 import badWords from "./badWords";
 import fetchWord from "./fetchWord";
 import { ITags } from "./IWordRecord";
-import { arraySetAdd, arraySetHas, PropertyNamesOfType } from "./Magic";
+import { arraySetAdd, PropertyNamesOfType } from "./Magic";
 import OxfordDictionariesPipeline, {
   FlagPropertyNames, IPassMap, IPipelineConfig,
 } from "./OxfordDictionariesPipeline";
@@ -437,10 +437,10 @@ export default class App extends React.Component<IProps, IState> {
   private TagControl = ({ prop, flag, hidePasses }: {
     prop: PropertyNamesOfType<IPipelineConfig, IPassMap>,
     flag: keyof IPassMap & string,
-    hidePasses: Pass[],
+    hidePasses?: Pass[],
   }) => {
     const value = this.state.config[prop][flag];
-    if (hidePasses.includes(value)) {
+    if (hidePasses?.includes(value)) {
       return null;
     }
     let realName: keyof ITags;
