@@ -1,7 +1,9 @@
-import _ from "lodash";
+// import _ from "lodash";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
+import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
+import pull from "lodash/pull";
 import sample from "lodash/sample";
 import uniq from "lodash/uniq";
 import without from "lodash/without";
@@ -10,6 +12,7 @@ import { observer } from "mobx-react";
 import React from "react";
 import Badge, { BadgeProps } from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
+import ButtonGroup from "react-bootstrap/ButtonGroup";
 import ButtonToolbar from "react-bootstrap/ButtonToolbar";
 import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
@@ -26,6 +29,7 @@ import Popover from "react-bootstrap/Popover";
 import Row from "react-bootstrap/Row";
 import "./App.css";
 import badWords from "./badWords";
+import defaultConfig from "./default.od3config.json";
 import fetchWord from "./fetchWord";
 import { ITags } from "./IWordRecord";
 import { arraySetAdd, PropertyNamesOfType } from "./Magic";
@@ -190,73 +194,77 @@ export default class App extends React.Component<IProps, IState> {
               <Form>
                 <Form.Group>
                   <Form.Label>App ID</Form.Label>
-                  <Form.Control placeholder="App ID" value={this.state.app_id || undefined}
-                                style={{fontFamily: "monospace"}}
-                                onChange={(e: any) => this.setState({app_id: e.target.value})}/>
+                  <Form.Control
+                    placeholder="App ID"
+                    value={this.state.app_id || undefined}
+                    style={{ fontFamily: "monospace" }}
+                    onChange={(e: any) => this.setState({ app_id: e.target.value })} />
                 </Form.Group>
                 <Form.Group>
                   <Form.Label>App Key</Form.Label>
-                  <Form.Control placeholder="App Key" value={this.state.app_key || undefined}
-                                style={{fontFamily: "monospace"}}
-                                onChange={(e: any) => this.setState({app_key: e.target.value})}/>
+                  <Form.Control
+                    placeholder="App Key"
+                    value={this.state.app_key || undefined}
+                    style={{ fontFamily: "monospace" }}
+                    onChange={(e: any) => this.setState({ app_key: e.target.value })} />
                 </Form.Group>
               </Form>
             </Container>
           </NavDropdown>
-            <NavDropdown title="Config" id="nav-config">
-              <Container>
-                <ConfigImportBox
-                    currentConfig={this.state.config}
-                    setConfig={(config) => this.setState({config})}/>
-              </Container>
-              {/*{FLAG_PROPS.map((prop) => <NavDropdown.Item*/}
-              {/*    onClick={() =>*/}
-              {/*        console.log({[prop]: this.state.config[prop]})}*/}
-              {/*    href={"#" + prop}>{prop.replace("allowed", "")}*/}
-              {/*</NavDropdown.Item>)}*/}
-            </NavDropdown>
-          <Nav className="mr-auto"/>
+          <NavDropdown title="Config" id="nav-config">
+            <Container>
+              <ConfigImportBox
+                currentConfig={this.state.config}
+                setConfig={(config) => this.setState({ config })} />
+            </Container>
+            {/*{FLAG_PROPS.map((prop) => <NavDropdown.Item*/}
+            {/*    onClick={() =>*/}
+            {/*        console.log({[prop]: this.state.config[prop]})}*/}
+            {/*    href={"#" + prop}>{prop.replace("allowed", "")}*/}
+            {/*</NavDropdown.Item>)}*/}
+          </NavDropdown>
+          <Nav className="mr-auto" />
           <Form inline={true}>
             <InputGroup>
               <Form.Control placeholder="word" value={this.state.q}
-                            onChange={(e: any) => this.setState({ q: e.target.value ? e.target.value : undefined })} />
+                onChange={(e: any) => this.setState({ q: e.target.value ? e.target.value : undefined })} />
               <InputGroup.Append>
                 <Button
-                    onClick={this.go} variant="outline-primary"
-                    disabled={!this.state.q || this.state.q.length < 2}>Look Up</Button>
+                  onClick={this.go} variant="outline-primary"
+                  disabled={!this.state.q || this.state.q.length < 2}>Look Up</Button>
               </InputGroup.Append>
             </InputGroup>
           </Form>
         </Navbar.Collapse>
       </Navbar>
       <Container>
-      <Row>
-        <Col>
-          <Form inline={true}>
-            <Form.Row>
-              <Col>
-                <ButtonToolbar>
-                  <DropdownButton id="History" title="History">
-                    {
-                      [...this.state.history].sort().map((q) =>
-                        <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
-                      )
-                    }
-                  </DropdownButton>
-                  {badWord && <Button onClick={() => this.setState({ q: badWord }, this.go)}>{badWord}</Button>}
-                </ButtonToolbar>
-              </Col>
-            </Form.Row>
-          </Form>
-        </Col>
-      </Row>
+        <Row>
+          <Col>
+            <Form inline={true}>
+              <Form.Row>
+                <Col>
+                  <ButtonToolbar>
+                    <DropdownButton id="History" title="History">
+                      {
+                        [...this.state.history].sort().map((q) =>
+                          <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
+                        )
+                      }
+                    </DropdownButton>
+                    {badWord && <Button onClick={() => this.setState({ q: badWord }, this.go)}>{badWord}</Button>}
+                  </ButtonToolbar>
+                </Col>
+              </Form.Row>
+            </Form>
+          </Col>
+        </Row>
 
-      {this.renderFilter("Parts of Speech", "allowedPartsOfSpeech")}
-      {this.renderFilter("Grammatical Features", "allowedGrammaticalFeatures")}
-      {this.renderFilter("Registers", "allowedRegisters")}
-      {this.renderFilter("Domains", "allowedDomains")}
+        {this.renderFilter("Parts of Speech", "allowedPartsOfSpeech")}
+        {this.renderFilter("Grammatical Features", "allowedGrammaticalFeatures")}
+        {this.renderFilter("Registers", "allowedRegisters")}
+        {this.renderFilter("Domains", "allowedDomains")}
 
-      {/* {this.state.re && this.state.re.results &&
+        {/* {this.state.re && this.state.re.results &&
         <Row>
           <Col>
             <pre>{
@@ -269,15 +277,15 @@ export default class App extends React.Component<IProps, IState> {
         </Row>
       } */}
 
-      <Row><Col><WordTable records={this.state.records} TagControl={this.TagControl} /></Col></Row>
+        <Row><Col><WordTable records={this.state.records} TagControl={this.TagControl} /></Col></Row>
 
-      <Row>
-        <Col>
-          {this.state.re && this.state.re.results && this.state.re.results.map(this.renderResponse)}
-        </Col>
-      </Row>
-    </Container>
-      </>;
+        <Row>
+          <Col>
+            {this.state.re && this.state.re.results && this.state.re.results.map(this.renderResponse)}
+          </Col>
+        </Row>
+      </Container>
+    </>;
   }
 
   public allowed = (prop: ConfigFlagPropertyNames, flag: string): Pass => {
@@ -438,7 +446,7 @@ export default class App extends React.Component<IProps, IState> {
       });
       return re;
     } finally {
-      _.pull(this.busy, q);
+      pull(this.busy, q);
     }
   }
 
@@ -468,9 +476,7 @@ export default class App extends React.Component<IProps, IState> {
       default:
         throw new Error(prop);
     }
-    const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
-    const variant = variants[value];
-    const key = `app-${realName}-${prop}`;
+    const key = `${realName}-${flag}`;
     return <OverlayTrigger
       trigger="click"
       rootClose={true}
@@ -491,7 +497,7 @@ export default class App extends React.Component<IProps, IState> {
             } />
         </Popover.Content>
       </Popover>}>
-      <Badge variant={variant}>{flag}</Badge>
+      <TagBadge pass={value} flag={flag} />
     </OverlayTrigger>;
     // const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
     // const variant = variants[value];
@@ -518,6 +524,24 @@ export default class App extends React.Component<IProps, IState> {
 
 export type TagControlFactory = App["TagControl"];
 
+type PrefixUnion<A, B> = A & Omit<B, keyof A>;
+
+// interface IA { a: number; c: string; }
+// interface IB { b: string; c: number; }
+// const x: PrefixUnion<IA, IB> = {a: 1, b: "b", c: "hah"};
+
+type ITagBadgeProps = PrefixUnion<{pass: Pass, flag?: string}, React.HTMLAttributes<HTMLSpanElement>>;
+
+function TagBadge(props: ITagBadgeProps) {
+  const {pass, flag, children} = props;
+  return <Badge variant={variantForPass(pass)} {...props}>{flag}{children}</Badge>;
+}
+
+function variantForPass(value: Pass): BadgeProps["variant"] {
+  const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
+  return variants[value];
+}
+
 function FilterRow({ label, flags, prop, TagControl }:
   { label: string, flags: string[], prop: ConfigFlagPropertyNames, TagControl: TagControlFactory; }) {
   const [open, setOpen] = React.useState(false);
@@ -528,61 +552,92 @@ function FilterRow({ label, flags, prop, TagControl }:
     </Col>
     <Col className="tags">
       {flags.map((flag) => {
-        const x = TagControl({prop, flag, hidePasses: open ? [] : [Pass.primary]});
+        const x = TagControl({ prop, flag, hidePasses: open ? [] : [Pass.primary] });
         if (x === null) {
           hidden++;
-          return null;
+          return false;
         }
         // TODO: send key to x
-        return <span key={`${prop}${flag}`}>{x}</span>;
+        return x;
       })}
-      {<a target="#" onClick={() => setOpen(!open)}> {open ? "Hide acceptable tags" : `Show ${hidden} hidden acceptable tags…`}</a>}
-      }
+      <br/>
+      <TagBadge
+        pass={Pass.primary}
+        onClick={() => setOpen(!open)}>
+          {open ? "hide acceptable tags" : <><Badge variant="secondary">{hidden}</Badge> acceptable tags</>}
+        </TagBadge>
     </Col>
   </Row>;
 }
 
-function ConfigImportBox({currentConfig, setConfig}: {
+function ConfigImportBox({ currentConfig, setConfig }: {
   currentConfig: IPipelineConfig,
   setConfig(config: IPipelineConfig): void,
 }) {
-  const [value, setValue] = React.useState(JSON.stringify(currentConfig, null, 4));
-  const [configError, setConfigError] = React.useState<{config?: IPipelineConfig, error?: Error}>({});
+  const [value, setValue] = React.useState(stringify(currentConfig));
+  const [configError, setConfigError] = React.useState<{ config?: IPipelineConfig, error?: Error; }>({});
   React.useEffect(() => {
     try {
-      setConfigError({config: JSON.parse(value)});
+      setConfigError({ config: JSON.parse(value) });
     } catch (error) {
-      setConfigError({error});
+      setConfigError({ error });
     }
   }, [value]);
-  const {config, error} = configError;
-  return <>
-      <Row className="mb-2">
-        <Col>
-        <Form.Control
-            as="textarea"
-            rows={10}
-            cols={24}
-            value={value}
-            onChange={(e: React.SyntheticEvent<HTMLInputElement>) => setValue(e.currentTarget.value)}/>
-        </Col>
-      </Row>
+  const { config, error } = configError;
+  const inputArea = <Col>
+    <Form.Control
+      as="textarea"
+      rows={10}
+      cols={24}
+      value={value}
+      onChange={(e: React.SyntheticEvent<HTMLInputElement>) => setValue(e.currentTarget.value)} />
+  </Col>;
+  const isDefault = !error && isEqual(config, defaultConfig);
+  const isCurrent = isEqual(config, currentConfig);
+  const toolbar = <Col as={ButtonToolbar}>
+    <Button
+      as="a"
+      variant="link"
+      href={`data:application/json,${value}`}
+      download="current.od3config.json">
+      Export
+    </Button>
+    <Button
+      size="sm"
+      variant={isDefault ? "primary" : "warning"}
+      disabled={isDefault}
+      onClick={() => setValue(stringify(defaultConfig))}
+    >
+      Default
+    </Button>
+    <ButtonGroup>
+    <Button
+        size="sm"
+        variant="outline-primary"
+        disabled={isCurrent}
+        onClick={() => setValue(stringify(currentConfig))}
+      >
+        Undo
+      </Button>
+    <Button
+      size="sm"
+      disabled={!!error || isEqual(config, currentConfig)}
+      title={error ? error.message : undefined}
+      onClick={() => config && setConfig(config)}>
+      Save
+    </Button>
+    </ButtonGroup>
+  </Col>;
 
-      <Row>
-        <Col>
-      <Button as={"a"} href={`data:application/json,${value}`} download="OD3.json">
-        Download
-      </Button>
-        </Col>
-      <Col className={"mr-auto"}/>
-      <Col>
-      <Button
-          disabled={!!error}
-          title={error ? error.message : undefined}
-          onClick={() => config && setConfig(config)}>
-        Import
-      </Button>
-      </Col>
-      </Row>
+  return <>
+    <Row className="mb-2">
+      {inputArea}
+    </Row>
+    <Row>
+      {toolbar}
+    </Row>
   </>;
+}
+function stringify(currentConfig: IPipelineConfig): string | (() => string) {
+  return JSON.stringify(currentConfig, null, 4);
 }
