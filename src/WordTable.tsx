@@ -54,10 +54,10 @@ function taggedComponent({ word, title, children, tags, TagControl }:
         return <>{children}</>;
     }
     let className = ["trigger-click"];
-    const tagf = flatten(compact(
+    const flattenedUnobservableTags = flatten(compact(
         Object.values(tags).map((x) => x.slice()),
     ));
-    className = className.concat(...tagf.map((tag) => `tag-${tag}`));
+    className = className.concat(...flattenedUnobservableTags.map((tag) => `tag-${tag}`));
     return <OverlayTrigger trigger="click" overlay={popover(`${word}-${title}`)} rootClose={true}>
         <div className={className.join(" ")}>
             {children}
@@ -67,7 +67,7 @@ function taggedComponent({ word, title, children, tags, TagControl }:
         return tags && <Popover id={id} className="tags">
             {title && <Popover.Title>{title}</Popover.Title>}
             <Popover.Content>
-                {tags.partOfSpeech && tags.partOfSpeech.map((t) =>
+                {tags.partsOfSpeech && tags.partsOfSpeech.map((t) =>
                     <TagControl key={t} prop="allowedPartsOfSpeech" flag={t} />)}
 
                 {tags.grammaticalFeatures && tags.grammaticalFeatures.map((t) =>

@@ -19,7 +19,6 @@ export default class WordRecord implements Required<IWordRecord> {
   public resultDiscarded: Partial<IDictionaryEntry>;
   @observable
   public resultDiscardedTags: ResultTags<IDictionaryEntry>;
-  @observable
   public allTags: ITags;
   @observable
   public pipelineNotes: string[];
@@ -42,6 +41,7 @@ export default class WordRecord implements Required<IWordRecord> {
   }
 
   public refresh() {
+    this.allTags = {};
     this.result.entry_rich = undefined;
     this.result.definitions = undefined;
     this.result.pronunciation_ipa = undefined;

@@ -7,10 +7,10 @@ import pull from "lodash/pull";
 import sample from "lodash/sample";
 import uniq from "lodash/uniq";
 import without from "lodash/without";
-import { observable } from "mobx";
-import { observer } from "mobx-react";
+import {observable} from "mobx";
+import {observer} from "mobx-react";
 import React from "react";
-import Badge, { BadgeProps } from "react-bootstrap/Badge";
+import Badge, {BadgeProps} from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
 import ButtonToolbar from "react-bootstrap/ButtonToolbar";
@@ -31,10 +31,13 @@ import "./App.css";
 import badWords from "./badWords";
 import defaultConfig from "./default.od3config.json";
 import fetchWord from "./fetchWord";
-import { ITags } from "./IWordRecord";
-import { arraySetAdd, PropertyNamesOfType } from "./Magic";
+import {ITags} from "./IWordRecord";
+import {arraySetAdd, ensure, ensureArray, ensureMap, PropertyNamesOfType} from "./Magic";
 import OxfordDictionariesPipeline, {
-  FlagPropertyNames, IPassMap, IPipelineConfig,
+  FlagPropertyNames,
+  IPassMap,
+  IPipelineConfig,
+  PartialWordRecord
 } from "./OxfordDictionariesPipeline";
 import Pass from "./Pass";
 import PassComponent from "./PassComponent";
@@ -45,6 +48,15 @@ import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
+
+interface IStringMap { [key: string]: string[]; }
+
+interface ITagCrossReference {
+  partsOfSpeech: IStringMap;
+  grammaticalFeatures: IStringMap;
+  registers: IStringMap;
+  domains: IStringMap;
+}
 
 interface IProps {
 
@@ -57,6 +69,7 @@ interface IState {
 
   language: OxfordLanguage;
   q?: string;
+  busy: number;
 
   history: string[];
   hidden: string[];
@@ -65,6 +78,7 @@ interface IState {
   re?: IRetrieveEntry;
 
   config: IPipelineConfig;
+  xref: ITagCrossReference;
 }
 
 type ConfigFlagPropertyNames = FlagPropertyNames<IState["config"]>;
@@ -74,6 +88,15 @@ const FLAG_PROPS: ConfigFlagPropertyNames[] = [
   "allowedGrammaticalFeatures",
   "allowedRegisters",
   "allowedDomains",
+];
+
+type XrefFlagPropertyNames = PropertyNamesOfType<IState["xref"], IStringMap>;
+
+const XREF_PROPS: XrefFlagPropertyNames[] = [
+  "partsOfSpeech",
+  "grammaticalFeatures",
+  "registers",
+  "domains",
 ];
 
 @observer
@@ -93,12 +116,28 @@ export default class App extends React.Component<IProps, IState> {
       allowedPartsOfSpeech: {},
       allowedRegisters: {},
     };
+    const xref: ITagCrossReference = {
+      domains: {},
+      grammaticalFeatures: {},
+      partsOfSpeech: {},
+      registers: {},
+    };
     FLAG_PROPS.forEach((prop) => {
       const value = localStorage.getItem("oed/passes/" + prop);
       if (value) {
         try {
-          const effective = JSON.parse(value);
-          config[prop] = effective;
+          config[prop] = JSON.parse(value);
+        } catch (e) {
+          // tslint:disable-next-line:no-console
+          console.error(e);
+        }
+      }
+    });
+    XREF_PROPS.forEach((prop) => {
+      const value = localStorage.getItem("oed/xref/" + prop);
+      if (value) {
+        try {
+          xref[prop] = JSON.parse(value);
         } catch (e) {
           // tslint:disable-next-line:no-console
           console.error(e);
@@ -111,12 +150,14 @@ export default class App extends React.Component<IProps, IState> {
       apiBaseUrl: "/api/v2",
       app_id: localStorage.getItem("oed/app_id") || undefined,
       app_key: localStorage.getItem("oed/app_key") || undefined,
+      busy: 0,
       config,
       hidden,
       history,
       language: OxfordLanguage.americanEnglish,
       q: sessionStorage.getItem("oed/q") || undefined,
       records: [],
+      xref,
     };
   }
 
@@ -134,24 +175,7 @@ export default class App extends React.Component<IProps, IState> {
         }
       });
     }
-    let cont: (history: string[]) => Promise<void> | undefined;
-    cont = (history: string[]) => {
-      if (history.length > 0) {
-        return this.get(history.shift()!).then((re) => {
-          if (history.length > 0) {
-            setImmediate(cont, history);
-          }
-        });
-      } else {
-        if (this.state.q) {
-          this.go();
-        }
-      }
-    };
-    cont([...this.state.history
-      .slice(-10)
-      ,
-    ].sort());
+    this.lookup(...this.state.history.slice(-2));
   }
 
   public componentDidUpdate() {
@@ -311,6 +335,24 @@ export default class App extends React.Component<IProps, IState> {
     return allowed;
   }
 
+  public processed = (query: string, record: PartialWordRecord) => {
+    const {allTags} = record;
+    if (allTags) {
+      this.setState(({xref}) => {
+        Object.entries(allTags).forEach(([tagType, tags]) =>
+            tags?.forEach((tag) => {
+              const tagTypeXref = ensureMap(xref, tagType as keyof ITags);
+              if (tag) {
+                arraySetAdd(tagTypeXref, tag, query, true);
+              }
+            }));
+        // tslint:disable-next-line:no-console
+        console.log(xref);
+        return {xref};
+      });
+    }
+  }
+
   private toggleFocus = (tag: string) => {
     (App.highlightedTag === tag ? this.onExitBadge : this.onEnterBadge)(tag);
     // // tslint:disable-next-line:no-console
@@ -413,6 +455,22 @@ export default class App extends React.Component<IProps, IState> {
     }
   }
 
+  private lookup = (...words: string[]) => {
+    this.setState(({busy}) => ({busy: busy + 1}),
+        () => this.continueLookup([...words])
+            .then(() => this.setState(({busy}) => ({busy: busy - 1}))));
+  }
+
+  private continueLookup = async (words: string[]) => {
+    const word = words.shift();
+    if (word !== undefined) {
+      await this.get(word);
+      setImmediate(this.continueLookup, words);
+    } else if (this.state.q) {
+      this.go();
+    }
+  }
+
   private go = () => {
     const { q } = this.state;
     if (!q) {
@@ -438,7 +496,7 @@ export default class App extends React.Component<IProps, IState> {
       this.setState((state) => {
         let records = state.records;
         if (!records.find((e) => e.q === q)) {
-          const pipeline = new OxfordDictionariesPipeline(q, re.results || [], this.allowed);
+          const pipeline = new OxfordDictionariesPipeline(q, re.results || [], this.allowed, this.processed);
           const wr = new WordRecord(q, re, pipeline);
           records = records.sort((a, b) => a.q.localeCompare(b.q));
           records.unshift(wr);
@@ -454,15 +512,16 @@ export default class App extends React.Component<IProps, IState> {
   private TagControl = ({ prop, flag, value }: {
     prop: PropertyNamesOfType<IPipelineConfig, IPassMap>,
     flag: keyof IPassMap & string,
-    value: Pass,
+    value?: Pass,
   }) => {
+    value = value ?? this.state.config[prop][flag];
     let realName: keyof ITags;
     switch (prop) {
+      case "allowedPartsOfSpeech":
+        realName = "partsOfSpeech";
+        break;
       case "allowedDomains":
         realName = "domains";
-        break;
-      case "allowedPartsOfSpeech":
-        realName = "partOfSpeech";
         break;
       case "allowedGrammaticalFeatures":
         realName = "grammaticalFeatures";
@@ -474,6 +533,7 @@ export default class App extends React.Component<IProps, IState> {
         throw new Error(prop);
     }
     const key = `${realName}-${flag}`;
+    const xref = this.state.xref[realName][flag];
     return <OverlayTrigger
       trigger="click"
       rootClose={true}
@@ -482,6 +542,7 @@ export default class App extends React.Component<IProps, IState> {
         <Popover.Content>
           <PassComponent
             value={value}
+            xref={xref}
             focus={App.highlightedTag === flag}
             toggleFocus={this.toggleFocus.bind(this, flag)}
             change={(newValue) =>
@@ -490,11 +551,12 @@ export default class App extends React.Component<IProps, IState> {
                 const newFlags: IPassMap = { ...flags, [flag]: newValue };
                 const newState = { config: { ...state.config, [prop]: newFlags } };
                 return newState;
-              })
-            } />
+              })}
+            lookup={this.lookup}
+          />
         </Popover.Content>
       </Popover>}>
-      <TagBadge pass={value} flag={flag} />
+      <TagBadge pass={value}><Badge variant="light">{xref?.length}</Badge> {flag}</TagBadge>
     </OverlayTrigger>;
   }
 }

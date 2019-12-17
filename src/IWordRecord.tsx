@@ -3,7 +3,7 @@ import { ArrayProperties, MapProperties, PlainProperties } from "./Magic";
 import RetrieveEntry from "./types/gen/RetrieveEntry";
 
 export interface ITags {
-    partOfSpeech?: [string];
+    partsOfSpeech?: [string];
     grammaticalFeatures?: string[];
     registers?: string[];
     domains?: string[];
@@ -23,7 +23,7 @@ export default interface IWordRecord {
     resultOriginal?: Partial<IDictionaryEntry>;
     resultDiscarded?: Partial<IDictionaryEntry>;
     resultDiscardedTags?: ResultTags<IDictionaryEntry>;
-    allTags?: ITags;
+    allTags?: { [K in keyof ITags]: string[] };
     pipelineNotes?: string[];
     notes: string;
 }

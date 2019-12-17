@@ -136,11 +136,24 @@ export function ensureArray<
     TContainer,
     TKey extends ArrayPropertyNames<TContainer>,
     TElement extends ElementType<TContainer[TKey]>>(
-        container: TContainer,
-        key: TKey): TElement[] {
+    container: TContainer,
+    key: TKey): TElement[] {
     let value = container[key];
     if (container[key] === undefined) {
         value = [] as TContainer[TKey];
+        container[key] = value;
+    }
+    return value;
+}
+
+export function ensureMap<
+    TContainer,
+    TKey extends MapPropertyNames<TContainer>>(
+    container: TContainer,
+    key: TKey): TContainer[TKey] {
+    let value = container[key];
+    if (container[key] === undefined) {
+        value = {} as TContainer[TKey];
         container[key] = value;
     }
     return value;
