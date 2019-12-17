@@ -104,7 +104,7 @@ function WordRow({ record, TagControl, fluid }:
             </Row>}
             <TaggedComponent word={word} title="Rich Entry" tags={resultTags.entry_rich} TagControl={TagControl}>
                 <Row className={result.entry_rich ? "headword" : "headword not-found"}>
-                    {word}
+                    {word.toString()}
                 </Row>
             </TaggedComponent>
             <Maybe when={result.pronunciation_ipa && result.pronunciation_ipa.length > 0}>

@@ -175,12 +175,15 @@ export default class App extends React.Component<IProps, IState> {
         }
       });
     }
-    this.lookup(...this.state.history.slice(-2));
+    this.lookup(...this.state.history);
   }
 
   public componentDidUpdate() {
     FLAG_PROPS.forEach((prop) => {
       localStorage.setItem("oed/passes/" + prop, JSON.stringify(this.state.config[prop] || {}));
+    });
+    XREF_PROPS.forEach((prop) => {
+      localStorage.setItem("oed/xref/" + prop, JSON.stringify(this.state.xref[prop] || {}));
     });
     if (this.state.app_id) {
       localStorage.setItem("oed/app_id", this.state.app_id);
@@ -204,8 +207,6 @@ export default class App extends React.Component<IProps, IState> {
   public render() {
     const seen = this.state.history; // records.map((e) => e.q);
     const badWordsRemaining = without(badWords, ...seen);
-    // tslint:disable-next-line:no-console
-    console.log({ seen, badWordsRemaining });
     const badWord = sample(badWordsRemaining);
     return <>
       <Navbar bg="light" expand="lg">
@@ -254,8 +255,8 @@ export default class App extends React.Component<IProps, IState> {
                 onChange={(e: any) => this.setState({ q: e.target.value ? e.target.value : undefined })} />
               <InputGroup.Append>
                 <Button
-                  onClick={this.go} variant="outline-primary"
-                  disabled={!this.state.q || this.state.q.length < 2}>Look Up</Button>
+                    onClick={this.go} variant="outline-primary"
+                    disabled={!this.state.q || this.state.q.length < 2}>Look Up</Button>
               </InputGroup.Append>
             </InputGroup>
           </Form>
@@ -275,6 +276,7 @@ export default class App extends React.Component<IProps, IState> {
                         )
                       }
                     </DropdownButton>
+                    {badWordsRemaining.length > 0 && <Button onClick={() => this.lookup(...badWordsRemaining.slice(-10))}>Next 10 Bad Words</Button>}
                     {badWord && <Button onClick={() => this.setState({ q: badWord }, this.go)}>{badWord}</Button>}
                   </ButtonToolbar>
                 </Col>
@@ -346,8 +348,6 @@ export default class App extends React.Component<IProps, IState> {
                 arraySetAdd(tagTypeXref, tag, query, true);
               }
             }));
-        // tslint:disable-next-line:no-console
-        console.log(xref);
         return {xref};
       });
     }
@@ -371,10 +371,10 @@ export default class App extends React.Component<IProps, IState> {
         rule = App.stylesheet.rules.item(ruleIndex) as CSSStyleRule;
         App.ruleIndex.set(tag, rule);
         // tslint:disable-next-line:no-console
-        console.log({ op: "tag not in ruleIndex", tag, rule, ruleIndex });
+        // console.log({ op: "tag not in ruleIndex", tag, rule, ruleIndex });
       } else {
         // tslint:disable-next-line:no-console
-        console.log({ op: "tag in ruleIndex", tag, rule });
+        // console.log({ op: "tag in ruleIndex", tag, rule });
       }
       if (App.highlightedTag) {
         const highlightedRule = App.ruleIndex.get(App.highlightedTag);
@@ -475,6 +475,10 @@ export default class App extends React.Component<IProps, IState> {
     const { q } = this.state;
     if (!q) {
       return;
+    }
+    const queryWords = q.split(/\W+/) || [];
+    if (queryWords.length > 1) {
+      return this.continueLookup(queryWords);
     }
     this.setState((state) => {
       if (arraySetAdd(state, "history", q, "mru")) {

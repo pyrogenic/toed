@@ -36,7 +36,7 @@ export default class PassComponent extends React.Component<IProps, IState> {
                 <Button variant={focus ? "secondary" : "outline-secondary"} onClick={toggleFocus}>
                     <span className="oi oi-eye" title="focus" aria-hidden={true} />
                 </Button>
-                <Dropdown onSelect={lookup}>
+                <Dropdown onSelect={(word: string) => lookup(word)}>
                     <Dropdown.Toggle as={CustomToggle} id="tagged-words">
                         <span className="oi oi-list" title="list" aria-hidden={true} />
                     </Dropdown.Toggle>
