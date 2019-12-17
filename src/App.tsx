@@ -362,8 +362,9 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private renderFilter(label: string, prop: ConfigFlagPropertyNames): React.ReactNode {
-    const flags = Object.keys(this.state.config[prop]).sort();
-    return <FilterRow label={label} flags={flags} prop={prop} TagControl={this.TagControl} />;
+    const config = this.state.config[prop];
+    const flags = Object.keys(config).sort();
+    return <FilterRow label={label} flags={flags} prop={prop} config={config} TagControl={this.TagControl} />;
   }
 
   private renderResponse = (entry: IHeadwordEntry, index: number) => {
@@ -450,15 +451,11 @@ export default class App extends React.Component<IProps, IState> {
     }
   }
 
-  private TagControl = ({ prop, flag, hidePasses }: {
+  private TagControl = ({ prop, flag, value }: {
     prop: PropertyNamesOfType<IPipelineConfig, IPassMap>,
     flag: keyof IPassMap & string,
-    hidePasses?: Pass[],
+    value: Pass,
   }) => {
-    const value = this.state.config[prop][flag];
-    if (hidePasses?.includes(value)) {
-      return null;
-    }
     let realName: keyof ITags;
     switch (prop) {
       case "allowedDomains":
@@ -499,36 +496,12 @@ export default class App extends React.Component<IProps, IState> {
       </Popover>}>
       <TagBadge pass={value} flag={flag} />
     </OverlayTrigger>;
-    // const variants: Array<BadgeProps["variant"]> = ["danger", "light", "secondary", "warning"];
-    // const variant = variants[value];
-    // return <Badge variant={variant}
-    //   onMouseEnter={() => this.onEnterBadge(flag)}
-    //   onMouseLeave={() => this.onExitBadge(flag)}
-    //   onClick={() => this.setState((state) => {
-    //     const flags = state.config[prop];
-    //     const newFlags: IPassMap = { ...flags, [flag]: (flags[flag] + 1) % 3 as Pass };
-    //     const newState = { config: { ...state.config, [prop]: newFlags } };
-    //     return newState;
-    //   }, () => {
-    //     this.state.records.forEach((record) => {
-    //       const hasIt = arraySetHas(record.allTags, realName, flag);
-    //       if (hasIt) {
-    //         // tslint:disable-next-line:no-console
-    //         console.log({ record, hasIt, what: flag });
-    //         record.refresh();
-    //       }
-    //     });
-    //   })}>{flag}</Badge>;
   }
 }
 
 export type TagControlFactory = App["TagControl"];
 
 type PrefixUnion<A, B> = A & Omit<B, keyof A>;
-
-// interface IA { a: number; c: string; }
-// interface IB { b: string; c: number; }
-// const x: PrefixUnion<IA, IB> = {a: 1, b: "b", c: "hah"};
 
 type ITagBadgeProps = PrefixUnion<{pass: Pass, flag?: string}, React.HTMLAttributes<HTMLSpanElement>>;
 
@@ -542,26 +515,26 @@ function variantForPass(value: Pass): BadgeProps["variant"] {
   return variants[value];
 }
 
-function FilterRow({ label, flags, prop, TagControl }:
-  { label: string, flags: string[], prop: ConfigFlagPropertyNames, TagControl: TagControlFactory; }) {
-  const [open, setOpen] = React.useState(false);
-  let hidden = 0;
-  return <Row>
+function FilterRow({ label, config, flags, prop, TagControl }:
+  { label: string, flags: string[], prop: ConfigFlagPropertyNames, config: IPassMap, TagControl: TagControlFactory; }) {
+    const [open, setOpen] = React.useState(false);
+    let hidden = 0;
+    return <Row>
     <Col xs={3}>
       <Form.Label>{label}</Form.Label>
     </Col>
     <Col className="tags">
       {flags.map((flag) => {
-        const x = TagControl({ prop, flag, hidePasses: open ? [] : [Pass.primary] });
-        if (x === null) {
+        const value = config[flag];
+        if (!open && value === Pass.primary) {
           hidden++;
           return false;
         }
-        // TODO: send key to x
-        return x;
+        return <TagControl prop={prop} flag={flag} value={value} />;
       })}
-      <br/>
-      <TagBadge
+    </Col>
+    <Col xs={2} className="tags">
+    <TagBadge
         pass={Pass.primary}
         onClick={() => setOpen(!open)}>
           {open ? "hide acceptable tags" : <><Badge variant="secondary">{hidden}</Badge> acceptable tags</>}
