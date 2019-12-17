@@ -210,7 +210,7 @@ export default class App extends React.Component<IProps, IState> {
     return <>
       <Navbar bg="light" expand="lg">
         <Navbar.Brand href="#home">OD³</Navbar.Brand>
-        <Navbar.Text> Dictionaries Definition Distiller</Navbar.Text>
+        <Navbar.Text> Oxford Dictionaries Definition Distiller</Navbar.Text>
         <Navbar.Toggle aria-controls="nav" />
         <Navbar.Collapse id="nav">
           <NavDropdown title="Keys" id="nav-import" as={Button}>
@@ -274,13 +274,17 @@ export default class App extends React.Component<IProps, IState> {
               {/*{badWord && <Button onClick={() => this.setState({ q: badWord }, this.go)}>{badWord}</Button>}*/}
             </ButtonGroup>
           </Navbar.Text>
-          <Form inline={true}>
+          <Form inline={true} onSubmitCapture={this.go}>
             <InputGroup>
-              <Form.Control placeholder="word" value={this.state.q}
-                onChange={(e: any) => this.setState({ q: e.target.value ? e.target.value : undefined })} />
+              <Form.Control
+                  placeholder={"one or more terms"}
+                  value={this.state.q}
+                  onChange={(e: any) => this.setState({q: e.target.value ? e.target.value : undefined})}
+              />
               <InputGroup.Append>
                 <Button
-                    onClick={this.go} variant="outline-primary"
+                    onClick={this.go}
+                    variant="outline-primary"
                     disabled={!this.state.q || this.state.q.length < 2}>Look Up</Button>
               </InputGroup.Append>
             </InputGroup>
