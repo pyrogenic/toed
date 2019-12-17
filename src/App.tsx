@@ -175,7 +175,7 @@ export default class App extends React.Component<IProps, IState> {
         }
       });
     }
-    this.lookup(...this.state.history);
+    // this.lookup(...this.state.history);
   }
 
   public componentDidUpdate() {
@@ -205,9 +205,8 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   public render() {
-    const seen = this.state.history; // records.map((e) => e.q);
-    const badWordsRemaining = without(badWords, ...seen);
-    const badWord = sample(badWordsRemaining);
+    const loaded = this.state.records.map(({q}) => q);
+    const history = without(this.state.history, ...loaded);
     return <>
       <Navbar bg="light" expand="lg">
         <Navbar.Brand href="#home">OD³</Navbar.Brand>
@@ -249,6 +248,32 @@ export default class App extends React.Component<IProps, IState> {
             {/*</NavDropdown.Item>)}*/}
           </NavDropdown>
           <Nav className="mr-auto" />
+            <NavDropdown id="nav-history" title={`History${history.length > 0 ? ` (${history.length})` : ""}`} disabled={history.length === 0}>
+              {
+                history.sort().map((q) =>
+                    <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
+                )
+              }
+            </NavDropdown>
+          <Navbar.Text>
+            <ButtonGroup className="mr-2">
+              {[1, 2, 10, 100, 1000].map((n) =>
+                  history.length >= n && <Button
+                      key={n}
+                      variant="outline-secondary"
+                      onClick={() =>
+                      this.lookup(...history.slice(-n))}>{n}</Button>)}
+              {history.length > 0 && <Button
+                  variant="outline-secondary"
+                  onClick={() => this.lookup(...history)}>All</Button>}
+              {/*{    const seen = this.state.history; // records.map((e) => e.q);*/}
+              {/*  const badWordsRemaining = without(badWords, ...seen);*/}
+              {/*  const badWord = sample(badWordsRemaining);*/}
+              {/*}*/}
+              {/*{badWordsRemaining.length > 0 && <Button onClick={() => this.lookup(...badWordsRemaining.slice(-10))}>Next 10 Bad Words</Button>}*/}
+              {/*{badWord && <Button onClick={() => this.setState({ q: badWord }, this.go)}>{badWord}</Button>}*/}
+            </ButtonGroup>
+          </Navbar.Text>
           <Form inline={true}>
             <InputGroup>
               <Form.Control placeholder="word" value={this.state.q}
@@ -268,17 +293,6 @@ export default class App extends React.Component<IProps, IState> {
             <Form inline={true}>
               <Form.Row>
                 <Col>
-                  <ButtonToolbar>
-                    <DropdownButton id="History" title="History">
-                      {
-                        [...this.state.history].sort().map((q) =>
-                          <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
-                        )
-                      }
-                    </DropdownButton>
-                    {badWordsRemaining.length > 0 && <Button onClick={() => this.lookup(...badWordsRemaining.slice(-10))}>Next 10 Bad Words</Button>}
-                    {badWord && <Button onClick={() => this.setState({ q: badWord }, this.go)}>{badWord}</Button>}
-                  </ButtonToolbar>
                 </Col>
               </Form.Row>
             </Form>
@@ -405,8 +419,7 @@ export default class App extends React.Component<IProps, IState> {
 
   private renderFilter(label: string, prop: ConfigFlagPropertyNames): React.ReactNode {
     const config = this.state.config[prop];
-    const flags = Object.keys(config).sort();
-    return <FilterRow label={label} flags={flags} prop={prop} config={config} TagControl={this.TagControl} />;
+    return <FilterRow label={label} prop={prop} config={config} TagControl={this.TagControl} />;
   }
 
   private renderResponse = (entry: IHeadwordEntry, index: number) => {
@@ -466,8 +479,6 @@ export default class App extends React.Component<IProps, IState> {
     if (word !== undefined) {
       await this.get(word);
       setImmediate(this.continueLookup, words);
-    } else if (this.state.q) {
-      this.go();
     }
   }
 
@@ -480,12 +491,11 @@ export default class App extends React.Component<IProps, IState> {
     if (queryWords.length > 1) {
       return this.continueLookup(queryWords);
     }
-    this.setState((state) => {
-      if (arraySetAdd(state, "history", q, "mru")) {
-        return { history: state.history };
-      }
-      return null;
-    }, () => this.get(q).then((re) => this.setState({ re })));
+    this.get(q).then((re) =>
+        this.setState(({history}) => {
+          arraySetAdd({history}, "history", q, "mru");
+          return {re, history};
+        }));
   }
 
   private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
@@ -581,9 +591,10 @@ function variantForPass(value: Pass): BadgeProps["variant"] {
   return variants[value];
 }
 
-function FilterRow({ label, config, flags, prop, TagControl }:
-  { label: string, flags: string[], prop: ConfigFlagPropertyNames, config: IPassMap, TagControl: TagControlFactory; }) {
+function FilterRow({ label, config, prop, TagControl }:
+  { label: string, prop: ConfigFlagPropertyNames, config: IPassMap, TagControl: TagControlFactory; }) {
     const [open, setOpen] = React.useState(false);
+    const flags = Object.keys(config).sort();
     let hidden = 0;
     return <Row>
     <Col xs={3}>

@@ -35,6 +35,16 @@ function copyTags(tags: ITags, allTags: IWordRecord["allTags"]) {
         arraySetAddAll(allTags, key as keyof IWordRecord["allTags"], flags));
 }
 
+function appendGrammaticalFeatures(lexicalEntry: ILexicalEntry, grammaticalFeatures: string[]) {
+    if (lexicalEntry.grammaticalFeatures) {
+        grammaticalFeatures = [
+            ...grammaticalFeatures,
+            ...lexicalEntry.grammaticalFeatures.map((e) => e.id),
+        ];
+    }
+    return grammaticalFeatures;
+}
+
 export default class OxfordDictionariesPipeline {
     public readonly query: string;
     public readonly entries: IHeadwordEntry[];
@@ -57,8 +67,34 @@ export default class OxfordDictionariesPipeline {
         const result = ensure(record, "result", Object);
         const resultTags = ensure(record, "resultTags", Object);
         const allTags = ensure(record, "allTags", Object);
+        const capsMatchingEntryTexts = this.allEntryTexts.some((text) =>
+            query.toLocaleLowerCase() === text);
         const matchingEntryTexts = this.allEntryTexts.some((text) =>
-          query.toLocaleLowerCase() === text);
+            query.toLocaleLowerCase() === text.toLocaleLowerCase());
+        const internalRedirects = new Map<IHeadwordEntry, IHeadwordEntry>();
+        entries.forEach((target) => {
+            const definedBy = entries.find((headword) => {
+                return headword.lexicalEntries?.some((lexicalEntry) => {
+                    return lexicalEntry.entries?.some((entry) => {
+                        return entry.senses?.some((sense) => {
+                            // console.log({
+                            //     word,
+                            //     headword: headword.word,
+                            //     lexicalEntry: lexicalEntry.text,
+                            //     entry,
+                            //     sense: sense.shortDefinitions,
+                            // });
+                            return flatten(compact([sense.definitions, sense.shortDefinitions]))
+                                .some((definition) => definition.match(target.word));
+                        });
+                    });
+                });
+            });
+            if (definedBy) {
+                internalRedirects.set(target, definedBy);
+            }
+        });
+        // console.log({matchingEntryTexts, allEntryTexts: this.allEntryTexts, internalRedirects});
         const rejectedLexicalEntries: ILexicalEntry[] = [];
         const discard = (
             lexicalEntry: Pick<ILexicalEntry, "entries" | "lexicalCategory" | "text">,
@@ -113,21 +149,30 @@ export default class OxfordDictionariesPipeline {
         entries.forEach((entry) => {
             const { pronunciations } = entry;
             this.pullPronunciation(result, pronunciations);
+            const internalRedirect = internalRedirects.get(entry);
+            let grammaticalFeatures: string[] = [];
+            internalRedirect?.lexicalEntries.forEach((lexicalEntry) => {
+                grammaticalFeatures = appendGrammaticalFeatures(lexicalEntry, grammaticalFeatures);
+                arraySetAdd({grammaticalFeatures}, "grammaticalFeatures", `${lexicalEntry.lexicalCategory.id}-redirect`);
+            });
             entry.lexicalEntries.forEach((lexicalEntry) => {
                 const { lexicalCategory: { id: partOfSpeech }, text } = lexicalEntry;
                 if (text.match(/[A-Z]/)) {
                     arraySetAdd(lexicalEntry, "grammaticalFeatures", {
                         id: "capitalized", text: "", type: ""});
                 }
-                if (matchingEntryTexts && text.length !== query.length) {
+                if (capsMatchingEntryTexts && text.length !== query.length) {
                     arraySetAdd(lexicalEntry, "grammaticalFeatures", {
-                        id: "inexact", text: "", type: ""});
+                        id: "inexact", text: "exact matches of the query are present", type: ""});
                     // return discard(lexicalEntry,
                     // `‘${text}’ rejected because exact matches of the query are present`);
                 }
-                let grammaticalFeatures: string[] = [];
-                if (lexicalEntry.grammaticalFeatures) {
-                    grammaticalFeatures = lexicalEntry.grammaticalFeatures.map((e) => e.id);
+                if (internalRedirect) {
+                    arraySetAdd(lexicalEntry, "grammaticalFeatures", {
+                        id: "redirect", text: "", type: ""});
+                }
+                grammaticalFeatures = appendGrammaticalFeatures(lexicalEntry, grammaticalFeatures);
+                if (grammaticalFeatures.length > 0) {
                     const disallowed = grammaticalFeatures.filter((tag) => {
                         const tagAllowedForPass = this.allowed("allowedGrammaticalFeatures", tag);
                         return tagAllowedForPass === Pass.banned;

@@ -1,4 +1,3 @@
-import { observable } from "mobx";
 import IDictionaryEntry from "./IDictionaryEntry";
 import IWordRecord, { ITags, ResultTags } from "./IWordRecord";
 import OxfordDictionariesPipeline from "./OxfordDictionariesPipeline";
@@ -9,20 +8,13 @@ export default class WordRecord implements Required<IWordRecord> {
   public readonly re: RetrieveEntry;
   public readonly pipeline: OxfordDictionariesPipeline;
 
-  @observable
   public result: Partial<IDictionaryEntry>;
-  @observable
   public resultTags: ResultTags<IDictionaryEntry>;
-  @observable
   public resultOriginal: Partial<IDictionaryEntry>;
-  @observable
   public resultDiscarded: Partial<IDictionaryEntry>;
-  @observable
   public resultDiscardedTags: ResultTags<IDictionaryEntry>;
   public allTags: ITags;
-  @observable
   public pipelineNotes: string[];
-  @observable
   public notes: string;
 
   constructor(query: string, re: RetrieveEntry, pipeline: OxfordDictionariesPipeline) {
