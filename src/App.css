@@ -5,3 +5,12 @@
 .dropdown-menu > .container {
     min-width: 19.25rem;
 }
+
+.dropdown-menu .btn-toolbar > * {
+    flex-grow: 1;
+    /* font-size: smaller !important; */
+}
+
+.dropdown-menu .btn-toolbar > :not(:last-child) {
+    margin-right: 0.325rem;
+}
