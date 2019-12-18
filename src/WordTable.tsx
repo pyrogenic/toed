@@ -64,26 +64,31 @@ function taggedComponent({ word, title, children, tags, TagControl }:
         </div>
     </OverlayTrigger>;
     function popover(id: string) {
+        const useLabels = false;
+        console.log(tags);
         return tags && <Popover id={id} className="tags">
             {title && <Popover.Title>{title}</Popover.Title>}
             <Popover.Content>
-                {tags.partsOfSpeech && tags.partsOfSpeech.map((t) =>
-                    <TagControl key={t} prop="allowedPartsOfSpeech" flag={t} />)}
+                {tags.partsOfSpeech && <span>{useLabels && "partsOfSpeech: "}{tags.partsOfSpeech.map((t) =>
+                    <TagControl key={t} prop="allowedPartsOfSpeech" flag={t} />)}</span>}
 
-                {tags.grammaticalFeatures && tags.grammaticalFeatures.map((t) =>
-                    <TagControl key={t} prop="allowedGrammaticalFeatures" flag={t} />)}
+                {tags.grammaticalFeatures && <span>{useLabels && "grammaticalFeatures: "}{tags.grammaticalFeatures.map((t) =>
+                    <TagControl key={t} prop="allowedGrammaticalFeatures" flag={t} />)}</span>}
 
-                {tags.domains && tags.domains.map((t) =>
-                    <TagControl key={t} prop="allowedDomains" flag={t} />)}
+                {tags.domains && <span>{useLabels && "domains: "}{tags.domains.map((t) =>
+                    <TagControl key={t} prop="allowedDomains" flag={t} />)}</span>}
 
-                {tags.registers && tags.registers.map((t) =>
-                    <TagControl key={t} prop="allowedRegisters" flag={t} />)}
+                {tags.registers && <span>{useLabels && "registers: "}{tags.registers.map((t) =>
+                    <TagControl key={t} prop="allowedRegisters" flag={t} />)}</span>}
+
+                {tags.imputed && <span>{useLabels && "imputed: "}{tags.imputed.map(([t, comment]) =>
+                    <TagControl key={t} prop="allowedImputed" flag={t} detail={comment}/>)}</span>}
             </Popover.Content>
         </Popover>;
     }
 }
 
-const TaggedComponent = React.memo(taggedComponent);
+const TaggedComponent = taggedComponent;
 
 function WordRow({ record, TagControl, fluid }:
     { record: IWordRecord, TagControl: TagControlFactory, fluid?: boolean }) {
@@ -92,11 +97,11 @@ function WordRow({ record, TagControl, fluid }:
     const { etymology, example } = result;
     const definitions = result.definitions || {};
     const partsOfSpeech = Object.keys(definitions);
-    const { pipelineNotes, resultDiscarded } = record;
+    const { pipelineNotes, resultDiscarded, resultDiscardedTags } = record;
     const notFound = !(partsOfSpeech.length || etymology || example);
     const word = result.entry_rich || record.q;
     const moreInfo = (pipelineNotes && pipelineNotes.length > 0)
-        || (resultDiscarded && Object.values(resultDiscarded).some((x) => x && x.length > 0));
+        || resultDiscarded || resultDiscardedTags;
     return <Row className="entry" key={`${record.q}`}>
         <Col xs={fluid ? "auto" : 1}>
             {result.entry_rich && record.q !== result.entry_rich && <Row className="text-muted">
@@ -166,7 +171,7 @@ function WordRow({ record, TagControl, fluid }:
     </Row>;
 
     function popover() {
-        const { q, re, resultDiscardedTags } = record;
+        const { q, re } = record;
         const discardedRecord = { q, re, result: resultDiscarded, resultTags: resultDiscardedTags, notes: "" };
         return <Popover id={`${q}/More Info`} className="info">
             {pipelineNotes?.map((note, index) => <li key={index}>{note}</li>)}

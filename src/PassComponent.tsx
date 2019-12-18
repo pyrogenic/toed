@@ -64,7 +64,17 @@ export default class PassComponent extends React.Component<IProps, IState> {
                             ? "primary"
                             : "outline-primary"}
                 >
-                    <span className="oi oi-thumb-down" title="Discourage" />
+                    <span className="oi oi-minus" title="Discourage" />
+                </Button>
+                <Button
+                    onClick={change.bind(null, Pass.tertiary)}
+                    size="sm"
+                    variant={
+                        value === Pass.tertiary
+                            ? "primary"
+                            : "outline-primary"}
+                >
+                    <span className="oi oi-thumb-down" title="Avoid" />
                 </Button>
                 <Button
                     onClick={change.bind(null, Pass.banned)}

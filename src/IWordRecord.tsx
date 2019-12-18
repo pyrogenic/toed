@@ -7,6 +7,7 @@ export interface ITags {
     grammaticalFeatures?: string[];
     registers?: string[];
     domains?: string[];
+    imputed?: Array<[string, string?]>;
 }
 
 export type ResultTags<T> =
@@ -23,7 +24,7 @@ export default interface IWordRecord {
     resultOriginal?: Partial<IDictionaryEntry>;
     resultDiscarded?: Partial<IDictionaryEntry>;
     resultDiscardedTags?: ResultTags<IDictionaryEntry>;
-    allTags?: { [K in keyof ITags]: string[] };
+    allTags?: ITags;
     pipelineNotes?: string[];
     notes: string;
 }

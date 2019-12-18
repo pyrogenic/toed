@@ -4,7 +4,6 @@ import flatten from "lodash/flatten";
 import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
 import pull from "lodash/pull";
-import sample from "lodash/sample";
 import uniq from "lodash/uniq";
 import without from "lodash/without";
 import {observable} from "mobx";
@@ -18,7 +17,6 @@ import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
 import Container from "react-bootstrap/Container";
 import Dropdown from "react-bootstrap/Dropdown";
-import DropdownButton from "react-bootstrap/DropdownButton";
 import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
 import Nav from "react-bootstrap/Nav";
@@ -28,16 +26,15 @@ import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Popover from "react-bootstrap/Popover";
 import Row from "react-bootstrap/Row";
 import "./App.css";
-import badWords from "./badWords";
 import defaultConfig from "./default.od3config.json";
 import fetchWord from "./fetchWord";
 import {ITags} from "./IWordRecord";
-import {arraySetAdd, ensure, ensureArray, ensureMap, PropertyNamesOfType} from "./Magic";
+import {arraySetAdd, ensureMap, PropertyNamesOfType} from "./Magic";
 import OxfordDictionariesPipeline, {
   FlagPropertyNames,
   IPassMap,
   IPipelineConfig,
-  PartialWordRecord
+  PartialWordRecord,
 } from "./OxfordDictionariesPipeline";
 import Pass from "./Pass";
 import PassComponent from "./PassComponent";
@@ -56,6 +53,7 @@ interface ITagCrossReference {
   grammaticalFeatures: IStringMap;
   registers: IStringMap;
   domains: IStringMap;
+  imputed: IStringMap;
 }
 
 interface IProps {
@@ -88,6 +86,7 @@ const FLAG_PROPS: ConfigFlagPropertyNames[] = [
   "allowedGrammaticalFeatures",
   "allowedRegisters",
   "allowedDomains",
+  "allowedImputed",
 ];
 
 type XrefFlagPropertyNames = PropertyNamesOfType<IState["xref"], IStringMap>;
@@ -97,7 +96,25 @@ const XREF_PROPS: XrefFlagPropertyNames[] = [
   "grammaticalFeatures",
   "registers",
   "domains",
+  "imputed",
 ];
+
+export function configKeyToTagKey(prop: keyof IPipelineConfig): keyof ITags {
+  switch (prop) {
+    case "allowedPartsOfSpeech":
+      return "partsOfSpeech";
+    case "allowedDomains":
+      return "domains";
+    case "allowedGrammaticalFeatures":
+      return "grammaticalFeatures";
+    case "allowedRegisters":
+      return "registers";
+    case "allowedImputed":
+      return "imputed";
+    default:
+      throw new Error(prop);
+  }
+}
 
 @observer
 export default class App extends React.Component<IProps, IState> {
@@ -113,12 +130,14 @@ export default class App extends React.Component<IProps, IState> {
     const config: IPipelineConfig = {
       allowedDomains: {},
       allowedGrammaticalFeatures: {},
+      allowedImputed: {},
       allowedPartsOfSpeech: {},
       allowedRegisters: {},
     };
     const xref: ITagCrossReference = {
       domains: {},
       grammaticalFeatures: {},
+      imputed: {},
       partsOfSpeech: {},
       registers: {},
     };
@@ -143,6 +162,11 @@ export default class App extends React.Component<IProps, IState> {
           console.error(e);
         }
       }
+    });
+    Object.entries(xref).forEach(([key, value]) => {
+      Object.entries(value).forEach(([tag, words]) => {
+        value[tag] = uniq(words as string[]);
+      });
     });
     const history: string[] = uniq(JSON.parse(localStorage.getItem("oed/history") || "[]"));
     const hidden: string[] = uniq(JSON.parse(localStorage.getItem("oed/hidden") || "[]"));
@@ -206,7 +230,7 @@ export default class App extends React.Component<IProps, IState> {
 
   public render() {
     const loaded = this.state.records.map(({q}) => q);
-    const history = without(this.state.history, ...loaded);
+    const history = without(this.state.history, ...loaded).reverse();
     return <>
       <Navbar bg="light" expand="lg">
         <Navbar.Brand href="#home">OD³</Navbar.Brand>
@@ -248,9 +272,12 @@ export default class App extends React.Component<IProps, IState> {
             {/*</NavDropdown.Item>)}*/}
           </NavDropdown>
           <Nav className="mr-auto" />
-            <NavDropdown id="nav-history" title={`History${history.length > 0 ? ` (${history.length})` : ""}`} disabled={history.length === 0}>
+            <NavDropdown
+                id="nav-history"
+                title={`History${history.length > 0 ? ` (${history.length})` : ""}`}
+                disabled={history.length === 0}>
               {
-                history.sort().map((q) =>
+                history.map((q) =>
                     <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
                 )
               }
@@ -262,7 +289,7 @@ export default class App extends React.Component<IProps, IState> {
                       key={n}
                       variant="outline-secondary"
                       onClick={() =>
-                      this.lookup(...history.slice(-n))}>{n}</Button>)}
+                      this.lookup(...history.slice(0, n))}>{n}</Button>)}
               {history.length > 0 && <Button
                   variant="outline-secondary"
                   onClick={() => this.lookup(...history)}>All</Button>}
@@ -270,7 +297,8 @@ export default class App extends React.Component<IProps, IState> {
               {/*  const badWordsRemaining = without(badWords, ...seen);*/}
               {/*  const badWord = sample(badWordsRemaining);*/}
               {/*}*/}
-              {/*{badWordsRemaining.length > 0 && <Button onClick={() => this.lookup(...badWordsRemaining.slice(-10))}>Next 10 Bad Words</Button>}*/}
+              {/*{badWordsRemaining.length > 0 &&
+                  <Button onClick={() => this.lookup(...badWordsRemaining.slice(-10))}>Next 10 Bad Words</Button>}*/}
               {/*{badWord && <Button onClick={() => this.setState({ q: badWord }, this.go)}>{badWord}</Button>}*/}
             </ButtonGroup>
           </Navbar.Text>
@@ -307,6 +335,7 @@ export default class App extends React.Component<IProps, IState> {
         {this.renderFilter("Grammatical Features", "allowedGrammaticalFeatures")}
         {this.renderFilter("Registers", "allowedRegisters")}
         {this.renderFilter("Domains", "allowedDomains")}
+        {this.renderFilter("Imputed", "allowedImputed")}
 
         {/* {this.state.re && this.state.re.results &&
         <Row>
@@ -360,11 +389,12 @@ export default class App extends React.Component<IProps, IState> {
     if (allTags) {
       this.setState(({xref}) => {
         Object.entries(allTags).forEach(([tagType, tags]) =>
-            tags?.forEach((tag) => {
-              const tagTypeXref = ensureMap(xref, tagType as keyof ITags);
-              if (tag) {
-                arraySetAdd(tagTypeXref, tag, query, true);
+            tags?.forEach((tag: [string, string] | string) => {
+              if (typeof tag !== "string") {
+                tag = tag[0];
               }
+              const tagTypeXref = ensureMap(xref, tagType as keyof ITags);
+              arraySetAdd(tagTypeXref, tag, query, true);
             }));
         return {xref};
       });
@@ -527,29 +557,14 @@ export default class App extends React.Component<IProps, IState> {
     }
   }
 
-  private TagControl = ({ prop, flag, value }: {
+  private tagControl = ({ prop, flag, detail, value }: {
     prop: PropertyNamesOfType<IPipelineConfig, IPassMap>,
     flag: keyof IPassMap & string,
+    detail?: string,
     value?: Pass,
   }) => {
     value = value ?? this.state.config[prop][flag];
-    let realName: keyof ITags;
-    switch (prop) {
-      case "allowedPartsOfSpeech":
-        realName = "partsOfSpeech";
-        break;
-      case "allowedDomains":
-        realName = "domains";
-        break;
-      case "allowedGrammaticalFeatures":
-        realName = "grammaticalFeatures";
-        break;
-      case "allowedRegisters":
-        realName = "registers";
-        break;
-      default:
-        throw new Error(prop);
-    }
+    const realName = configKeyToTagKey(prop);
     const key = `${realName}-${flag}`;
     const xref = this.state.xref[realName][flag];
     return <OverlayTrigger
@@ -565,18 +580,21 @@ export default class App extends React.Component<IProps, IState> {
             toggleFocus={this.toggleFocus.bind(this, flag)}
             change={(newValue) =>
               this.setState((state) => {
-                const flags = state.config[prop];
-                const newFlags: IPassMap = { ...flags, [flag]: newValue };
-                const newState = { config: { ...state.config, [prop]: newFlags } };
-                return newState;
+                state.config[prop][flag] = newValue;
+                return {config: {...state.config}};
               })}
             lookup={this.lookup}
           />
         </Popover.Content>
       </Popover>}>
-      <TagBadge pass={value}><Badge variant="light">{xref?.length}</Badge> {flag}</TagBadge>
+      <TagBadge pass={value}><Badge variant="light">{xref?.length}</Badge> {flag}{
+        detail && <span className="text-muted">&nbsp;{detail}</span>
+      }</TagBadge>
     </OverlayTrigger>;
   }
+
+  // tslint:disable-next-line:member-ordering
+  private TagControl = React.memo(this.tagControl);
 }
 
 export type TagControlFactory = App["TagControl"];
