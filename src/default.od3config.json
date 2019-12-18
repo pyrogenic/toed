@@ -1,5 +1,5 @@
 {
-  "allowedDomains":{
+  "domains":{
     "fishing":1,
     "office":1,
     "fire_service":1,
@@ -206,7 +206,7 @@
     "islam":1,
     "sex":2
   },
-  "allowedGrammaticalFeatures":{
+  "grammaticalFeatures":{
     "cardinal":1,
     "infinitive":1,
     "nonFiniteness":1,
@@ -217,7 +217,7 @@
     "proper":0,
     "transitive":2
   },
-  "allowedImputed":{
+  "imputed":{
     "redirect-verb":1,
     "redirect":1,
     "inexact":1,
@@ -229,7 +229,7 @@
     "exact-mixed-case":2,
     "mixed-case":3
   },
-  "allowedPartsOfSpeech":{
+  "partsOfSpeech":{
     "numeral":1,
     "particle":1,
     "conjunction":1,
@@ -245,7 +245,7 @@
     "noun":1,
     "contraction":0
   },
-  "allowedRegisters":{
+  "registers":{
     "trademark_in_uk":1,
     "slang":1,
     "dialect":1,

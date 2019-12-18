@@ -54,6 +54,7 @@ interface ITagCrossReference {
   registers: IStringMap;
   domains: IStringMap;
   imputed: IStringMap;
+  marks: IStringMap;
 }
 
 interface IProps {
@@ -82,11 +83,11 @@ interface IState {
 type ConfigFlagPropertyNames = FlagPropertyNames<IState["config"]>;
 
 const FLAG_PROPS: ConfigFlagPropertyNames[] = [
-  "allowedPartsOfSpeech",
-  "allowedGrammaticalFeatures",
-  "allowedRegisters",
-  "allowedDomains",
-  "allowedImputed",
+  "partsOfSpeech",
+  "grammaticalFeatures",
+  "registers",
+  "domains",
+  "imputed",
 ];
 
 type XrefFlagPropertyNames = PropertyNamesOfType<IState["xref"], IStringMap>;
@@ -97,19 +98,20 @@ const XREF_PROPS: XrefFlagPropertyNames[] = [
   "registers",
   "domains",
   "imputed",
+  "marks",
 ];
 
 export function configKeyToTagKey(prop: keyof IPipelineConfig): keyof ITags {
   switch (prop) {
-    case "allowedPartsOfSpeech":
+    case "partsOfSpeech":
       return "partsOfSpeech";
-    case "allowedDomains":
+    case "domains":
       return "domains";
-    case "allowedGrammaticalFeatures":
+    case "grammaticalFeatures":
       return "grammaticalFeatures";
-    case "allowedRegisters":
+    case "registers":
       return "registers";
-    case "allowedImputed":
+    case "imputed":
       return "imputed";
     default:
       throw new Error(prop);
@@ -124,16 +126,17 @@ export default class App extends React.Component<IProps, IState> {
   constructor(props: Readonly<IProps>) {
     super(props);
     const config: IPipelineConfig = {
-      allowedDomains: {},
-      allowedGrammaticalFeatures: {},
-      allowedImputed: {},
-      allowedPartsOfSpeech: {},
-      allowedRegisters: {},
+      domains: {},
+      grammaticalFeatures: {},
+      imputed: {},
+      partsOfSpeech: {},
+      registers: {},
     };
     const xref: ITagCrossReference = {
       domains: {},
       grammaticalFeatures: {},
       imputed: {},
+      marks: {},
       partsOfSpeech: {},
       registers: {},
     };
@@ -303,11 +306,11 @@ export default class App extends React.Component<IProps, IState> {
           </Col>
         </Row>
 
-        {this.renderFilter("Parts of Speech", "allowedPartsOfSpeech")}
-        {this.renderFilter("Grammatical Features", "allowedGrammaticalFeatures")}
-        {this.renderFilter("Registers", "allowedRegisters")}
-        {this.renderFilter("Domains", "allowedDomains")}
-        {this.renderFilter("Imputed", "allowedImputed")}
+        {this.renderFilter("Parts of Speech", "partsOfSpeech")}
+        {this.renderFilter("Grammatical Features", "grammaticalFeatures")}
+        {this.renderFilter("Registers", "registers")}
+        {this.renderFilter("Domains", "domains")}
+        {this.renderFilter("Imputed", "imputed")}
 
         {/* {this.state.re && this.state.re.results &&
         <Row>

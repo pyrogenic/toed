@@ -17,11 +17,11 @@ import ISense from "./types/gen/ISense";
 export interface IPassMap { [key: string]: Pass; }
 
 export interface IPipelineConfig {
-    allowedPartsOfSpeech: IPassMap;
-    allowedGrammaticalFeatures: IPassMap;
-    allowedRegisters: IPassMap;
-    allowedDomains: IPassMap;
-    allowedImputed: IPassMap;
+    partsOfSpeech: IPassMap;
+    grammaticalFeatures: IPassMap;
+    registers: IPassMap;
+    domains: IPassMap;
+    imputed: IPassMap;
 }
 
 export type FlagPropertyNames<T> = { [K in keyof Required<T>]: T[K] extends IPassMap ? K : never }[keyof T];
@@ -212,7 +212,7 @@ export default class OxfordDictionariesPipeline {
                 let grammaticalFeatures = appendGrammaticalFeatures(lexicalEntry, undefined);
                 if (grammaticalFeatures.length > 0) {
                     const disallowed = grammaticalFeatures.filter((tag) => {
-                        const tagAllowedForPass = this.allowed("allowedGrammaticalFeatures", tag);
+                        const tagAllowedForPass = this.allowed("grammaticalFeatures", tag);
                         return tagAllowedForPass === Pass.banned;
                     });
                     if (disallowed.length > 0) {
@@ -222,7 +222,7 @@ export default class OxfordDictionariesPipeline {
                         return discard(lexicalEntry, lexicalEntryTags);
                     }
                 }
-                const allowedForPass = this.allowed("allowedPartsOfSpeech", partOfSpeech);
+                const allowedForPass = this.allowed("partsOfSpeech", partOfSpeech);
                 if (allowedForPass === Pass.banned) {
                     arraySetAdd(lexicalEntryTags, "imputed",
                         ["banned-part-of-speech", partOfSpeech]);
@@ -238,7 +238,7 @@ export default class OxfordDictionariesPipeline {
                                 ...lentry.grammaticalFeatures.map((e) => e.id),
                             ];
                             const disallowed = grammaticalFeatures.filter((tag) => {
-                                const tagAllowedForPass = this.allowed("allowedGrammaticalFeatures", tag);
+                                const tagAllowedForPass = this.allowed("grammaticalFeatures", tag);
                                 return tagAllowedForPass === Pass.banned;
                             });
                             if (disallowed.length > 0) {
@@ -304,7 +304,7 @@ export default class OxfordDictionariesPipeline {
                         const lentryGrammaticalFeatures = appendGrammaticalFeatures(lentry, grammaticalFeatures);
                         if (lentryGrammaticalFeatures.length > 0) {
                             const disallowed = lentryGrammaticalFeatures.filter((tag) => {
-                                const tagAllowedForPass = this.allowed("allowedGrammaticalFeatures", tag);
+                                const tagAllowedForPass = this.allowed("grammaticalFeatures", tag);
                                 return tagAllowedForPass > pass.pass;
                             });
                             if (disallowed.length > 0) {
@@ -385,11 +385,11 @@ export default class OxfordDictionariesPipeline {
             const item = {type, flag, allowed};
             passMap.push(item);
         };
-        [partOfSpeech].forEach(check.bind(null, "allowedPartsOfSpeech"));
-        registers.forEach(check.bind(null, "allowedRegisters"));
-        grammaticalFeatures.forEach(check.bind(null, "allowedGrammaticalFeatures"));
-        domains.forEach(check.bind(null, "allowedDomains"));
-        tags.imputed?.map(([tag]) => tag).forEach(check.bind(null, "allowedImputed"));
+        [partOfSpeech].forEach(check.bind(null, "partsOfSpeech"));
+        registers.forEach(check.bind(null, "registers"));
+        grammaticalFeatures.forEach(check.bind(null, "grammaticalFeatures"));
+        domains.forEach(check.bind(null, "domains"));
+        tags.imputed?.map(([tag]) => tag).forEach(check.bind(null, "imputed"));
         const passes = passMap.map(({allowed}) => allowed);
         const banned = Math.min(...passes) === 0;
         const requiredPass = Math.max(...passes);

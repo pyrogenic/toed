@@ -70,23 +70,23 @@ function taggedComponent({ word, title, children, tags, TagControl }:
             <Popover.Content>
                 {tags.partsOfSpeech && <span>{useLabels && "partsOfSpeech: "}
                 {tags.partsOfSpeech.map((t) =>
-                    <TagControl key={t} prop="allowedPartsOfSpeech" flag={t} />)}</span>}
+                    <TagControl key={t} prop="partsOfSpeech" flag={t} />)}</span>}
 
                 {tags.grammaticalFeatures && <span>{useLabels && "grammaticalFeatures: "}
                 {tags.grammaticalFeatures.map((t) =>
-                    <TagControl key={t} prop="allowedGrammaticalFeatures" flag={t} />)}</span>}
+                    <TagControl key={t} prop="grammaticalFeatures" flag={t} />)}</span>}
 
                 {tags.domains && <span>{useLabels && "domains: "}
                 {tags.domains.map((t) =>
-                    <TagControl key={t} prop="allowedDomains" flag={t} />)}</span>}
+                    <TagControl key={t} prop="domains" flag={t} />)}</span>}
 
                 {tags.registers && <span>{useLabels && "registers: "}
                 {tags.registers.map((t) =>
-                    <TagControl key={t} prop="allowedRegisters" flag={t} />)}</span>}
+                    <TagControl key={t} prop="registers" flag={t} />)}</span>}
 
                 {tags.imputed && <span>{useLabels && "imputed: "}
                     {tags.imputed.map(([t, comment]) =>
-                        <TagControl key={t} prop="allowedImputed" flag={t} detail={comment}/>)}</span>}
+                        <TagControl key={t} prop="imputed" flag={t} detail={comment}/>)}</span>}
             </Popover.Content>
         </Popover>;
     }
