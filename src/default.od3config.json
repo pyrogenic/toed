@@ -218,11 +218,12 @@
     "transitive":2
   },
   "allowedImputed":{
+    "redirect-verb":1,
     "redirect":1,
     "inexact":1,
     "redirect-noun":1,
     "redirect-other":1,
-    "redirect-residual":1,
+    "redirect-residual":0,
     "exact":1,
     "inexact-mixed-case":1,
     "exact-mixed-case":2,
