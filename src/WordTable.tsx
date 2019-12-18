@@ -188,7 +188,10 @@ export default class WordTable extends React.Component<IProps, {}> {
     public render() {
         return <div className="word-table">
             <Row>
-                <Col xs={1}>Word</Col>
+                <Col xs={1} onClick={() => {
+                    this.props.records.sort((a, b) => a.q.localeCompare(b.q));
+                    this.forceUpdate();
+                }}>Word</Col>
                 <Col>Definition</Col>
                 <Col xs={1}>Notes</Col>
             </Row>

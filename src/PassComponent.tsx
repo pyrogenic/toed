@@ -24,7 +24,7 @@ export default class PassComponent extends React.Component<IProps, IState> {
         const { lookup, change: realChange, focus, toggleFocus, value, xref } = this.props;
         const CustomToggle = React.forwardRef<Button, ConstructorParameters<typeof Button>[0]>(
             ({ children, onClick }, ref: any) => (
-            <Button ref={ref} variant="outline-secondary" onClick={(e: { preventDefault: () => void; }) => {
+            <Button ref={ref} size="sm" variant="outline-secondary" onClick={(e: { preventDefault: () => void; }) => {
                 e.preventDefault();
                 onClick(e);
             }}>
@@ -33,7 +33,7 @@ export default class PassComponent extends React.Component<IProps, IState> {
         ));
         return <Row>
             <ButtonGroup as={Col}>
-                <Button variant={focus ? "secondary" : "outline-secondary"} onClick={toggleFocus}>
+                <Button size="sm" variant={focus ? "secondary" : "outline-secondary"} onClick={toggleFocus}>
                     <span className="oi oi-eye" title="focus" aria-hidden={true} />
                 </Button>
                 <Dropdown onSelect={(word: string) => lookup(word)}>

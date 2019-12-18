@@ -539,15 +539,15 @@ export default class App extends React.Component<IProps, IState> {
       if (redirect) {
         return this.get(q, redirect);
       }
-      this.setState((state) => {
-        let records = state.records;
-        if (!records.find((e) => e.q === q)) {
-          const pipeline = new OxfordDictionariesPipeline(q, re.results || [], this.allowed, this.processed);
-          const wr = new WordRecord(q, re, pipeline);
-          records = records.sort((a, b) => a.q.localeCompare(b.q));
-          records.unshift(wr);
+      this.setState(({records}) => {
+        const index = records.findIndex((e) => e.q === q);
+        if (index >= 0) {
+          records.splice(index, 1);
         }
-        return { records: state.records };
+        const pipeline = new OxfordDictionariesPipeline(q, re.results || [], this.allowed, this.processed);
+        const record = new WordRecord(q, re, pipeline);
+        records.unshift(record);
+        return { records };
       });
       return re;
     } finally {
@@ -580,7 +580,7 @@ export default class App extends React.Component<IProps, IState> {
               this.setState((state) => {
                 state.config[prop][flag] = newValue;
                 return {config: {...state.config}};
-              })}
+              }, () => this.lookup(...xref))}
             lookup={this.lookup}
           />
         </Popover.Content>
