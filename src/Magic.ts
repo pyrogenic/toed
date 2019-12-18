@@ -1,3 +1,5 @@
+import isEqual from "lodash/isEqual";
+
 type Diff<T, U> = T extends U ? never : T;  // Remove types from T that are assignable to U
 type Filter<T, U> = T extends U ? T : never;  // Remove types from T that are not assignable to U
 
@@ -38,7 +40,7 @@ export function arraySetAdd<
         value: ElementType<TContainer[TKey]>,
         sorted?: ArraySetOrderRule<TElement>) {
     const list = ensureArray(container, key);
-    const index = list.indexOf(value);
+    const index = typeof value !== "object" ? list.indexOf(value) : list.findIndex(isEqual.bind(null, value));
     if (index >= 0) {
         if (sorted !== "mru") {
             return false;

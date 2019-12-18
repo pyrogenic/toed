@@ -3,6 +3,7 @@ import { arraySetAdd, arraySetAddAll, ensure, ensureArray } from "../Magic";
 class Container {
     public req: string[] = [];
     public opt?: string[];
+    public obj: Array<{v: string}> = [];
 }
 
 describe("ensure", () => {
@@ -120,5 +121,17 @@ describe("Array Sets", () => {
                 expect(container).toHaveProperty(prop, ["c", "d", "a"]);
             });
         });
+    });
+
+    it("obj", () => {
+        expect(container).toHaveProperty("obj", []);
+        expect(arraySetAdd(container, "obj", {v: "1"})).toBeTruthy();
+        expect(container).toHaveProperty("obj", [{v: "1"}]);
+        expect(arraySetAdd(container, "obj", {v: "1"})).toBeFalsy();
+        expect(container).toHaveProperty("obj", [{v: "1"}]);
+        expect(arraySetAdd(container, "obj", {v: "hi"})).toBeTruthy();
+        expect(container).toHaveProperty("obj", [{v: "1"}, {v: "hi"}]);
+        expect(arraySetAdd(container, "obj", {v: "1"})).toBeFalsy();
+        expect(container).toHaveProperty("obj", [{v: "1"}, {v: "hi"}]);
     });
 });
