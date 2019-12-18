@@ -116,13 +116,11 @@ export function configKeyToTagKey(prop: keyof IPipelineConfig): keyof ITags {
   }
 }
 
-@observer
 export default class App extends React.Component<IProps, IState> {
   public static stylesheet?: CSSStyleSheet;
   private static highlightedTag?: string;
   private static ruleIndex: Map<string, CSSStyleRule> = new Map();
 
-  @observable
   private busy: string[] = [];
 
   constructor(props: Readonly<IProps>) {
@@ -234,7 +232,7 @@ export default class App extends React.Component<IProps, IState> {
     return <>
       <Navbar bg="light" expand="lg">
         <Navbar.Brand href="#home">OD³</Navbar.Brand>
-        <Navbar.Text> Oxford Dictionaries Definition Distiller</Navbar.Text>
+        <Navbar.Text className="powered-by-oxford"> Oxford Dictionaries Definition Distiller</Navbar.Text>
         <Navbar.Toggle aria-controls="nav" />
         <Navbar.Collapse id="nav">
           <NavDropdown title="Keys" id="nav-import" as={Button}>

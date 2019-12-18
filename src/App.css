@@ -1,3 +1,12 @@
+.powered-by-oxford:hover {
+    background-image: url("poweredByOxford.png");
+    background-repeat: no-repeat;
+    background-size: 10rem;
+    background-position: center;
+    background-blend-mode: color-burn;
+    color: transparent;
+}
+
 .dropdown-menu > .container {
     min-width: 19.25rem;
 }
