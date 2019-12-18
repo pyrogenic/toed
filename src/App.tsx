@@ -8,7 +8,7 @@ import uniq from "lodash/uniq";
 import without from "lodash/without";
 import React from "react";
 import Badge, {BadgeProps} from "react-bootstrap/Badge";
-import Button from "react-bootstrap/Button";
+import Button, {ButtonProps} from "react-bootstrap/Button";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
 import ButtonToolbar from "react-bootstrap/ButtonToolbar";
 import Card from "react-bootstrap/Card";
@@ -43,6 +43,8 @@ import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
+import badWords from "./badWords";
+import DropdownButton from "react-bootstrap/DropdownButton";
 
 interface IStringMap { [key: string]: string[]; }
 
@@ -118,8 +120,6 @@ export default class App extends React.Component<IProps, IState> {
   public static stylesheet?: CSSStyleSheet;
   private static highlightedTag?: string;
   private static ruleIndex: Map<string, CSSStyleRule> = new Map();
-
-  private busy: string[] = [];
 
   constructor(props: Readonly<IProps>) {
     super(props);
@@ -227,11 +227,13 @@ export default class App extends React.Component<IProps, IState> {
   public render() {
     const loaded = this.state.records.map(({q}) => q);
     const history = without(this.state.history, ...loaded).reverse();
+    const remainingBadWords = without(badWords, ...loaded).reverse();
+    const WordListComponent = this.WordListComponent;
     return <>
       <Navbar bg="light" expand="lg">
         <Navbar.Brand href="#home">OD³</Navbar.Brand>
         <Navbar.Text className="powered-by-oxford"> Oxford Dictionaries Definition Distiller</Navbar.Text>
-        <Navbar.Toggle aria-controls="nav" />
+        <Navbar.Toggle aria-controls="nav"/>
         <Navbar.Collapse id="nav">
           <NavDropdown title="Keys" id="nav-import" as={Button}>
             <Container>
@@ -239,18 +241,18 @@ export default class App extends React.Component<IProps, IState> {
                 <Form.Group>
                   <Form.Label>App ID</Form.Label>
                   <Form.Control
-                    placeholder="App ID"
-                    value={this.state.app_id || undefined}
-                    style={{ fontFamily: "monospace" }}
-                    onChange={(e: any) => this.setState({ app_id: e.target.value })} />
+                      placeholder="App ID"
+                      value={this.state.app_id || undefined}
+                      style={{fontFamily: "monospace"}}
+                      onChange={(e: any) => this.setState({app_id: e.target.value})}/>
                 </Form.Group>
                 <Form.Group>
                   <Form.Label>App Key</Form.Label>
                   <Form.Control
-                    placeholder="App Key"
-                    value={this.state.app_key || undefined}
-                    style={{ fontFamily: "monospace" }}
-                    onChange={(e: any) => this.setState({ app_key: e.target.value })} />
+                      placeholder="App Key"
+                      value={this.state.app_key || undefined}
+                      style={{fontFamily: "monospace"}}
+                      onChange={(e: any) => this.setState({app_key: e.target.value})}/>
                 </Form.Group>
               </Form>
             </Container>
@@ -258,8 +260,8 @@ export default class App extends React.Component<IProps, IState> {
           <NavDropdown title="Config" id="nav-config">
             <Container>
               <ConfigImportBox
-                currentConfig={this.state.config}
-                setConfig={(config) => this.setState({ config })} />
+                  currentConfig={this.state.config}
+                  setConfig={(config) => this.setState({config})}/>
             </Container>
             {/*{FLAG_PROPS.map((prop) => <NavDropdown.Item*/}
             {/*    onClick={() =>*/}
@@ -267,37 +269,11 @@ export default class App extends React.Component<IProps, IState> {
             {/*    href={"#" + prop}>{prop.replace("allowed", "")}*/}
             {/*</NavDropdown.Item>)}*/}
           </NavDropdown>
-          <Nav className="mr-auto" />
-            <NavDropdown
-                id="nav-history"
-                title={`History${history.length > 0 ? ` (${history.length})` : ""}`}
-                disabled={history.length === 0}>
-              {
-                history.map((q) =>
-                    <Dropdown.Item key={q} onClick={() => this.setState({ q }, this.go)}>{q}</Dropdown.Item>,
-                )
-              }
-            </NavDropdown>
-          <Navbar.Text>
-            <ButtonGroup className="mr-2">
-              {[1, 2, 10, 100, 1000].map((n) =>
-                  history.length >= n && <Button
-                      key={n}
-                      variant="outline-secondary"
-                      onClick={() =>
-                      this.lookup(...history.slice(0, n))}>{n}</Button>)}
-              {history.length > 0 && <Button
-                  variant="outline-secondary"
-                  onClick={() => this.lookup(...history)}>All</Button>}
-              {/*{    const seen = this.state.history; // records.map((e) => e.q);*/}
-              {/*  const badWordsRemaining = without(badWords, ...seen);*/}
-              {/*  const badWord = sample(badWordsRemaining);*/}
-              {/*}*/}
-              {/*{badWordsRemaining.length > 0 &&
-                  <Button onClick={() => this.lookup(...badWordsRemaining.slice(-10))}>Next 10 Bad Words</Button>}*/}
-              {/*{badWord && <Button onClick={() => this.setState({ q: badWord }, this.go)}>{badWord}</Button>}*/}
-            </ButtonGroup>
-          </Navbar.Text>
+          <Nav className="mr-auto"/>
+
+          <WordListComponent label={"Bad Words"} words={remainingBadWords} variant={"outline-warning"}/>
+          <WordListComponent label={"History"} words={history}/>
+
           <Form inline={true} onSubmitCapture={this.go}>
             <InputGroup>
               <Form.Control
@@ -346,7 +322,7 @@ export default class App extends React.Component<IProps, IState> {
         </Row>
       } */}
 
-        <Row><Col><WordTable records={this.state.records} TagControl={this.TagControl} /></Col></Row>
+        <Row><Col><WordTable records={this.state.records} TagControl={this.TagControl}/></Col></Row>
 
         <Row>
           <Col>
@@ -354,6 +330,41 @@ export default class App extends React.Component<IProps, IState> {
           </Col>
         </Row>
       </Container>
+    </>;
+  }
+
+  private WordListComponent = ({label, words, variant = "outline-primary"}:
+                                   { label: string, words: string[], variant?: ButtonProps["variant"] }) => {
+    return <>
+      <Dropdown>
+        <Dropdown.Toggle
+            id={`nav-${label}`}
+          variant={variant}
+          style={{border: "none"}}
+          disabled={words.length === 0}>
+          {label}{words.length > 0 && ` (${words.length})`}
+        </Dropdown.Toggle>
+        <Dropdown.Menu>
+        {
+          words.map((q) =>
+              <Dropdown.Item key={q} onClick={() => this.setState({q}, this.go)}>{q}</Dropdown.Item>,
+          )
+        }
+        </Dropdown.Menu>
+      </Dropdown>
+      <Navbar.Text className="mr-3">
+        <ButtonGroup>
+          {[1, 2, 10, 100, 1000].map((n) =>
+              words.length >= n && <Button
+                  key={n}
+                  variant={variant}
+                  onClick={() =>
+                      this.lookup(...words.slice(0, n))}>{n}</Button>)}
+          {words.length > 0 && <Button
+              variant={variant}
+              onClick={() => this.lookup(...words)}>All</Button>}
+        </ButtonGroup>
+      </Navbar.Text>
     </>;
   }
 
@@ -504,11 +515,11 @@ export default class App extends React.Component<IProps, IState> {
             .then(() => this.setState(({busy}) => ({busy: busy - 1}))));
   }
 
-  private continueLookup = async (words: string[]) => {
+  private continueLookup = async (words: string[]): Promise<void> => {
     const word = words.shift();
     if (word !== undefined) {
       await this.get(word);
-      setImmediate(this.continueLookup, words);
+      return this.continueLookup(words);
     }
   }
 
@@ -521,23 +532,18 @@ export default class App extends React.Component<IProps, IState> {
     if (queryWords.length > 1) {
       return this.continueLookup(queryWords);
     }
-    this.get(q).then((re) =>
-        this.setState(({history}) => {
-          arraySetAdd({history}, "history", q, "mru");
-          return {re, history};
-        }));
+    this.get(q);
   }
 
   private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
-    const { apiBaseUrl, language } = this.state;
-    this.busy.push(q);
-    try {
-      const re = await fetchWord(apiBaseUrl, language, redirect || q);
-      redirect = this.derivativeOf(re.results);
-      if (redirect) {
-        return this.get(q, redirect);
-      }
-      this.setState(({records}) => {
+    const {apiBaseUrl, language} = this.state;
+    const re = await fetchWord(apiBaseUrl, language, redirect || q);
+    redirect = this.derivativeOf(re.results);
+    if (redirect) {
+      return this.get(q, redirect);
+    }
+    return new Promise((resolve) => {
+      this.setState(({records, history}) => {
         const index = records.findIndex((e) => e.q === q);
         if (index >= 0) {
           records.splice(index, 1);
@@ -545,12 +551,10 @@ export default class App extends React.Component<IProps, IState> {
         const pipeline = new OxfordDictionariesPipeline(q, re.results || [], this.allowed, this.processed);
         const record = new WordRecord(q, re, pipeline);
         records.unshift(record);
-        return { records };
-      });
-      return re;
-    } finally {
-      pull(this.busy, q);
-    }
+        arraySetAdd({history}, "history", q, "mru");
+        return {re, records, history};
+      }, resolve);
+    });
   }
 
   private tagControl = ({ prop, flag, detail, value }: {
