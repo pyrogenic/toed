@@ -6,8 +6,6 @@ import omit from "lodash/omit";
 import pull from "lodash/pull";
 import uniq from "lodash/uniq";
 import without from "lodash/without";
-import {observable} from "mobx";
-import {observer} from "mobx-react";
 import React from "react";
 import Badge, {BadgeProps} from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
@@ -161,7 +159,7 @@ export default class App extends React.Component<IProps, IState> {
         }
       }
     });
-    Object.entries(xref).forEach(([key, value]) => {
+    Object.values(xref).forEach((value) => {
       Object.entries(value).forEach(([tag, words]) => {
         value[tag] = uniq(words as string[]);
       });
