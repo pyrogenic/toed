@@ -1,4 +1,4 @@
-import { arraySetAdd, arraySetAddAll, ensure, ensureArray } from "../Magic";
+import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure, ensureArray} from "../Magic";
 
 class Container {
     public req: string[] = [];
@@ -67,6 +67,22 @@ describe("Array Sets", () => {
                 expect(container).toHaveProperty(prop, ["1", "2"]);
                 expect(arraySetAdd(container, prop, "1")).toBeFalsy();
                 expect(container).toHaveProperty(prop, ["1", "2"]);
+            });
+
+            it("remove", () => {
+                expect(arraySetRemove(container, prop, "x")).toBeFalsy();
+                expect(arraySetAdd(container, prop, "1")).toBeTruthy();
+                expect(arraySetAdd(container, prop, "1")).toBeFalsy();
+                expect(arraySetAdd(container, prop, "2")).toBeTruthy();
+                expect(arraySetAdd(container, prop, "2")).toBeFalsy();
+                expect(arraySetAdd(container, prop, "1")).toBeFalsy();
+                expect(container).toHaveProperty(prop, ["1", "2"]);
+                expect(arraySetRemove(container, prop, "x")).toBeFalsy();
+                expect(container).toHaveProperty(prop, ["1", "2"]);
+                expect(arraySetRemove(container, prop, "1")).toBeTruthy();
+                expect(container).toHaveProperty(prop, ["2"]);
+                expect(arraySetRemove(container, prop, "1")).toBeFalsy();
+                expect(container).toHaveProperty(prop, ["2"]);
             });
 
             describe("addAll", () => {

@@ -34,11 +34,11 @@ export function arraySetAdd<
     TContainer,
     TElement,
     TKey extends ArrayPropertyNames<TContainer> &
-    PropertyNamesOfType<TContainer, TElement[] | undefined>>(
-        container: TContainer,
-        key: TKey,
-        value: ElementType<TContainer[TKey]>,
-        sorted?: ArraySetOrderRule<TElement>) {
+        PropertyNamesOfType<TContainer, TElement[] | undefined>>(
+    container: TContainer,
+    key: TKey,
+    value: ElementType<TContainer[TKey]>,
+    sorted?: ArraySetOrderRule<TElement>) {
     const list = ensureArray(container, key);
     const index = typeof value !== "object" ? list.indexOf(value) : list.findIndex(isEqual.bind(null, value));
     if (index >= 0) {
@@ -54,6 +54,52 @@ export function arraySetAdd<
     } else if (sorted === true) {
         list.sort();
     }
+    return true;
+}
+
+export function arraySetRemove<
+    TContainer,
+    TElement,
+    TKey extends ArrayPropertyNames<TContainer> &
+        PropertyNamesOfType<TContainer, TElement[] | undefined>>(
+    container: TContainer,
+    key: TKey,
+    value: ElementType<TContainer[TKey]>) {
+    if (container[key] === undefined) {
+        return false;
+    }
+    const list = ensureArray(container, key);
+    const index = typeof value !== "object" ? list.indexOf(value) : list.findIndex(isEqual.bind(null, value));
+    if (index >= 0) {
+        list.splice(index, 1);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * @return true if the item is now in the list, false otherwise.
+ */
+export function arraySetToggle<
+    TContainer,
+    TElement,
+    TKey extends ArrayPropertyNames<TContainer> &
+        PropertyNamesOfType<TContainer, TElement[] | undefined>>(
+    container: TContainer,
+    key: TKey,
+    value: ElementType<TContainer[TKey]>,
+    sorted?: ArraySetOrderRule<TElement>) {
+    if (container[key] === undefined) {
+        arraySetAdd(container, key, value, sorted);
+        return true;
+    }
+    const list = ensureArray(container, key);
+    const index = typeof value !== "object" ? list.indexOf(value) : list.findIndex(isEqual.bind(null, value));
+    if (index >= 0) {
+        list.splice(index, 1);
+        return false;
+    }
+    arraySetAdd(container, key, value, sorted);
     return true;
 }
 

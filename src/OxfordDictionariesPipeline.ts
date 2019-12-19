@@ -2,7 +2,7 @@ import cloneDeep from "lodash/cloneDeep";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
 import uniq from "lodash/uniq";
-import App, {configKeyToTagKey} from "./App";
+import App from "./App";
 import IDictionaryEntry from "./IDictionaryEntry";
 import IWordRecord, {ITags} from "./IWordRecord";
 import {arraySetAdd, arraySetAddAll, ensure} from "./Magic";
@@ -22,9 +22,9 @@ export interface IPipelineConfig {
     registers: IPassMap;
     domains: IPassMap;
     imputed: IPassMap;
+    /** note that this is really just to config appearance */
+    marks: IPassMap;
 }
-
-export type FlagPropertyNames<T> = { [K in keyof Required<T>]: T[K] extends IPassMap ? K : never }[keyof T];
 
 export type PartialWordRecord = Pick<IWordRecord, "result" | "resultTags" | "resultOriginal" | "resultDiscarded" | "resultDiscardedTags" | "allTags" | "pipelineNotes">;
 
@@ -308,6 +308,7 @@ export default class OxfordDictionariesPipeline {
                                 return tagAllowedForPass > pass.pass;
                             });
                             if (disallowed.length > 0) {
+                                // tslint:disable-next-line:no-console
                                 console.log(`entry ${entryIndex}.${lentryIndex} rejected because ${disallowed.join(" & ")} is/are disallowed for pass ${pass.pass}`);
                                 return;
                             }
@@ -381,7 +382,7 @@ export default class OxfordDictionariesPipeline {
         let check: (...args: Parameters<App["allowed"]>) => void;
         check = (prop, flag) => {
             const allowed = this.allowed(prop, flag);
-            const type = configKeyToTagKey(prop);
+            const type = prop;
             const item = {type, flag, allowed};
             passMap.push(item);
         };
@@ -440,6 +441,7 @@ export default class OxfordDictionariesPipeline {
                     result.definitions[partOfSpeech].push(cleanDefinition);
                     resultTags.definitions = resultTags.definitions || {};
                     resultTags.definitions[partOfSpeech] = resultTags.definitions[partOfSpeech] || [];
+                    // tslint:disable-next-line:no-console
                     console.log({definition, tags});
                     resultTags.definitions[partOfSpeech].push(tags);
                     if (cleanDefinition !== definition) {

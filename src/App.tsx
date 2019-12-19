@@ -3,10 +3,9 @@ import compact from "lodash/compact";
 import flatten from "lodash/flatten";
 import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
-import pull from "lodash/pull";
 import uniq from "lodash/uniq";
 import without from "lodash/without";
-import React from "react";
+import React, {ElementType} from "react";
 import Badge, {BadgeProps} from "react-bootstrap/Badge";
 import Button, {ButtonProps} from "react-bootstrap/Button";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
@@ -24,12 +23,14 @@ import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Popover from "react-bootstrap/Popover";
 import Row from "react-bootstrap/Row";
 import "./App.css";
+import badWords from "./badWords";
 import defaultConfig from "./default.od3config.json";
 import fetchWord from "./fetchWord";
+import Focus from "./Focus";
 import {ITags} from "./IWordRecord";
-import {arraySetAdd, ensureMap, PropertyNamesOfType} from "./Magic";
+import {arraySetAdd, arraySetHas, arraySetToggle, ensureMap, PropertyNamesOfType} from "./Magic";
+import OpenIconicNames from "./OpenIconicNames";
 import OxfordDictionariesPipeline, {
-  FlagPropertyNames,
   IPassMap,
   IPipelineConfig,
   PartialWordRecord,
@@ -43,19 +44,21 @@ import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
-import badWords from "./badWords";
-import DropdownButton from "react-bootstrap/DropdownButton";
+
+const MARKS: Array<[string, OpenIconicNames]> = [
+  ["heart", OpenIconicNames.heart],
+  ["pin", OpenIconicNames.pin],
+  ["bug", OpenIconicNames.bug],
+];
 
 interface IStringMap { [key: string]: string[]; }
 
-interface ITagCrossReference {
-  partsOfSpeech: IStringMap;
-  grammaticalFeatures: IStringMap;
-  registers: IStringMap;
-  domains: IStringMap;
-  imputed: IStringMap;
-  marks: IStringMap;
-}
+type ITagCrossReference = { [K in keyof IPipelineConfig]: IStringMap };
+
+type TagFocusElement = [keyof IPipelineConfig, string];
+type TagFocus = {
+  [K in Exclude<Focus, Focus.normal>]: TagFocusElement[];
+};
 
 interface IProps {
 
@@ -78,44 +81,7 @@ interface IState {
 
   config: IPipelineConfig;
   xref: ITagCrossReference;
-}
-
-type ConfigFlagPropertyNames = FlagPropertyNames<IState["config"]>;
-
-const FLAG_PROPS: ConfigFlagPropertyNames[] = [
-  "partsOfSpeech",
-  "grammaticalFeatures",
-  "registers",
-  "domains",
-  "imputed",
-];
-
-type XrefFlagPropertyNames = PropertyNamesOfType<IState["xref"], IStringMap>;
-
-const XREF_PROPS: XrefFlagPropertyNames[] = [
-  "partsOfSpeech",
-  "grammaticalFeatures",
-  "registers",
-  "domains",
-  "imputed",
-  "marks",
-];
-
-export function configKeyToTagKey(prop: keyof IPipelineConfig): keyof ITags {
-  switch (prop) {
-    case "partsOfSpeech":
-      return "partsOfSpeech";
-    case "domains":
-      return "domains";
-    case "grammaticalFeatures":
-      return "grammaticalFeatures";
-    case "registers":
-      return "registers";
-    case "imputed":
-      return "imputed";
-    default:
-      throw new Error(prop);
-  }
+  focus: TagFocus;
 }
 
 export default class App extends React.Component<IProps, IState> {
@@ -129,6 +95,7 @@ export default class App extends React.Component<IProps, IState> {
       domains: {},
       grammaticalFeatures: {},
       imputed: {},
+      marks: {},
       partsOfSpeech: {},
       registers: {},
     };
@@ -140,22 +107,26 @@ export default class App extends React.Component<IProps, IState> {
       partsOfSpeech: {},
       registers: {},
     };
-    FLAG_PROPS.forEach((prop) => {
+    const focus: TagFocus = {
+      [Focus.hide]: [],
+      [Focus.focus]: [],
+    };
+    Object.keys(config).forEach((prop) => {
       const value = localStorage.getItem("oed/passes/" + prop);
       if (value) {
         try {
-          config[prop] = JSON.parse(value);
+          config[prop as keyof typeof config] = JSON.parse(value);
         } catch (e) {
           // tslint:disable-next-line:no-console
           console.error(e);
         }
       }
     });
-    XREF_PROPS.forEach((prop) => {
+    Object.keys(xref).forEach((prop) => {
       const value = localStorage.getItem("oed/xref/" + prop);
       if (value) {
         try {
-          xref[prop] = JSON.parse(value);
+          xref[prop as keyof typeof xref] = JSON.parse(value);
         } catch (e) {
           // tslint:disable-next-line:no-console
           console.error(e);
@@ -167,6 +138,17 @@ export default class App extends React.Component<IProps, IState> {
         value[tag] = uniq(words as string[]);
       });
     });
+    Object.keys(focus).forEach((key) => {
+      const value = localStorage.getItem("oed/focus/" + key);
+      if (value) {
+        try {
+          focus[key as keyof TagFocus] = JSON.parse(value);
+        } catch (e) {
+          // tslint:disable-next-line:no-console
+          console.error(e);
+        }
+      }
+    });
     const history: string[] = uniq(JSON.parse(localStorage.getItem("oed/history") || "[]"));
     const hidden: string[] = uniq(JSON.parse(localStorage.getItem("oed/hidden") || "[]"));
     this.state = {
@@ -175,6 +157,7 @@ export default class App extends React.Component<IProps, IState> {
       app_key: localStorage.getItem("oed/app_key") || undefined,
       busy: 0,
       config,
+      focus,
       hidden,
       history,
       language: OxfordLanguage.americanEnglish,
@@ -202,11 +185,14 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   public componentDidUpdate() {
-    FLAG_PROPS.forEach((prop) => {
-      localStorage.setItem("oed/passes/" + prop, JSON.stringify(this.state.config[prop] || {}));
+    Object.entries(this.state.config).forEach(([prop, value]) => {
+      localStorage.setItem("oed/passes/" + prop, JSON.stringify(value));
     });
-    XREF_PROPS.forEach((prop) => {
-      localStorage.setItem("oed/xref/" + prop, JSON.stringify(this.state.xref[prop] || {}));
+    Object.entries(this.state.xref).forEach(([prop, value]) => {
+      localStorage.setItem("oed/xref/" + prop, JSON.stringify(value));
+    });
+    Object.entries(this.state.focus).forEach(([prop, value]) => {
+      localStorage.setItem("oed/focus/" + prop, JSON.stringify(value));
     });
     if (this.state.app_id) {
       localStorage.setItem("oed/app_id", this.state.app_id);
@@ -311,6 +297,7 @@ export default class App extends React.Component<IProps, IState> {
         {this.renderFilter("Registers", "registers")}
         {this.renderFilter("Domains", "domains")}
         {this.renderFilter("Imputed", "imputed")}
+        {this.renderFilter("Marks", "marks")}
 
         {/* {this.state.re && this.state.re.results &&
         <Row>
@@ -325,7 +312,15 @@ export default class App extends React.Component<IProps, IState> {
         </Row>
       } */}
 
-        <Row><Col><WordTable records={this.state.records} TagControl={this.TagControl}/></Col></Row>
+        <Row>
+          <Col>
+            <WordTable
+                records={this.state.records}
+                TagControl={this.TagControl}
+                MarksControl={this.MarksControl}
+            />
+          </Col>
+        </Row>
 
         <Row>
           <Col>
@@ -371,7 +366,7 @@ export default class App extends React.Component<IProps, IState> {
     </>;
   }
 
-  public allowed = (prop: ConfigFlagPropertyNames, flag: string): Pass => {
+  public allowed = (prop: keyof IPipelineConfig, flag: string): Pass => {
     let allowed = this.state.config[prop][flag];
     if (allowed === undefined) {
       allowed = Pass.primary;
@@ -461,9 +456,8 @@ export default class App extends React.Component<IProps, IState> {
     }
   }
 
-  private renderFilter(label: string, prop: ConfigFlagPropertyNames): React.ReactNode {
-    const config = this.state.config[prop];
-    return <FilterRow label={label} prop={prop} config={config} TagControl={this.TagControl} />;
+  private renderFilter(label: string, prop: keyof ITagCrossReference): React.ReactNode {
+    return <FilterRow label={label} prop={prop} config={this.state.config[prop]} TagControl={this.TagControl} />;
   }
 
   private renderResponse = (entry: IHeadwordEntry, index: number) => {
@@ -560,16 +554,17 @@ export default class App extends React.Component<IProps, IState> {
     });
   }
 
-  private tagControl = ({ prop, flag, detail, value }: {
-    prop: PropertyNamesOfType<IPipelineConfig, IPassMap>,
-    flag: keyof IPassMap & string,
+  private tagControl = ({prop, flag, detail, value, query}: {
+    prop: keyof ITagCrossReference,
+    flag: string,
     detail?: string,
     value?: Pass,
+    query: string | undefined,
   }) => {
-    value = value ?? this.state.config[prop][flag];
-    const realName = configKeyToTagKey(prop);
-    const key = `${realName}-${flag}`;
-    const xref = this.state.xref[realName][flag];
+    const {xref, config} = this.state;
+    value = value ?? config[prop][flag];
+    const key = `${prop}-${flag}`;
+    const words = xref[prop][flag];
     return <OverlayTrigger
       trigger="click"
       rootClose={true}
@@ -577,20 +572,20 @@ export default class App extends React.Component<IProps, IState> {
       overlay={<Popover id={key}>
         <Popover.Content>
           <PassComponent
-            value={value}
-            xref={xref}
-            focus={App.highlightedTag === flag}
-            toggleFocus={this.toggleFocus.bind(this, flag)}
-            change={(newValue) =>
+            pass={value}
+            focus={this.getFocusFor(prop, key)}
+            words={words}
+            changePass={(newValue) =>
               this.setState((state) => {
                 state.config[prop][flag] = newValue;
                 return {config: {...state.config}};
-              }, () => this.lookup(...xref))}
+              }, () => this.lookup(...words))}
+            changeFocus={this.setFocusFor.bind(this, prop, flag)}
             lookup={this.lookup}
           />
         </Popover.Content>
       </Popover>}>
-      <TagBadge pass={value}><Badge variant="light">{xref?.length}</Badge> {flag}{
+      <TagBadge pass={value}><Badge variant="light">{words?.length}</Badge> {flag}{
         detail && <span className="text-muted">&nbsp;{detail}</span>
       }</TagBadge>
     </OverlayTrigger>;
@@ -598,9 +593,83 @@ export default class App extends React.Component<IProps, IState> {
 
   // tslint:disable-next-line:member-ordering
   private TagControl = React.memo(this.tagControl);
-}
 
+  private marksControl = ({word}: { word: string }) => {
+    const marks = this.getMarksFor(word);
+    return <ButtonGroup>
+      {MARKS.map(([mark, icon]) =>
+          <Button
+              onClick={this.toggleMark.bind(this, word, mark)}
+              size="sm"
+              variant={
+                marks.includes(mark)
+                    ? "primary"
+                    : "outline-primary"}
+          >
+            <span className={`oi oi-${icon}`} title={mark}/>
+          </Button>)}
+    </ButtonGroup>;
+  }
+
+  // tslint:disable-next-line:member-ordering
+  private MarksControl = React.memo(this.marksControl);
+
+  private getFocusFor(prop: keyof IPipelineConfig, key: string) {
+    const lookup: TagFocusElement = [prop, key];
+    if (this.state.focus.hide.includes(lookup)) {
+      return Focus.hide;
+    }
+    if (this.state.focus.focus.includes(lookup)) {
+      return Focus.focus;
+    }
+    return Focus.normal;
+  }
+
+  private setFocusFor(prop: keyof IPipelineConfig, key: string, value: Focus, solo: boolean) {
+    this.setState(({focus}) => {
+      if (solo) {
+        Object.entries(focus).forEach(([focusType, e]) => {
+          const items: TagFocusElement[] = focusType === value ? [[prop, key]] : [];
+          e.splice(0, e.length, ...items);
+        });
+      } else {
+        Object.entries(focus).forEach(([focusType, e]) => {
+          const element: TagFocusElement = [prop, key];
+          const index = e.indexOf(element);
+          if (index >= 0) {
+            if (value === focusType) {
+              return;
+            }
+            e.splice(index, 1);
+          } else {
+            if (value !== focusType) {
+              return;
+            }
+            e.push(element);
+          }
+        });
+      }
+    });
+  }
+
+  private toggleMark(query: string, mark: string) {
+    this.setState(({xref}) => {
+      arraySetToggle(xref.marks, mark, query);
+      return {xref};
+    });
+  }
+
+  private getMarksFor(query: string) {
+    return Object.keys(this.state.xref.marks).filter((key) => arraySetHas(this.state.xref.marks, key, query));
+  }
+}
+/*
+        marks: string[],
+        toggleMark(mark: string): void,
+
+ */
 export type TagControlFactory = App["TagControl"];
+export type MarksControlFactory = App["MarksControl"];
 
 type PrefixUnion<A, B> = A & Omit<B, keyof A>;
 
@@ -617,7 +686,7 @@ function variantForPass(value: Pass): BadgeProps["variant"] {
 }
 
 function FilterRow({ label, config, prop, TagControl }:
-  { label: string, prop: ConfigFlagPropertyNames, config: IPassMap, TagControl: TagControlFactory; }) {
+  { label: string, prop: keyof ITagCrossReference, config: IPassMap, TagControl: TagControlFactory; }) {
     const [open, setOpen] = React.useState(false);
     const flags = Object.keys(config).sort();
     let hidden = 0;
@@ -632,7 +701,7 @@ function FilterRow({ label, config, prop, TagControl }:
           hidden++;
           return false;
         }
-        return <TagControl prop={prop} flag={flag} value={value} />;
+        return <TagControl prop={prop} flag={flag} value={value} query={undefined}/>;
       })}
     </Col>
     <Col xs={2} className="tags">

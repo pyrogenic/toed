@@ -4,15 +4,17 @@ import ButtonGroup from "react-bootstrap/ButtonGroup";
 import Col from "react-bootstrap/Col";
 import Dropdown from "react-bootstrap/Dropdown";
 import Row from "react-bootstrap/Row";
+import Focus from "./Focus";
+import OpenIconicNames from "./OpenIconicNames";
 import Pass from "./Pass";
 
 interface IProps {
-    value: Pass;
-    focus: boolean;
-    xref?: string[];
-    change(pass: Pass): void;
+    pass: Pass;
+    focus: Focus;
+    words?: string[];
+    changePass(pass: Pass): void;
+    changeFocus(focus: Focus, solo: boolean): void;
     lookup(word: string): void;
-    toggleFocus(): void;
 }
 
 interface IState {
@@ -21,7 +23,7 @@ interface IState {
 
 export default class PassComponent extends React.Component<IProps, IState> {
     public render() {
-        const { lookup, change: realChange, focus, toggleFocus, value, xref } = this.props;
+        const { lookup, pass, changePass, focus, changeFocus, words } = this.props;
         const CustomToggle = React.forwardRef<Button, ConstructorParameters<typeof Button>[0]>(
             ({ children, onClick }, ref: any) => (
             <Button ref={ref} size="sm" variant="outline-secondary" onClick={(e: { preventDefault: () => void; }) => {
@@ -31,26 +33,46 @@ export default class PassComponent extends React.Component<IProps, IState> {
                 {children}
             </Button>
         ));
-        return <Row>
-            <ButtonGroup as={Col}>
-                <Button size="sm" variant={focus ? "secondary" : "outline-secondary"} onClick={toggleFocus}>
+        return <><Row>
+            <ButtonGroup as={Col} className="mb-2">
+                <Button
+                    onClick={changeFocus.bind(null, Focus.hide, false)}
+                    size="sm"
+                    variant={focus === Focus.hide ? "secondary" : "outline-secondary"}
+                >
+                    <span className="oi oi-code" title="focus" aria-hidden={true} />
+                </Button>
+                <Button
+                    onClick={changeFocus.bind(null, Focus.normal, false)}
+                    size="sm"
+                    variant={focus === Focus.normal ? "secondary" : "outline-secondary"}
+                >
                     <span className="oi oi-eye" title="focus" aria-hidden={true} />
+                </Button>
+                <Button
+                    onClick={changeFocus.bind(null, Focus.focus, false)}
+                    size="sm"
+                    variant={focus === Focus.focus ? "secondary" : "outline-secondary"}
+                >
+                    <span className="oi oi-target" title="focus" aria-hidden={true} />
                 </Button>
                 <Dropdown onSelect={(word: string) => lookup(word)}>
                     <Dropdown.Toggle as={CustomToggle} id="tagged-words">
                         <span className="oi oi-list" title="list" aria-hidden={true} />
                     </Dropdown.Toggle>
                     <Dropdown.Menu>
-                        {xref?.map((word) => <Dropdown.Item eventKey={word}>{word}</Dropdown.Item>)}
+                        {words?.map((word) => <Dropdown.Item eventKey={word}>{word}</Dropdown.Item>)}
                     </Dropdown.Menu>
                 </Dropdown>
             </ButtonGroup>
+        </Row>
+        <Row>
             <ButtonGroup as={Col}>
                 <Button
                     onClick={change.bind(null, Pass.primary)}
                     size="sm"
                     variant={
-                        value === Pass.primary
+                        pass === Pass.primary
                             ? "primary"
                             : "outline-primary"}
                 >
@@ -60,7 +82,7 @@ export default class PassComponent extends React.Component<IProps, IState> {
                     onClick={change.bind(null, Pass.secondary)}
                     size="sm"
                     variant={
-                        value === Pass.secondary
+                        pass === Pass.secondary
                             ? "primary"
                             : "outline-primary"}
                 >
@@ -70,7 +92,7 @@ export default class PassComponent extends React.Component<IProps, IState> {
                     onClick={change.bind(null, Pass.tertiary)}
                     size="sm"
                     variant={
-                        value === Pass.tertiary
+                        pass === Pass.tertiary
                             ? "primary"
                             : "outline-primary"}
                 >
@@ -80,17 +102,17 @@ export default class PassComponent extends React.Component<IProps, IState> {
                     onClick={change.bind(null, Pass.banned)}
                     size="sm"
                     variant={
-                        value === Pass.banned
+                        pass === Pass.banned
                             ? "primary"
                             : "outline-primary"}
                 >
                     <span className="oi oi-ban" title="Disallow" />
                 </Button>
             </ButtonGroup>
-        </Row>;
+        </Row></>;
 
         function change(v: Pass) {
-            realChange(v);
+            changePass(v);
         }
     }
 }

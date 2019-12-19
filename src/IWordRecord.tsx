@@ -8,6 +8,7 @@ export interface ITags {
     registers?: string[];
     domains?: string[];
     imputed?: Array<[string, string?]>;
+    marks?: string[];
 }
 
 export type ResultTags<T> =
