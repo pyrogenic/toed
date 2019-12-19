@@ -125,6 +125,7 @@ function WordRow(
     const moreInfo = (pipelineNotes && pipelineNotes.length > 0)
         || resultDiscarded || resultDiscardedTags;
     return <Row className="entry" key={`${record.q}`}>
+        <MarksControl word={record.q} badges={true}/>
         <Col xs={fluid ? "auto" : 1}>
             {result.entry_rich && record.q !== result.entry_rich && <Row className="text-muted">
                 {record.q}

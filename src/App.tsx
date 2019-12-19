@@ -5,7 +5,7 @@ import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
 import uniq from "lodash/uniq";
 import without from "lodash/without";
-import React, {ElementType} from "react";
+import React from "react";
 import Badge, {BadgeProps} from "react-bootstrap/Badge";
 import Button, {ButtonProps} from "react-bootstrap/Button";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
@@ -28,13 +28,9 @@ import defaultConfig from "./default.od3config.json";
 import fetchWord from "./fetchWord";
 import Focus from "./Focus";
 import {ITags} from "./IWordRecord";
-import {arraySetAdd, arraySetHas, arraySetToggle, ensureMap, PropertyNamesOfType} from "./Magic";
-import OpenIconicNames from "./OpenIconicNames";
-import OxfordDictionariesPipeline, {
-  IPassMap,
-  IPipelineConfig,
-  PartialWordRecord,
-} from "./OxfordDictionariesPipeline";
+import {arraySetAdd, arraySetHas, arraySetToggle, ensureMap} from "./Magic";
+import Marks from "./Marks";
+import OxfordDictionariesPipeline, {IPassMap, IPipelineConfig, PartialWordRecord} from "./OxfordDictionariesPipeline";
 import Pass from "./Pass";
 import PassComponent from "./PassComponent";
 import IEntry from "./types/gen/IEntry";
@@ -44,12 +40,6 @@ import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
-
-const MARKS: Array<[string, OpenIconicNames]> = [
-  ["heart", OpenIconicNames.heart],
-  ["pin", OpenIconicNames.pin],
-  ["bug", OpenIconicNames.bug],
-];
 
 interface IStringMap { [key: string]: string[]; }
 
@@ -149,6 +139,7 @@ export default class App extends React.Component<IProps, IState> {
         }
       }
     });
+    Marks.forEach(([key]) => config.marks[key] = config.marks[key] ?? Pass.primary);
     const history: string[] = uniq(JSON.parse(localStorage.getItem("oed/history") || "[]"));
     const hidden: string[] = uniq(JSON.parse(localStorage.getItem("oed/hidden") || "[]"));
     this.state = {
@@ -297,7 +288,7 @@ export default class App extends React.Component<IProps, IState> {
         {this.renderFilter("Registers", "registers")}
         {this.renderFilter("Domains", "domains")}
         {this.renderFilter("Imputed", "imputed")}
-        {this.renderFilter("Marks", "marks")}
+        {this.renderFilter("Marks", "marks", true)}
 
         {/* {this.state.re && this.state.re.results &&
         <Row>
@@ -456,8 +447,15 @@ export default class App extends React.Component<IProps, IState> {
     }
   }
 
-  private renderFilter(label: string, prop: keyof ITagCrossReference): React.ReactNode {
-    return <FilterRow label={label} prop={prop} config={this.state.config[prop]} TagControl={this.TagControl} />;
+  private renderFilter(label: string, prop: keyof ITagCrossReference, showAll?: boolean): React.ReactNode {
+    return <FilterRow
+        label={label}
+        prop={prop}
+        config={this.state.config[prop]}
+        xref={this.state.xref[prop]}
+        TagControl={this.TagControl}
+        showAll={showAll}
+    />;
   }
 
   private renderResponse = (entry: IHeadwordEntry, index: number) => {
@@ -506,9 +504,9 @@ export default class App extends React.Component<IProps, IState> {
     }
   }
 
-  private lookup = (...words: string[]) => {
+  private lookup = (...words: Array<string | undefined>) => {
     this.setState(({busy}) => ({busy: busy + 1}),
-        () => this.continueLookup([...words])
+        () => this.continueLookup(compact(words))
             .then(() => this.setState(({busy}) => ({busy: busy - 1}))));
   }
 
@@ -575,11 +573,7 @@ export default class App extends React.Component<IProps, IState> {
             pass={value}
             focus={this.getFocusFor(prop, key)}
             words={words}
-            changePass={(newValue) =>
-              this.setState((state) => {
-                state.config[prop][flag] = newValue;
-                return {config: {...state.config}};
-              }, () => this.lookup(...words))}
+            changePass={this.changePass.bind(this, query, prop, flag)}
             changeFocus={this.setFocusFor.bind(this, prop, flag)}
             lookup={this.lookup}
           />
@@ -591,14 +585,24 @@ export default class App extends React.Component<IProps, IState> {
     </OverlayTrigger>;
   }
 
-  // tslint:disable-next-line:member-ordering
-  private TagControl = React.memo(this.tagControl);
+  private changePass(query: string | undefined, prop: keyof IPipelineConfig, flag: string, newValue: Pass) {
+    const words = this.state.xref[prop][flag];
+    this.setState((state) => {
+      state.config[prop][flag] = newValue;
+      return {config: {...state.config}};
+    }, () => this.lookup(query, ...words));
+  }
 
-  private marksControl = ({word}: { word: string }) => {
+  private marksControl = ({word, badges}: { word: string, badges?: boolean}) => {
     const marks = this.getMarksFor(word);
+    if (badges) {
+      return <div className="marks">{Marks.map(([mark, icon]) =>
+            marks.includes(mark) && <Badge key={mark}><span className={`oi oi-${icon}`} title={mark}/></Badge>)}</div>;
+    }
     return <ButtonGroup>
-      {MARKS.map(([mark, icon]) =>
+      {Marks.map(([mark, icon]) =>
           <Button
+              key={mark}
               onClick={this.toggleMark.bind(this, word, mark)}
               size="sm"
               variant={
@@ -611,8 +615,14 @@ export default class App extends React.Component<IProps, IState> {
     </ButtonGroup>;
   }
 
+  // // tslint:disable-next-line:member-ordering
+  // private TagControl = React.memo(this.tagControl);
+  // // tslint:disable-next-line:member-ordering
+  // private MarksControl = React.memo(this.marksControl);
   // tslint:disable-next-line:member-ordering
-  private MarksControl = React.memo(this.marksControl);
+  private TagControl = this.tagControl;
+  // tslint:disable-next-line:member-ordering
+  private MarksControl = this.marksControl;
 
   private getFocusFor(prop: keyof IPipelineConfig, key: string) {
     const lookup: TagFocusElement = [prop, key];
@@ -656,7 +666,7 @@ export default class App extends React.Component<IProps, IState> {
     this.setState(({xref}) => {
       arraySetToggle(xref.marks, mark, query);
       return {xref};
-    });
+    }, () => this.lookup(query));
   }
 
   private getMarksFor(query: string) {
@@ -685,9 +695,22 @@ function variantForPass(value: Pass): BadgeProps["variant"] {
   return variants[value];
 }
 
-function FilterRow({ label, config, prop, TagControl }:
-  { label: string, prop: keyof ITagCrossReference, config: IPassMap, TagControl: TagControlFactory; }) {
-    const [open, setOpen] = React.useState(false);
+function FilterRow({
+                     label,
+                     config,
+                     prop,
+                     TagControl,
+                     showAll = false,
+                   }:
+                       {
+                         label: string,
+                         prop: keyof ITagCrossReference,
+                         config: IPassMap,
+                         xref: IStringMap,
+                         TagControl: TagControlFactory;
+                         showAll?: boolean
+                       }) {
+    const [open, setOpen] = React.useState(showAll);
     const flags = Object.keys(config).sort();
     let hidden = 0;
     return <Row>

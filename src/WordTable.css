@@ -2,6 +2,12 @@
     font-size: smaller;
 }
 
+.word-table>.row>.marks {
+    width: 0;
+    direction: rtl;
+    white-space: nowrap;
+}
+
 .word-table>:first-child.row:not(.entry) {
     font-weight: bolder;
 }

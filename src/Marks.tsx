@@ -1,8 +1,11 @@
 import OpenIconicNames from "./OpenIconicNames";
 
-export const MARKS: Array<[string, OpenIconicNames]> = [
+const Marks: Array<[string, OpenIconicNames]> = [
     ["heart", OpenIconicNames.heart],
     ["pin", OpenIconicNames.pin],
     ["questionable", OpenIconicNames["question-mark"]],
+    ["objectionable", OpenIconicNames.warning],
     ["bug", OpenIconicNames.bug],
 ];
+
+export default Marks;
