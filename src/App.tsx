@@ -40,6 +40,11 @@ import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
+import cloneDeep from "lodash/cloneDeep";
+import OpenIconicNames from "./OpenIconicNames";
+import NavbarBrand from "react-bootstrap/NavbarBrand";
+
+const MAX_THREADS = 1;
 
 interface IStringMap { [key: string]: string[]; }
 
@@ -61,7 +66,9 @@ interface IState {
 
   language: OxfordLanguage;
   q?: string;
-  busy: number;
+  queue: string[];
+  paused?: boolean | number;
+  promises: Array<Promise<any>>;
 
   history: string[];
   hidden: string[];
@@ -78,6 +85,7 @@ export default class App extends React.Component<IProps, IState> {
   public static stylesheet?: CSSStyleSheet;
   private static highlightedTag?: string;
   private static ruleIndex: Map<string, CSSStyleRule> = new Map();
+  private timer?: NodeJS.Timeout;
 
   constructor(props: Readonly<IProps>) {
     super(props);
@@ -146,13 +154,14 @@ export default class App extends React.Component<IProps, IState> {
       apiBaseUrl: "/api/v2",
       app_id: localStorage.getItem("oed/app_id") || undefined,
       app_key: localStorage.getItem("oed/app_key") || undefined,
-      busy: 0,
       config,
       focus,
       hidden,
       history,
       language: OxfordLanguage.americanEnglish,
+      promises: [],
       q: sessionStorage.getItem("oed/q") || undefined,
+      queue: [],
       records: [],
       xref,
     };
@@ -172,7 +181,15 @@ export default class App extends React.Component<IProps, IState> {
         }
       });
     }
-    // this.lookup(...this.state.history);
+    this.timer = setInterval(this.tick, 100);
+  }
+
+  public componentWillUnmount() {
+    let timer;
+    [this.timer, timer] = [undefined, this.timer];
+    if (timer) {
+      clearInterval(timer);
+    }
   }
 
   public componentDidUpdate() {
@@ -207,14 +224,15 @@ export default class App extends React.Component<IProps, IState> {
   public render() {
     const loaded = this.state.records.map(({q}) => q);
     const history = without(this.state.history, ...loaded).reverse();
-    const remainingBadWords = without(badWords, ...loaded).reverse();
+    const remainingBadWords = without(badWords, ...loaded);
     const WordListComponent = this.WordListComponent;
+    const QueueComponent = this.QueueComponent;
     return <>
-      <Navbar bg="light" expand="lg">
-        <Navbar.Brand href="#home">OD³</Navbar.Brand>
-        <Navbar.Text className="powered-by-oxford"> Oxford Dictionaries Definition Distiller</Navbar.Text>
-        <Navbar.Toggle aria-controls="nav"/>
+      <Navbar bg="light" expand="sm">
+        <Navbar.Toggle aria-controls="nav" as={NavbarBrand}>OD³</Navbar.Toggle>
         <Navbar.Collapse id="nav">
+          <Navbar.Brand href="#home">OD³</Navbar.Brand>
+          <Navbar.Text className="powered-by-oxford"> Oxford Dictionaries Definition Distiller</Navbar.Text>
           <NavDropdown title="Keys" id="nav-import" as={Button}>
             <Container>
               <Form>
@@ -243,33 +261,31 @@ export default class App extends React.Component<IProps, IState> {
                   currentConfig={this.state.config}
                   setConfig={(config) => this.setState({config})}/>
             </Container>
-            {/*{FLAG_PROPS.map((prop) => <NavDropdown.Item*/}
-            {/*    onClick={() =>*/}
-            {/*        console.log({[prop]: this.state.config[prop]})}*/}
-            {/*    href={"#" + prop}>{prop.replace("allowed", "")}*/}
-            {/*</NavDropdown.Item>)}*/}
           </NavDropdown>
+
           <Nav className="mr-auto"/>
 
           <WordListComponent label={"Bad Words"} words={remainingBadWords} variant={"outline-warning"}/>
           <WordListComponent label={"History"} words={history}/>
-
-          <Form inline={true} onSubmitCapture={this.go}>
-            <InputGroup>
-              <Form.Control
-                  placeholder={"one or more terms"}
-                  value={this.state.q}
-                  onChange={(e: any) => this.setState({q: e.target.value ? e.target.value : undefined})}
-              />
-              <InputGroup.Append>
-                <Button
-                    onClick={this.go}
-                    variant="outline-primary"
-                    disabled={!this.state.q || this.state.q.length < 2}>Look Up</Button>
-              </InputGroup.Append>
-            </InputGroup>
-          </Form>
+          <QueueComponent />
         </Navbar.Collapse>
+        <Form inline={true} onSubmitCapture={this.go}>
+          <InputGroup>
+            <InputGroup.Prepend>
+            <Form.Control
+                placeholder={"one or more terms"}
+                value={this.state.q}
+                onChange={(e: any) => this.setState({q: e.target.value ? e.target.value : undefined})}
+            />
+            </InputGroup.Prepend>
+            <InputGroup.Append>
+              <Button
+                  onClick={this.go}
+                  variant="outline-primary"
+                  disabled={!this.state.q || this.state.q.length < 2}>Look Up</Button>
+            </InputGroup.Append>
+          </InputGroup>
+        </Form>
       </Navbar>
       <Container>
         <Row>
@@ -322,41 +338,6 @@ export default class App extends React.Component<IProps, IState> {
     </>;
   }
 
-  private WordListComponent = ({label, words, variant = "outline-primary"}:
-                                   { label: string, words: string[], variant?: ButtonProps["variant"] }) => {
-    return <>
-      <Dropdown>
-        <Dropdown.Toggle
-            id={`nav-${label}`}
-          variant={variant}
-          style={{border: "none"}}
-          disabled={words.length === 0}>
-          {label}{words.length > 0 && ` (${words.length})`}
-        </Dropdown.Toggle>
-        <Dropdown.Menu>
-        {
-          words.map((q) =>
-              <Dropdown.Item key={q} onClick={() => this.setState({q}, this.go)}>{q}</Dropdown.Item>,
-          )
-        }
-        </Dropdown.Menu>
-      </Dropdown>
-      <Navbar.Text className="mr-3">
-        <ButtonGroup>
-          {[1, 2, 10, 100, 1000].map((n) =>
-              words.length >= n && <Button
-                  key={n}
-                  variant={variant}
-                  onClick={() =>
-                      this.lookup(...words.slice(0, n))}>{n}</Button>)}
-          {words.length > 0 && <Button
-              variant={variant}
-              onClick={() => this.lookup(...words)}>All</Button>}
-        </ButtonGroup>
-      </Navbar.Text>
-    </>;
-  }
-
   public allowed = (prop: keyof IPipelineConfig, flag: string): Pass => {
     let allowed = this.state.config[prop][flag];
     if (allowed === undefined) {
@@ -380,22 +361,109 @@ export default class App extends React.Component<IProps, IState> {
     return allowed;
   }
 
-  public processed = (query: string, record: PartialWordRecord) => {
-    const {allTags} = record;
-    if (allTags) {
-      this.setState(({xref}) => {
-        Object.entries(allTags).forEach(([tagType, tags]) =>
-            tags?.forEach((tag: [string, string] | string) => {
-              if (typeof tag !== "string") {
-                tag = tag[0];
-              }
-              const tagTypeXref = ensureMap(xref, tagType as keyof ITags);
-              arraySetAdd(tagTypeXref, tag, query, true);
-            }));
-        return {xref};
-      });
+  public processed = (query: string, {allTags}: PartialWordRecord) => {
+    if (!allTags) {
+      return;
     }
+
+    setImmediate(this.updateXref, query, cloneDeep(allTags));
   }
+
+  private updateXref = (query: string, allTags: ITags) => {
+    this.setState(({xref}) => {
+      Object.entries(allTags).forEach(([tagType, tags]) =>
+          tags?.forEach((tag: [string, string] | string) => {
+            if (typeof tag !== "string") {
+              tag = tag[0];
+            }
+            const tagTypeXref = ensureMap(xref, tagType as keyof ITags);
+            arraySetAdd(tagTypeXref, tag, query, true);
+          }));
+      return {xref};
+    });
+  }
+
+  private WordListComponent = ({label, words, variant = "outline-primary"}:
+                                   { label: string, words: string[], variant?: ButtonProps["variant"] }) => {
+    const NavDropdownButtonGroup = this.NavDropdownButtonGroup;
+    return <NavDropdownButtonGroup variant={variant} label={label} words={words}>
+      {[1, 2, 10].map((n) =>
+          words.length >= n && <Button
+              key={n}
+              variant={variant}
+              onClick={() =>
+                  this.enqueue(words.slice(0, n))}>{n}</Button>)}
+        {words.length > 0 && <Button
+            variant={variant}
+            onClick={() => this.enqueue(words)}>All</Button>}
+    </NavDropdownButtonGroup>;
+  }
+
+  private NavDropdownButtonGroup = ({variant, label, words, children}:
+                                        React.PropsWithChildren<{
+                                          variant: ButtonProps["variant"], label: string, words: string[]
+                                        }>) => {
+    const disabled = words.length === 0;
+    const fakeButtonClassName = compact(["btn", `btn-${variant}`, disabled && "disabled"]).join(" ");
+    return <Nav>
+      <Navbar.Text className="mr-3">
+        <ButtonGroup>
+          <div className={fakeButtonClassName} style={{padding: 0}}>
+            <Dropdown className="d-flex justify-content-start">
+              <Dropdown.Toggle
+                  id={`nav-${label}`}
+                  className="flex-fill text-left"
+                  variant={variant}
+                  style={{border: "none"}}
+                  disabled={disabled}>
+                {label}{words.length > 0 && ` (${words.length})`}
+              </Dropdown.Toggle>
+              <Dropdown.Menu>
+                {
+                  words.map((q) =>
+                      <Dropdown.Item key={q} onClick={this.getOnClick(q)}>{q}</Dropdown.Item>,
+                  )
+                }
+              </Dropdown.Menu>
+            </Dropdown>
+          </div>
+          {children}
+        </ButtonGroup>
+      </Navbar.Text>
+    </Nav>;
+  }
+
+  private QueueComponent = () => {
+    const {paused, queue} = this.state;
+    const variant: ButtonProps["variant"] = "outline-secondary";
+    const NavDropdownButtonGroup = this.NavDropdownButtonGroup;
+    return <NavDropdownButtonGroup variant={variant} label={"Queue"} words={queue}>
+      <Button
+          variant={variant}
+          onClick={this.togglePause}>
+            <span
+                className={`oi oi-${paused ? OpenIconicNames["media-play"] : OpenIconicNames["media-pause"]}`}
+                title={paused ? "Unpause" : "Pause"}/>
+      </Button>
+      <Button
+          variant={variant}
+          onClick={this.unpauseOnce}
+          disabled={!paused || queue.length === 0}
+      >
+            <span
+                className={`oi oi-${OpenIconicNames["media-step-forward"]}`}
+                title="Process One"/>
+      </Button>
+    </NavDropdownButtonGroup>;
+  }
+
+  private getOnClick(q: string) {
+    return this.unshift.bind(this, [q], true);
+  }
+
+  private togglePause = () => this.setState(({paused}) => ({paused: !paused}));
+
+  private unpauseOnce = () => this.setState({paused: 1});
 
   private toggleFocus = (tag: string) => {
     (App.highlightedTag === tag ? this.onExitBadge : this.onEnterBadge)(tag);
@@ -504,18 +572,23 @@ export default class App extends React.Component<IProps, IState> {
     }
   }
 
-  private lookup = (...words: Array<string | undefined>) => {
-    this.setState(({busy}) => ({busy: busy + 1}),
-        () => this.continueLookup(compact(words))
-            .then(() => this.setState(({busy}) => ({busy: busy - 1}))));
+  private enqueue = (words: Array<string | undefined>) => {
+    this.setState(({queue}) =>
+        ({queue: uniq(compact(flatten([queue, words])))}));
   }
 
-  private continueLookup = async (words: string[]): Promise<void> => {
-    const word = words.shift();
-    if (word !== undefined) {
-      await this.get(word);
-      return this.continueLookup(words);
-    }
+  private unshift = (words: Array<string | undefined>, go?: boolean) => {
+    this.setState(({queue, paused}) => {
+      if (go && paused !== false) {
+        words = uniq(compact(words));
+        if (typeof paused === "number") {
+          paused += paused;
+        } else {
+          paused = words.length;
+        }
+      }
+      return ({queue: uniq(compact(flatten([words, queue]))), paused});
+    });
   }
 
   private go = () => {
@@ -523,11 +596,31 @@ export default class App extends React.Component<IProps, IState> {
     if (!q) {
       return;
     }
-    const queryWords = q.split(/\W+/) || [];
-    if (queryWords.length > 1) {
-      return this.continueLookup(queryWords);
-    }
-    this.get(q);
+    this.unshift(q.split(/\W+/),
+        true);
+  }
+
+  private tick = () => {
+    this.setState(({queue: [item, ...queue], paused, promises}) => {
+      if (paused === true || item === undefined || promises.length > MAX_THREADS) {
+        return null;
+      }
+      if (typeof paused === "number") {
+        paused--;
+      }
+      if (paused === 0) {
+        paused = true;
+      }
+      const promise: Promise<any> = this.get(item);
+      promise.then(this.resolvePromise(promise));
+      promises.push(promise);
+      return {queue, promises, paused};
+    });
+  }
+
+  private resolvePromise = (promise: Promise<any>) => {
+    return () => new Promise((resolve) => this.setState(({promises}) =>
+        ({promises: without(promises, promise)}), resolve));
   }
 
   private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
@@ -575,7 +668,7 @@ export default class App extends React.Component<IProps, IState> {
             words={words}
             changePass={this.changePass.bind(this, query, prop, flag)}
             changeFocus={this.setFocusFor.bind(this, prop, flag)}
-            lookup={this.lookup}
+            lookup={(word) => this.unshift([word], false)}
           />
         </Popover.Content>
       </Popover>}>
@@ -590,7 +683,7 @@ export default class App extends React.Component<IProps, IState> {
     this.setState((state) => {
       state.config[prop][flag] = newValue;
       return {config: {...state.config}};
-    }, () => this.lookup(query, ...words));
+    }, () => this.unshift([query, ...words]));
   }
 
   private marksControl = ({word, badges}: { word: string, badges?: boolean}) => {
@@ -666,7 +759,7 @@ export default class App extends React.Component<IProps, IState> {
     this.setState(({xref}) => {
       arraySetToggle(xref.marks, mark, query);
       return {xref};
-    }, () => this.lookup(query));
+    }, () => this.unshift([query]));
   }
 
   private getMarksFor(query: string) {

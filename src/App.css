@@ -1,3 +1,23 @@
+body {
+    overflow-y: scroll;
+}
+
+.navbar > * > * {
+    white-space: pre;
+    flex-flow: nowrap;
+}
+
+.navbar-toggler {
+    padding: 0.25rem;
+    margin-left: -8px;
+    margin-right: 8px;
+}
+
+.navbar-text > .btn-group > :first-child .dropdown {
+    width: calc(var(--breakpoint-sm) / 3);
+    text-align: left;
+}
+
 .powered-by-oxford:hover {
     background-image: url("poweredByOxford.png");
     background-repeat: no-repeat;
