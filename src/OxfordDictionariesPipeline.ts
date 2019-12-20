@@ -170,6 +170,7 @@ export default class OxfordDictionariesPipeline {
         function imputeTags(entry: IHeadwordEntry, lexicalEntry: ILexicalEntry) {
             const internalRedirect = internalRedirects.get(entry);
             const entryTags: ITags = {};
+            arraySetAdd(entryTags, "imputed", [entry.language]);
             internalRedirect?.lexicalEntries.forEach((redirectedFrom) => {
                 entryTags.grammaticalFeatures =
                     appendGrammaticalFeatures(redirectedFrom, entryTags.grammaticalFeatures);
@@ -365,6 +366,9 @@ export default class OxfordDictionariesPipeline {
         const definitions = short ? sense.shortDefinitions : sense.definitions;
         this.pullPronunciation(result, pronunciations);
         tags = cloneDeep(tags);
+        if (short) {
+            arraySetAdd(tags, "imputed", ["short"]);
+        }
         const resultTags = ensure(record, "resultTags", Object);
         const allTags = ensure(record, "allTags", Object);
         arraySetAdd(tags, "partsOfSpeech", partOfSpeech);
@@ -438,17 +442,16 @@ export default class OxfordDictionariesPipeline {
                     const cleanDefinition = this.cleanOxfordText(definition);
                     result.definitions = result.definitions || {};
                     result.definitions[partOfSpeech] = result.definitions[partOfSpeech] || [];
-                    result.definitions[partOfSpeech].push(cleanDefinition);
-                    resultTags.definitions = resultTags.definitions || {};
-                    resultTags.definitions[partOfSpeech] = resultTags.definitions[partOfSpeech] || [];
-                    // tslint:disable-next-line:no-console
-                    console.log({definition, tags});
-                    resultTags.definitions[partOfSpeech].push(tags);
-                    if (cleanDefinition !== definition) {
-                        const originals = ensure(record, "resultOriginal", Object);
-                        originals.definitions = originals.definitions || {};
-                        originals.definitions[partOfSpeech] = originals.definitions[partOfSpeech] || [];
-                        originals.definitions[partOfSpeech].push(definition);
+                    if (arraySetAdd(result.definitions, partOfSpeech, cleanDefinition)) {
+                        resultTags.definitions = resultTags.definitions || {};
+                        resultTags.definitions[partOfSpeech] = resultTags.definitions[partOfSpeech] || [];
+                        resultTags.definitions[partOfSpeech].push(tags);
+                        if (cleanDefinition !== definition) {
+                            const originals = ensure(record, "resultOriginal", Object);
+                            originals.definitions = originals.definitions || {};
+                            originals.definitions[partOfSpeech] = originals.definitions[partOfSpeech] || [];
+                            originals.definitions[partOfSpeech].push(definition);
+                        }
                     }
                     let discardedExamples = examples;
                     if (!result.example && examples && examples.length > 0) {

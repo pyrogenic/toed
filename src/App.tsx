@@ -1,4 +1,5 @@
 // import _ from "lodash";
+import cloneDeep from "lodash/cloneDeep";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
 import isEqual from "lodash/isEqual";
@@ -18,6 +19,7 @@ import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
 import Nav from "react-bootstrap/Nav";
 import Navbar from "react-bootstrap/Navbar";
+import NavbarBrand from "react-bootstrap/NavbarBrand";
 import NavDropdown from "react-bootstrap/NavDropdown";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Popover from "react-bootstrap/Popover";
@@ -30,6 +32,8 @@ import Focus from "./Focus";
 import {ITags} from "./IWordRecord";
 import {arraySetAdd, arraySetHas, arraySetToggle, ensureMap} from "./Magic";
 import Marks from "./Marks";
+import OpenIconicNames from "./OpenIconicNames";
+import OpTrack from "./OpTrack";
 import OxfordDictionariesPipeline, {IPassMap, IPipelineConfig, PartialWordRecord} from "./OxfordDictionariesPipeline";
 import Pass from "./Pass";
 import PassComponent from "./PassComponent";
@@ -40,11 +44,10 @@ import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
-import cloneDeep from "lodash/cloneDeep";
-import OpenIconicNames from "./OpenIconicNames";
-import NavbarBrand from "react-bootstrap/NavbarBrand";
+import RetrieveEntry from "./types/gen/RetrieveEntry";
 
 const MAX_THREADS = 1;
+const MAX_API_RATE = 20;
 
 interface IStringMap { [key: string]: string[]; }
 
@@ -64,9 +67,10 @@ interface IState {
   app_id?: string;
   app_key?: string;
 
-  language: OxfordLanguage;
+  languages: OxfordLanguage[];
   q?: string;
   queue: string[];
+  rate: number;
   paused?: boolean | number;
   promises: Array<Promise<any>>;
 
@@ -79,6 +83,10 @@ interface IState {
   config: IPipelineConfig;
   xref: ITagCrossReference;
   focus: TagFocus;
+}
+
+function odApiCallsLastMinute() {
+  return OpTrack.history("odapi", 60 * 1000)[0]?.length ?? 0;
 }
 
 export default class App extends React.Component<IProps, IState> {
@@ -158,10 +166,11 @@ export default class App extends React.Component<IProps, IState> {
       focus,
       hidden,
       history,
-      language: OxfordLanguage.americanEnglish,
+      languages: [OxfordLanguage.americanEnglish, OxfordLanguage.britishEnglish],
       promises: [],
       q: sessionStorage.getItem("oed/q") || undefined,
       queue: [],
+      rate: 0,
       records: [],
       xref,
     };
@@ -182,6 +191,7 @@ export default class App extends React.Component<IProps, IState> {
       });
     }
     this.timer = setInterval(this.tick, 100);
+    OpTrack.listeners.push(this.updateRate);
   }
 
   public componentWillUnmount() {
@@ -224,7 +234,7 @@ export default class App extends React.Component<IProps, IState> {
   public render() {
     const loaded = this.state.records.map(({q}) => q);
     const history = without(this.state.history, ...loaded).reverse();
-    const remainingBadWords = without(badWords, ...loaded);
+    const remainingBadWords = without(badWords, ...loaded, ...history);
     const WordListComponent = this.WordListComponent;
     const QueueComponent = this.QueueComponent;
     return <>
@@ -269,17 +279,16 @@ export default class App extends React.Component<IProps, IState> {
           <WordListComponent label={"History"} words={history}/>
           <QueueComponent />
         </Navbar.Collapse>
-        <Form inline={true} onSubmitCapture={this.go}>
+        <Form inline={true} onSubmitCapture={this.go} action={"#"}>
           <InputGroup>
-            <InputGroup.Prepend>
             <Form.Control
                 placeholder={"one or more terms"}
                 value={this.state.q}
                 onChange={(e: any) => this.setState({q: e.target.value ? e.target.value : undefined})}
             />
-            </InputGroup.Prepend>
             <InputGroup.Append>
               <Button
+                  type={"submit"}
                   onClick={this.go}
                   variant="outline-primary"
                   disabled={!this.state.q || this.state.q.length < 2}>Look Up</Button>
@@ -401,7 +410,7 @@ export default class App extends React.Component<IProps, IState> {
 
   private NavDropdownButtonGroup = ({variant, label, words, children}:
                                         React.PropsWithChildren<{
-                                          variant: ButtonProps["variant"], label: string, words: string[]
+                                          variant: ButtonProps["variant"], label: string, words: string[],
                                         }>) => {
     const disabled = words.length === 0;
     const fakeButtonClassName = compact(["btn", `btn-${variant}`, disabled && "disabled"]).join(" ");
@@ -434,13 +443,21 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private QueueComponent = () => {
-    const {paused, queue} = this.state;
+    const {paused, queue, rate} = this.state;
     const variant: ButtonProps["variant"] = "outline-secondary";
     const NavDropdownButtonGroup = this.NavDropdownButtonGroup;
+    const style = rate <= 0 ? undefined : {
+      backgroundImage: "linear-gradient(transparent 0%, var(--warning) 0%)",
+      backgroundPosition: "bottom",
+      backgroundRepeat: "no-repeat",
+      backgroundSize: `100% ${Math.min(Math.ceil(100 * rate / MAX_API_RATE), 100)}%`,
+    };
     return <NavDropdownButtonGroup variant={variant} label={"Queue"} words={queue}>
       <Button
           variant={variant}
-          onClick={this.togglePause}>
+          onClick={this.togglePause}
+          style={style}
+      >
             <span
                 className={`oi oi-${paused ? OpenIconicNames["media-play"] : OpenIconicNames["media-pause"]}`}
                 title={paused ? "Unpause" : "Pause"}/>
@@ -583,7 +600,7 @@ export default class App extends React.Component<IProps, IState> {
         words = uniq(compact(words));
         if (typeof paused === "number") {
           paused += paused;
-        } else {
+        } else if (paused) {
           paused = words.length;
         }
       }
@@ -596,13 +613,15 @@ export default class App extends React.Component<IProps, IState> {
     if (!q) {
       return;
     }
-    this.unshift(q.split(/\W+/),
-        true);
+    this.unshift(q.split(/\W+/), true);
   }
 
   private tick = () => {
-    this.setState(({queue: [item, ...queue], paused, promises}) => {
+    this.setState(({queue: [item, ...queue], paused, promises, rate}) => {
       if (paused === true || item === undefined || promises.length > MAX_THREADS) {
+        return null;
+      }
+      if (rate > MAX_API_RATE) {
         return null;
       }
       if (typeof paused === "number") {
@@ -612,20 +631,28 @@ export default class App extends React.Component<IProps, IState> {
         paused = true;
       }
       const promise: Promise<any> = this.get(item);
-      promise.then(this.resolvePromise(promise));
+      OpTrack.track("lookup", item, promise);
+      promise.then(...this.resolvePromise(promise));
       promises.push(promise);
       return {queue, promises, paused};
     });
   }
 
   private resolvePromise = (promise: Promise<any>) => {
-    return () => new Promise((resolve) => this.setState(({promises}) =>
+    const c = () => new Promise((resolve) => this.setState(({promises}) =>
         ({promises: without(promises, promise)}), resolve));
+    return [c, c];
   }
 
   private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
-    const {apiBaseUrl, language} = this.state;
-    const re = await fetchWord(apiBaseUrl, language, redirect || q);
+    const {apiBaseUrl, languages} = this.state;
+    const promises: Array<Promise<RetrieveEntry>> =
+        languages.map((language) => fetchWord(apiBaseUrl, language, redirect || q));
+    const res = await Promise.all(promises);
+    const re = res.reduce((re0, re1) => {
+      re0.results = flatten(compact([re0.results, re1.results]));
+      return re0;
+    });
     redirect = this.derivativeOf(re.results);
     if (redirect) {
       return this.get(q, redirect);
@@ -638,7 +665,7 @@ export default class App extends React.Component<IProps, IState> {
         }
         const pipeline = new OxfordDictionariesPipeline(q, re.results || [], this.allowed, this.processed);
         const record = new WordRecord(q, re, pipeline);
-        records.unshift(record);
+        records.push(record);
         arraySetAdd({history}, "history", q, "mru");
         return {re, records, history};
       }, resolve);
@@ -764,6 +791,19 @@ export default class App extends React.Component<IProps, IState> {
 
   private getMarksFor(query: string) {
     return Object.keys(this.state.xref.marks).filter((key) => arraySetHas(this.state.xref.marks, key, query));
+  }
+
+  private updateRate = () => {
+    this.setState(({rate}) => {
+          const newRate = odApiCallsLastMinute();
+          if (newRate === rate) {
+            if (newRate > 0) {
+              setTimeout(this.updateRate, 100);
+            }
+            return null;
+          }
+          return {rate: newRate};
+        });
   }
 }
 /*

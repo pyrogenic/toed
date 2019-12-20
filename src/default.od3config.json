@@ -1,5 +1,13 @@
 {
   "domains":{
+    "bookbinding":1,
+    "naval":1,
+    "snooker":1,
+    "weightlifting":1,
+    "bellringing":1,
+    "ecology":1,
+    "entomology":1,
+    "french_revolution":1,
     "fishing":1,
     "office":1,
     "fire_service":1,
@@ -204,7 +212,7 @@
     "postal":1,
     "clothing":1,
     "islam":1,
-    "sex":2
+    "sex":3
   },
   "grammaticalFeatures":{
     "cardinal":1,
@@ -218,6 +226,13 @@
     "transitive":2
   },
   "imputed":{
+    "redirect-interjection":1,
+    "short":1,
+    "en-gb":2,
+    "en-us":1,
+    "redirect-adjective":1,
+    "redirect-adverb":1,
+    "redirect-pronoun":1,
     "redirect-verb":1,
     "redirect":1,
     "inexact":1,
@@ -228,6 +243,13 @@
     "inexact-mixed-case":1,
     "exact-mixed-case":2,
     "mixed-case":3
+  },
+  "marks":{
+    "heart":1,
+    "pin":1,
+    "questionable":1,
+    "bug":1,
+    "objectionable":1
   },
   "partsOfSpeech":{
     "numeral":1,
@@ -246,6 +268,8 @@
     "contraction":0
   },
   "registers":{
+    "nautical_slang":1,
+    "technical":1,
     "trademark_in_uk":1,
     "slang":1,
     "dialect":1,
@@ -263,7 +287,5 @@
     "informal":2,
     "derogatory":2,
     "offensive":0
-  },
-  "marks": {
   }
 }

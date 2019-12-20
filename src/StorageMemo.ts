@@ -1,4 +1,3 @@
-
 export interface IOptions {
     cache?: boolean;
     bypass?: boolean;
@@ -8,11 +7,14 @@ export default class StorageMemo<TProps, TResult> {
     public readonly storage: Storage;
     public readonly name: string;
     public readonly factory: (props: TProps) => Promise<TResult>;
+    public readonly validate?: (result: TResult) => boolean;
 
-    constructor(storage: Storage, name: string, factory: (props: TProps) => Promise<TResult>) {
+    constructor(storage: Storage, name: string, factory: (props: TProps) => Promise<TResult>,
+                validate?: (result: TResult) => boolean) {
         this.storage = storage;
         this.name = name;
         this.factory = factory;
+        this.validate = validate;
     }
 
     public async get(props: TProps, {cache, bypass}: IOptions = {}) {
@@ -21,7 +23,11 @@ export default class StorageMemo<TProps, TResult> {
         const key = `${this.name}/${JSON.stringify(props)}`;
         const cachedValue = !bypass && this.storage.getItem(key);
         if (cachedValue) {
-            return JSON.parse(cachedValue) as TResult;
+            const parse = JSON.parse(cachedValue) as TResult;
+            const valid = this.validate?.(parse) ?? "no validate func";
+            if (valid) {
+                return parse;
+            }
         }
         const newValue = await this.factory(props);
         if (cache) {
