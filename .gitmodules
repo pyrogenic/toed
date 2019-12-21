@@ -1,0 +1,3 @@
+[submodule "submodules/webdis"]
+	path = submodules/webdis
+	url = git@github.com:pyrogenic/webdis.git
