@@ -46,7 +46,14 @@ const server = http.createServer((req, res) => {
         res.end();
         return;   
     }
-    let proxyUrl = "https://od-api.oxforddictionaries.com";
+    let proxyUrl;
+    if (req.url.match(/^\/api\//)) {
+        proxyUrl = "https://od-api.oxforddictionaries.com";
+    } else if (req.url.match(/^\/[A-Z]+/)) {
+        proxyUrl = "http://localhost:7379";
+    } else {
+        throw new Error(`bad scheme: ${req.url}`);
+    }
     proxyUrl = `${proxyUrl}${req.url}`;
     const headers = { Accept: 'application/json' };
     FORWARD_HEADERS.forEach((h) => {

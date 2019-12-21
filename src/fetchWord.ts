@@ -1,6 +1,6 @@
 import { deserialize } from "serializr";
 import { fetchMemo } from "./fetchJson";
-import { IOptions as IStorageMemoOptions } from "./StorageMemo";
+import { IMemoOptions as IStorageMemoOptions } from "./StorageMemo";
 import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 

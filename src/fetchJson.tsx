@@ -1,4 +1,5 @@
 import StorageMemo from "./StorageMemo";
+import RedisMemo from "./RedisMemo";
 import OpTrack from "./OpTrack";
 
 export default async function fetchJson(url: string) {
@@ -16,7 +17,7 @@ export default async function fetchJson(url: string) {
   return await queryResult.json();
 }
 
-const fetchMemo = new StorageMemo(localStorage, "fetchJson", fetchJson,
-    (result) => typeof result === "object" && !("errno" in result));
+const storageMemo = new StorageMemo(localStorage, "fetchJson", fetchJson, (result) => typeof result === "object" && !("errno" in result))
+const fetchMemo = new RedisMemo("", "od-api", storageMemo.get) ;
 
 export { fetchMemo };
