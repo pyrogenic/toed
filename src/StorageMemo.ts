@@ -17,7 +17,7 @@ export default class StorageMemo<TProps, TResult> {
         this.validate = validate;
     }
 
-    public async get(props: TProps, {cache, bypass}: IMemoOptions = {}) {
+    public get = async (props: TProps, {cache, bypass}: IMemoOptions = {}) => {
         if (cache === undefined) { cache = true; }
         if (bypass === undefined) { bypass = false; }
         const key = `${this.name}/${JSON.stringify(props)}`;

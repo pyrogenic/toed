@@ -10,34 +10,29 @@ export default class RedisMemo<TProps, TResult> {
     public readonly validate?: (result: TResult) => boolean;
 
     constructor(webdis: string, name: string, factory: (props: TProps) => Promise<TResult>,
-        validate?: (result: TResult) => boolean) {
+                validate?: (result: TResult) => boolean) {
         this.webdis = webdis;
         this.name = name;
         this.factory = factory;
         this.validate = validate;
     }
 
-    public async get(props: TProps, { cache, bypass }: IOptions = {}) {
+    public get = async (props: TProps, { cache, bypass }: IOptions = {}) => {
         if (cache === undefined) { cache = true; }
         if (bypass === undefined) { bypass = false; }
         const key = `${this.name}:${encodeURIComponent(JSON.stringify(props).replace(/^"|"$/g, ""))}`;
         if (!bypass) {
-            try {
-                const url = `${this.webdis}/GET/${key}.txt`;
-                const { cachedValue, success } = await this.go(url);
-                if (success) {
-                    const parse = JSON.parse(cachedValue) as TResult;
-                    const valid = this.validate?.(parse) ?? "no validate func";
-                    if (valid) {
-                        return parse;
-                    }
-                } else {
-                    console.warn(cachedValue);
+            const url = `${this.webdis}/GET/${key}.txt`;
+            const { cachedValue, success } = await this.go(url);
+            if (success) {
+                const parse = JSON.parse(cachedValue) as TResult;
+                const valid = this.validate?.(parse) ?? "no validate func";
+                if (valid) {
+                    return parse;
                 }
-            } catch (error) {
-                // console.warn({ error });
             }
         }
+        console.log({ passingOn: props });
         const newValue = await this.factory(props);
         console.log({ newValue });
         if (cache) {
@@ -49,10 +44,19 @@ export default class RedisMemo<TProps, TResult> {
     }
 
     private go(url: string): Promise<{ success: boolean, cachedValue: string; }> {
+        const catchError = (error: Error) => {
+            console.log({ error });
+            return { cachedValue: error.message, success: false };
+        };
         return fetch(url).then(
-            (response) => response.text()
-                .then((cachedValue: string) => ({ cachedValue, success: true }),
-                    (error) => ({ cachedValue: error, success: false })),
-            (error) => ({ cachedValue: error.message, success: false }));
+            (response) => {
+                const {ok: success, status} = response;
+                console.log({ success, status });
+                return response.text()
+                    .then(
+                        (cachedValue: string) => ({ cachedValue, success }),
+                        catchError);
+            },
+            catchError);
     }
 }

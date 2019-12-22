@@ -41,10 +41,10 @@ import IEntry from "./types/gen/IEntry";
 import IHeadwordEntry from "./types/gen/IHeadwordEntry";
 import ILexicalEntry from "./types/gen/ILexicalEntry";
 import IRetrieveEntry from "./types/gen/IRetrieveEntry";
+import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
-import RetrieveEntry from "./types/gen/RetrieveEntry";
 
 const MAX_THREADS = 1;
 const MAX_API_RATE = 20;
@@ -857,7 +857,7 @@ function FilterRow({
           hidden++;
           return false;
         }
-        return <TagControl prop={prop} flag={flag} value={value} query={undefined}/>;
+        return <TagControl key={flag} prop={prop} flag={flag} value={value} query={undefined}/>;
       })}
     </Col>
     <Col xs={2} className="tags">

@@ -18,9 +18,10 @@
   },
   "scripts": {
     "bridge": "node src/bridge.js",
+    "pre-webdis": "mkdir -p log && touch log/webdis.log",
     "webdis": "submodules/webdis/webdis webdis.json",
     "tail-webdis": "tail -f log/webdis.log",
-    "start": "npm-run-all --parallel start-ts bridge webdis tail-webdis",
+    "start": "npm-run-all --print-label --sequential pre-webdis --parallel start-ts bridge tail-webdis webdis",
     "start-ts": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
