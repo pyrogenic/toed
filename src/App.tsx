@@ -191,7 +191,7 @@ export default class App extends React.Component<IProps, IState> {
       });
     }
     this.timer = setInterval(this.tick, 100);
-    OpTrack.listeners.push(this.updateRate);
+    OpTrack.listeners.push(setImmediate.bind(null, this.updateRate));
   }
 
   public componentWillUnmount() {
@@ -635,7 +635,7 @@ export default class App extends React.Component<IProps, IState> {
       promise.then(...this.resolvePromise(promise));
       promises.push(promise);
       return {queue, promises, paused};
-    });
+    }, this.updateRate);
   }
 
   private resolvePromise = (promise: Promise<any>) => {
@@ -797,9 +797,6 @@ export default class App extends React.Component<IProps, IState> {
     this.setState(({rate}) => {
           const newRate = odApiCallsLastMinute();
           if (newRate === rate) {
-            if (newRate > 0) {
-              setTimeout(this.updateRate, 100);
-            }
             return null;
           }
           return {rate: newRate};

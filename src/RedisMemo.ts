@@ -1,3 +1,5 @@
+import IMemoOptions from "./IMemoOptions";
+
 export interface IOptions {
     cache?: boolean;
     bypass?: boolean;
@@ -26,10 +28,10 @@ export default class RedisMemo<TProps, TResult> {
         this.validate = validate;
     }
 
-    public get = async (props: TProps, { cache, bypass }: IOptions = {}) => {
+    public get = async (props: TProps, { cache, bypass }: IMemoOptions = {}) => {
         if (cache === undefined) { cache = true; }
         if (bypass === undefined) { bypass = false; }
-        const key = this.name(props).map(encodeURIComponent.bind(null)).join(":");
+        const key = this.key(props);
         if (!bypass) {
             const url = `${this.webdis}/GET/${key}.txt`;
             const { cachedValue, success } = await this.go(url);
@@ -41,32 +43,36 @@ export default class RedisMemo<TProps, TResult> {
                 }
             }
         }
-        console.log({ passingOn: props });
         const newValue = await this.factory(props);
-        console.log({ newValue });
         if (cache) {
-            const value = JSON.stringify(newValue);
-            const putResult = await fetch(`${this.webdis}/SET/${key}`, {
-                body: value,
-                headers: {
-                    "Content-Type": "text/plain",
-                },
-                method: "PUT",
-            });
-            console.log({ putResult });
+            await this.cache(props, newValue, key);
         }
         return newValue;
     }
 
+    public cache = async (props: TProps, value: TResult, key?: string) => {
+        key = key ?? this.key(props);
+        const stringValue = JSON.stringify(value);
+        await fetch(`${this.webdis}/SET/${key}`, {
+            body: stringValue,
+            headers: {
+                "Content-Type": "text/plain",
+            },
+            method: "PUT",
+        });
+    }
+
+    private key(props: TProps) {
+        return this.name(props).map(encodeURIComponent.bind(null)).join(":");
+    }
+
     private go(url: string): Promise<{ success: boolean, cachedValue: string; }> {
         const catchError = (error: Error) => {
-            console.log({ error });
             return { cachedValue: error.message, success: false };
         };
         return fetch(url).then(
             (response) => {
-                const { ok: success, status } = response;
-                console.log({ success, status });
+                const { ok: success } = response;
                 return response.text()
                     .then(
                         (cachedValue: string) => ({ cachedValue, success }),

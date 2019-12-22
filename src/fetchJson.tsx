@@ -11,6 +11,7 @@ export default async function fetchJson(url: string) {
   if (!app_id || !app_key) {
     throw new Error("missing app id or key");
   }
+  // tslint:disable-next-line:no-console
   console.warn("fetch " + url);
   const promise = fetch(url, { headers: { Accept: "application/json", app_id, app_key } });
   OpTrack.track("odapi", url, promise);

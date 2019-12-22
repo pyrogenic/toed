@@ -1,7 +1,4 @@
-export interface IMemoOptions {
-    cache?: boolean;
-    bypass?: boolean;
-}
+import IMemoOptions from "./IMemoOptions";
 
 export default class StorageMemo<TProps, TResult> {
     public readonly storage: Storage;
