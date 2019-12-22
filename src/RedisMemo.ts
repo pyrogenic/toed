@@ -3,14 +3,23 @@ export interface IOptions {
     bypass?: boolean;
 }
 
+interface IRedisMemoProps<TProps, TResult> {
+    webdis: string;
+    /**
+     * scheme to turn props into a redis key name
+     */
+    name: (props: TProps) => string[];
+    factory: (props: TProps) => Promise<TResult>;
+    validate?: (result: TResult) => boolean;
+}
+
 export default class RedisMemo<TProps, TResult> {
     public readonly webdis: string;
-    public readonly name: string;
+    public readonly name: (props: TProps) => string[];
     public readonly factory: (props: TProps) => Promise<TResult>;
     public readonly validate?: (result: TResult) => boolean;
 
-    constructor(webdis: string, name: string, factory: (props: TProps) => Promise<TResult>,
-                validate?: (result: TResult) => boolean) {
+    constructor({ webdis, name, factory, validate }: IRedisMemoProps<TProps, TResult>) {
         this.webdis = webdis;
         this.name = name;
         this.factory = factory;
@@ -20,7 +29,7 @@ export default class RedisMemo<TProps, TResult> {
     public get = async (props: TProps, { cache, bypass }: IOptions = {}) => {
         if (cache === undefined) { cache = true; }
         if (bypass === undefined) { bypass = false; }
-        const key = `${this.name}:${encodeURIComponent(JSON.stringify(props).replace(/^"|"$/g, ""))}`;
+        const key = this.name(props).map(encodeURIComponent.bind(null)).join(":");
         if (!bypass) {
             const url = `${this.webdis}/GET/${key}.txt`;
             const { cachedValue, success } = await this.go(url);
@@ -43,7 +52,7 @@ export default class RedisMemo<TProps, TResult> {
                     "Content-Type": "text/plain",
                 },
                 method: "PUT",
-             });
+            });
             console.log({ putResult });
         }
         return newValue;
@@ -56,7 +65,7 @@ export default class RedisMemo<TProps, TResult> {
         };
         return fetch(url).then(
             (response) => {
-                const {ok: success, status} = response;
+                const { ok: success, status } = response;
                 console.log({ success, status });
                 return response.text()
                     .then(

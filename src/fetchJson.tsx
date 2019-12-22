@@ -1,6 +1,7 @@
-import StorageMemo from "./StorageMemo";
-import RedisMemo from "./RedisMemo";
+import compact from "lodash/compact";
 import OpTrack from "./OpTrack";
+import RedisMemo from "./RedisMemo";
+import StorageMemo from "./StorageMemo";
 
 export default async function fetchJson(url: string) {
   // tslint:disable: variable-name
@@ -17,7 +18,13 @@ export default async function fetchJson(url: string) {
   return await queryResult.json();
 }
 
-const storageMemo = new StorageMemo(localStorage, "fetchJson", fetchJson, (result) => typeof result === "object" && !("errno" in result))
-const fetchMemo = new RedisMemo("", "od-api", storageMemo.get) ;
+const storageMemo = new StorageMemo(localStorage, "fetchJson", fetchJson, (result) => typeof result === "object" && !("errno" in result));
+const fetchMemo = new RedisMemo({
+  factory: storageMemo.get,
+  name(url) {
+    return compact(["memo", "od-api", ...url.split(/[/?#=]/)]);
+  },
+  webdis: "",
+});
 
 export { fetchMemo };
