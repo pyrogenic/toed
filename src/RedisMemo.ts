@@ -37,7 +37,13 @@ export default class RedisMemo<TProps, TResult> {
         console.log({ newValue });
         if (cache) {
             const value = JSON.stringify(newValue);
-            const putResult = await fetch(`${this.webdis}/SET/${key}`, { method: "put", body: value });
+            const putResult = await fetch(`${this.webdis}/SET/${key}`, {
+                body: value,
+                headers: {
+                    "Content-Type": "text/plain",
+                },
+                method: "PUT",
+             });
             console.log({ putResult });
         }
         return newValue;
