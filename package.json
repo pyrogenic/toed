@@ -18,7 +18,9 @@
   },
   "scripts": {
     "bridge": "node src/bridge.js",
-    "start": "npm-run-all --parallel start-ts bridge",
+    "webdis": "submodules/webdis/webdis webdis.json",
+    "tail-webdis": "tail -f log/webdis.log",
+    "start": "npm-run-all --parallel start-ts bridge webdis tail-webdis",
     "start-ts": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
