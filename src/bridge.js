@@ -76,12 +76,12 @@ const server = http.createServer(async (req, res) => {
         });
         body = body ? body : undefined;
         const method = req.method;
-        console.log({ method, proxyUrl, headers, body });
+        console.log({ method, proxyUrl, bodyLength: body ? body.length : undefined });
         const response = await fetch(proxyUrl, { method, headers, body });
         res.setHeader('Content-Type', response.headers.get('content-type'));
         res.statusCode = response.status;
         const data = await response.text();
-        console.log({ data });
+        console.log({ responseLength: data ? data.length : undefined });
         res.end(data);
     } catch (error) {
         console.log({ error });

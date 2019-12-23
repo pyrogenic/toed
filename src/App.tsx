@@ -46,8 +46,9 @@ import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
 
-const MAX_THREADS = 1;
-const MAX_API_RATE = 20;
+const MAX_THREADS = 2;
+const MAX_LOADED = 30;
+const MAX_API_RATE = 200;
 
 interface IStringMap { [key: string]: string[]; }
 
@@ -62,6 +63,8 @@ interface IProps {
 
 }
 
+interface IPromiseEntry { q: string; promise: Promise<any>; }
+
 interface IState {
   apiBaseUrl: string;
   app_id?: string;
@@ -72,7 +75,7 @@ interface IState {
   queue: string[];
   rate: number;
   paused?: boolean | number;
-  promises: Array<Promise<any>>;
+  promises: IPromiseEntry[];
   lookup: Lookup;
 
   history: string[];
@@ -159,6 +162,7 @@ export default class App extends React.Component<IProps, IState> {
     Marks.forEach(([key]) => config.marks[key] = config.marks[key] ?? Pass.primary);
     const history: string[] = uniq(JSON.parse(localStorage.getItem("oed/history") || "[]"));
     const hidden: string[] = uniq(JSON.parse(localStorage.getItem("oed/hidden") || "[]"));
+    const enterprise = JSON.parse(localStorage.getItem("oed/enterprise") ?? "false");
     this.state = {
       apiBaseUrl: "/api/v2",
       app_id: localStorage.getItem("oed/app_id") || undefined,
@@ -168,7 +172,7 @@ export default class App extends React.Component<IProps, IState> {
       hidden,
       history,
       languages: [OxfordLanguage.americanEnglish, OxfordLanguage.britishEnglish],
-      lookup: new Lookup((process.env.REACT_APP_ENTERPRISE as unknown as boolean) ?? false),
+      lookup: new Lookup((process.env.REACT_APP_ENTERPRISE as unknown as boolean) ?? enterprise),
       promises: [],
       q: sessionStorage.getItem("oed/q") || undefined,
       queue: [],
@@ -465,7 +469,7 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private QueueComponent = () => {
-    const {paused, queue, rate} = this.state;
+    const {paused, promises, queue, rate} = this.state;
     const variant: ButtonProps["variant"] = "outline-secondary";
     const NavDropdownButtonGroup = this.NavDropdownButtonGroup;
     const style = rate <= 0 ? undefined : {
@@ -475,6 +479,7 @@ export default class App extends React.Component<IProps, IState> {
       backgroundSize: `100% ${Math.min(Math.ceil(100 * rate / MAX_API_RATE), 100)}%`,
     };
     return <NavDropdownButtonGroup variant={variant} label={"Queue"} words={queue} className={"mr-3"}>
+      {promises.map(({q}) => <Button>{q}</Button>)}
       <Button
           variant={variant}
           onClick={this.togglePause}
@@ -654,15 +659,16 @@ export default class App extends React.Component<IProps, IState> {
       }
       const promise: Promise<any> = this.get(item);
       OpTrack.track("lookup", item, promise);
-      promise.then(...this.resolvePromise(promise));
-      promises.push(promise);
+      const promiseEntry = { q: item, promise };
+      promise.then(...this.resolvePromise(promiseEntry));
+      promises.push(promiseEntry);
       return {queue, promises, paused};
     }, this.updateRate);
   }
 
-  private resolvePromise = (promise: Promise<any>) => {
+  private resolvePromise = (promiseEntry: IPromiseEntry) => {
     const c = () => new Promise((resolve) => this.setState(({promises}) =>
-        ({promises: without(promises, promise)}), resolve));
+        ({promises: without(promises, promiseEntry)}), resolve));
     return [c, c];
   }
 
@@ -689,6 +695,9 @@ export default class App extends React.Component<IProps, IState> {
         const record = new WordRecord(q, re, pipeline);
         records.push(record);
         arraySetAdd({history}, "history", q, "mru");
+        if (records.length > MAX_LOADED) {
+          records.shift();
+        }
         return {re, records, history};
       }, resolve);
     });
