@@ -177,7 +177,7 @@ export default class OxfordDictionariesPipeline {
                 arraySetAdd(entryTags, "imputed",
                     [`redirect-${redirectedFrom.lexicalCategory.id}`, `from '${internalRedirect.word}'`]);
             });
-            const {lexicalCategory: {id: partOfSpeech}, text} = lexicalEntry;
+            const {text} = lexicalEntry;
             const lexicalEntryTags = cloneDeep(entryTags);
             if (text === query.toLocaleLowerCase()) {
                 arraySetAdd(lexicalEntryTags, "imputed", ["exact"]);
@@ -304,13 +304,11 @@ export default class OxfordDictionariesPipeline {
                         if (senses === undefined || senses.length === 0) { return; }
                         const lentryGrammaticalFeatures = appendGrammaticalFeatures(lentry, grammaticalFeatures);
                         if (lentryGrammaticalFeatures.length > 0) {
-                            const disallowed = lentryGrammaticalFeatures.filter((tag) => {
+                            const disallowed = lentryGrammaticalFeatures.some((tag) => {
                                 const tagAllowedForPass = this.allowed("grammaticalFeatures", tag);
                                 return tagAllowedForPass > pass.pass;
                             });
-                            if (disallowed.length > 0) {
-                                // tslint:disable-next-line:no-console
-                                console.log(`entry ${entryIndex}.${lentryIndex} rejected because ${disallowed.join(" & ")} is/are disallowed for pass ${pass.pass}`);
+                            if (disallowed) {
                                 return;
                             }
                         }

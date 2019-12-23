@@ -1,7 +1,7 @@
 import compact from "lodash/compact";
+import RedisMemo from "./memo/RedisMemo";
+import StorageMemo from "./memo/StorageMemo";
 import OpTrack from "./OpTrack";
-import RedisMemo from "./RedisMemo";
-import StorageMemo from "./StorageMemo";
 
 export default async function fetchJson(url: string) {
   // tslint:disable: variable-name

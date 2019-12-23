@@ -799,6 +799,7 @@ export default class App extends React.Component<IProps, IState> {
           if (newRate === rate) {
             return null;
           }
+          console.log(newRate);
           return {rate: newRate};
         });
   }

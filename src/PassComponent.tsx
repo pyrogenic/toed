@@ -5,7 +5,6 @@ import Col from "react-bootstrap/Col";
 import Dropdown from "react-bootstrap/Dropdown";
 import Row from "react-bootstrap/Row";
 import Focus from "./Focus";
-import OpenIconicNames from "./OpenIconicNames";
 import Pass from "./Pass";
 
 interface IProps {
