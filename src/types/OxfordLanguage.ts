@@ -27,7 +27,7 @@ enum OxfordLanguage {
     xh = "xh",
     yo = "yo",
     zh = "zh",
-    zu = "zu"
+    zu = "zu",
 }
 
 export default OxfordLanguage;

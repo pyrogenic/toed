@@ -27,9 +27,9 @@ import Row from "react-bootstrap/Row";
 import "./App.css";
 import badWords from "./badWords";
 import defaultConfig from "./default.od3config.json";
-import fetchWord from "./fetchWord";
 import Focus from "./Focus";
 import {ITags} from "./IWordRecord";
+import Lookup from "./Lookup";
 import {arraySetAdd, arraySetHas, arraySetToggle, ensureMap} from "./Magic";
 import Marks from "./Marks";
 import OpenIconicNames from "./OpenIconicNames";
@@ -73,6 +73,7 @@ interface IState {
   rate: number;
   paused?: boolean | number;
   promises: Array<Promise<any>>;
+  lookup: Lookup;
 
   history: string[];
   hidden: string[];
@@ -167,6 +168,7 @@ export default class App extends React.Component<IProps, IState> {
       hidden,
       history,
       languages: [OxfordLanguage.americanEnglish, OxfordLanguage.britishEnglish],
+      lookup: new Lookup((process.env.REACT_APP_ENTERPRISE as unknown as boolean) ?? false),
       promises: [],
       q: sessionStorage.getItem("oed/q") || undefined,
       queue: [],
@@ -222,13 +224,14 @@ export default class App extends React.Component<IProps, IState> {
     } else {
       localStorage.removeItem("oed/app_key");
     }
-    const { q } = this.state;
-    if (q && this.state.re && this.state.re.results) {
+    const { history, lookup, q, re } = this.state;
+    if (q && re && re.results) {
       sessionStorage.setItem("oed/q", q);
     } else {
       localStorage.removeItem("oed/q");
     }
-    localStorage.setItem("oed/history", JSON.stringify(this.state.history));
+    localStorage.setItem("oed/history", JSON.stringify(history));
+    localStorage.setItem("oed/enterprise", JSON.stringify(lookup.enterprise));
   }
 
   public render() {
@@ -261,6 +264,15 @@ export default class App extends React.Component<IProps, IState> {
                       value={this.state.app_key || undefined}
                       style={{fontFamily: "monospace"}}
                       onChange={(e: any) => this.setState({app_key: e.target.value})}/>
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label>License</Form.Label>
+                  <Form.Check
+                    type="checkbox"
+                    label="Enterprise"
+                    checked={this.state.lookup.enterprise}
+                    onChange={() => this.setState({ lookup: new Lookup(!this.state.lookup.enterprise) })}
+                  />
                 </Form.Group>
               </Form>
             </Container>
@@ -657,7 +669,7 @@ export default class App extends React.Component<IProps, IState> {
   private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
     const {apiBaseUrl, languages} = this.state;
     const promises: Array<Promise<RetrieveEntry>> =
-        languages.map((language) => fetchWord(apiBaseUrl, language, redirect || q));
+        languages.map((language) => this.state.lookup.get(apiBaseUrl, language, redirect || q));
     const res = await Promise.all(promises);
     const re = res.reduce((re0, re1) => {
       re0.results = flatten(compact([re0.results, re1.results]));

@@ -50,6 +50,7 @@ export default class RedisMemo<TProps, TResult> {
         return newValue;
     }
 
+    // todo: remove {key} from public API
     public cache = async (props: TProps, value: TResult, key?: string) => {
         key = key ?? this.key(props);
         const stringValue = JSON.stringify(value);
@@ -60,6 +61,12 @@ export default class RedisMemo<TProps, TResult> {
             },
             method: "PUT",
         });
+    }
+
+    public has = async (props: TProps) => {
+        const key = this.key(props);
+        const {EXISTS: exists} = await (await fetch(`${this.webdis}/EXISTS/${key}`)).json();
+        return exists === 1;
     }
 
     private key(props: TProps) {
