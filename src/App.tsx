@@ -238,7 +238,7 @@ export default class App extends React.Component<IProps, IState> {
     const WordListComponent = this.WordListComponent;
     const QueueComponent = this.QueueComponent;
     return <>
-      <Navbar bg="light" expand="sm">
+      <Navbar bg="light" expand="lg">
         <Navbar.Toggle aria-controls="nav" as={NavbarBrand}>OD³</Navbar.Toggle>
         <Navbar.Collapse id="nav">
           <Navbar.Brand href="#home">OD³</Navbar.Brand>
@@ -272,11 +272,15 @@ export default class App extends React.Component<IProps, IState> {
                   setConfig={(config) => this.setState({config})}/>
             </Container>
           </NavDropdown>
+          <NavDropdown title="Words" id="nav-words">
+            <Container>
+              <WordListComponent label={"Bad Words"} words={remainingBadWords} variant={"outline-warning"}/>
+              <WordListComponent label={"History"} words={history}/>
+            </Container>
+          </NavDropdown>
 
           <Nav className="mr-auto"/>
 
-          <WordListComponent label={"Bad Words"} words={remainingBadWords} variant={"outline-warning"}/>
-          <WordListComponent label={"History"} words={history}/>
           <QueueComponent />
         </Navbar.Collapse>
         <Form inline={true} onSubmitCapture={this.go} action={"#"}>
@@ -393,7 +397,10 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private WordListComponent = ({label, words, variant = "outline-primary"}:
-                                   { label: string, words: string[], variant?: ButtonProps["variant"] }) => {
+                                   { label: string,
+                                     className?: string,
+                                     words: string[],
+                                     variant?: ButtonProps["variant"] }) => {
     const NavDropdownButtonGroup = this.NavDropdownButtonGroup;
     return <NavDropdownButtonGroup variant={variant} label={label} words={words}>
       {[1, 2, 10].map((n) =>
@@ -408,14 +415,17 @@ export default class App extends React.Component<IProps, IState> {
     </NavDropdownButtonGroup>;
   }
 
-  private NavDropdownButtonGroup = ({variant, label, words, children}:
+  private NavDropdownButtonGroup = ({variant, label, className, words, children}:
                                         React.PropsWithChildren<{
-                                          variant: ButtonProps["variant"], label: string, words: string[],
+                                          variant: ButtonProps["variant"],
+                                          label: string,
+                                          className?: string,
+                                          words: string[],
                                         }>) => {
     const disabled = words.length === 0;
     const fakeButtonClassName = compact(["btn", `btn-${variant}`, disabled && "disabled"]).join(" ");
     return <Nav>
-      <Navbar.Text className="mr-3">
+      <Navbar.Text className={className}>
         <ButtonGroup>
           <div className={fakeButtonClassName} style={{padding: 0}}>
             <Dropdown className="d-flex justify-content-start">
@@ -452,7 +462,7 @@ export default class App extends React.Component<IProps, IState> {
       backgroundRepeat: "no-repeat",
       backgroundSize: `100% ${Math.min(Math.ceil(100 * rate / MAX_API_RATE), 100)}%`,
     };
-    return <NavDropdownButtonGroup variant={variant} label={"Queue"} words={queue}>
+    return <NavDropdownButtonGroup variant={variant} label={"Queue"} words={queue} className={"mr-3"}>
       <Button
           variant={variant}
           onClick={this.togglePause}
@@ -799,7 +809,6 @@ export default class App extends React.Component<IProps, IState> {
           if (newRate === rate) {
             return null;
           }
-          console.log(newRate);
           return {rate: newRate};
         });
   }
