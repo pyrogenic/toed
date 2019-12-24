@@ -1,4 +1,6 @@
 import isEqual from "lodash/isEqual";
+import upperFirst from "lodash/upperFirst";
+import words from "lodash/words";
 
 type Diff<T, U> = T extends U ? never : T;  // Remove types from T that are assignable to U
 type Filter<T, U> = T extends U ? T : never;  // Remove types from T that are not assignable to U
@@ -205,4 +207,8 @@ export function ensureMap<
         container[key] = value;
     }
     return value;
+}
+
+export function titleCase(str?: string) {
+    return words(str).map(upperFirst).join(" ");
 }

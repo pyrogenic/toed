@@ -1,4 +1,5 @@
 const http = require('http');
+const fs = require('fs');
 const fetch = require('node-fetch');
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = false;
@@ -49,10 +50,28 @@ const server = http.createServer(async (req, res) => {
     let proxyUrl;
     if (req.url.match(/^\/api\//)) {
         proxyUrl = "https://od-api.oxforddictionaries.com";
-    } else if (req.url.match(/^\/[A-Z]+/)) {
+    } else if (req.url.match(/^\/[A-Z]+($|\/)/)) {
         proxyUrl = "http://localhost:7379";
+    } else if (req.url.match(/^\/mirror/)) {
+        res.statusCode = 200;
+        res.end(fs.readFileSync("." + req.url));
+        return;
+    } else if (req.headers.referer.match(/\/mirror\//)) {
+        const match = req.headers.referer.match(/(?<mirror>\/mirror\/[^/]+)/);
+        const path = match.groups.mirror + req.url.split(/[?#]/)[0];
+        res.statusCode = 200;
+        res.end(fs.readFileSync("." + path));
+        return;
+    } else if (fs.existsSync("./src" + req.url)) {
+        res.statusCode = 200;
+        res.end(fs.readFileSync("./src" + req.url));
+        return;
     } else {
-        throw new Error(`bad scheme: ${req.url}`);
+        console.dir(req.headers);
+        res.statusCode = 400;
+        res.statusMessage = `bad scheme: ${req.url}`;
+        res.end();
+        return;
     }
     proxyUrl = `${proxyUrl}${req.url}`;
     const headers = { Accept: 'application/json' };
@@ -76,12 +95,12 @@ const server = http.createServer(async (req, res) => {
         });
         body = body ? body : undefined;
         const method = req.method;
-        console.log({ method, proxyUrl, headers, body });
+        console.log({ method, proxyUrl, bodyLength: body ? body.length : undefined });
         const response = await fetch(proxyUrl, { method, headers, body });
         res.setHeader('Content-Type', response.headers.get('content-type'));
         res.statusCode = response.status;
         const data = await response.text();
-        console.log({ data });
+        console.log({ responseLength: data ? data.length : undefined });
         res.end(data);
     } catch (error) {
         console.log({ error });

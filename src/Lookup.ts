@@ -1,4 +1,5 @@
 import compact from "lodash/compact";
+import get from "lodash/get";
 import { deserialize } from "serializr";
 import IMemoOptions from "./memo/IMemoOptions";
 import RedisMemo from "./memo/RedisMemo";
@@ -8,15 +9,37 @@ import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 
+export enum CacheMode {
+    "none" = "none",
+    "session" = "session",
+    "local" = "local",
+}
+
+export interface ILookupProps {
+    cache: CacheMode;
+    enterprise: boolean;
+    online: boolean;
+}
+
+// const LookupDefaults: ILookupProps = {
+//     cache: CacheMode.session,
+//     enterprise: false,
+//     online: true,
+// };
+
 export default class Lookup {
 
-    public readonly storage: StorageMemo<string, IRetrieveEntry>;
-    public readonly redis?: RedisMemo<string, IRetrieveEntry>;
-    public readonly enterprise: boolean;
+    public get effectiveProps(): ILookupProps {
+        const props = this.props;
+        return Lookup.effectiveProps(props);
+    }
 
-    constructor(enterprise: boolean) {
-        let lookup = this.callOxfordDictionaries;
-        this.enterprise = enterprise;
+    public get props() { return this.propsValue; }
+
+    public set props(props: Partial<ILookupProps>) {
+        this.propsValue = props;
+        const {cache, enterprise, online} = this.effectiveProps;
+        let lookup = online ? this.callOxfordDictionaries : (url: string) => Promise.resolve({error: "offline"} as any);
         if (enterprise) {
             this.redis = new RedisMemo({
                 factory: lookup,
@@ -26,12 +49,37 @@ export default class Lookup {
                 webdis: "",
             });
             lookup = this.redis.get;
+        } else {
+            this.redis = undefined;
         }
+        if (cache === "none") {
+            this.storage = undefined;
+        } else {
+            this.storage = new StorageMemo(
+                cache === "local" ? localStorage : sessionStorage, "fetchJson",
+                lookup,
+                (result) => typeof result === "object" && !("errno" in result) && !("error" in result));
+            lookup = this.storage.get;
+        }
+        this.lookup = lookup;
+    }
+
+    public static effectiveProps(props: Partial<ILookupProps> = {}) {
         const development = process.env.NODE_ENV === "development";
-        this.storage = new StorageMemo(
-            development ? localStorage : sessionStorage, "fetchJson",
-            lookup,
-            (result) => typeof result === "object" && !("errno" in result));
+        const enterprise = get(props, "enterprise", (process.env.REACT_APP_ENTERPRISE as unknown as boolean) ?? false);
+        const cache = get(props, "cache", development ? CacheMode.local : CacheMode.session);
+        const online = get(props, "online", true);
+        return {cache, enterprise, online};
+    }
+
+    public storage?: StorageMemo<string, IRetrieveEntry>;
+    public redis?: RedisMemo<string, IRetrieveEntry>;
+
+    private propsValue: Partial<ILookupProps> = {};
+    private lookup!: RedisMemo<string, IRetrieveEntry>["get"];
+
+    constructor(props: Partial<ILookupProps>) {
+        this.props = props;
     }
 
     public readonly callOxfordDictionaries = async (url: string): Promise<IRetrieveEntry> => {
@@ -52,7 +100,8 @@ export default class Lookup {
 
     public readonly get = async (
         apiBaseUrl: string, language: OxfordLanguage, q: string, options?: IMemoOptions) => {
-        const json = await this.storage.get(`${apiBaseUrl}/words/${language}?q=${q}`, options);
+        const url = `${apiBaseUrl}/words/${language}?q=${q}`;
+        const json = await this.lookup(url, options);
         return deserialize(RetrieveEntry, json);
     }
 }
