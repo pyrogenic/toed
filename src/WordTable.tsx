@@ -1,4 +1,5 @@
 import clamp from "lodash/clamp";
+import cloneDeep from "lodash/cloneDeep";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
 import isEqual from "lodash/isEqual";
@@ -260,6 +261,7 @@ interface IState {
 export default class WordTable extends React.Component<IProps, IState> {
   constructor(props: Readonly<IProps>) {
     super(props);
+    console.log("WordTable construct");
     this.state = {
       page: 0,
       records: [],
@@ -268,10 +270,12 @@ export default class WordTable extends React.Component<IProps, IState> {
   }
 
   public componentDidMount() {
+    console.log("WordTable mount");
     this.applyFilter();
   }
 
   public componentDidUpdate(prevProps: Readonly<IProps>) {
+    console.log("WordTable update");
     this.applyFilter(prevProps);
   }
 
@@ -280,10 +284,11 @@ export default class WordTable extends React.Component<IProps, IState> {
     const { show, page: currentPage } = this.state;
     const hash = window.location.hash?.split(/^q-/)[1];
     const hashTargetIndex = hash && this.props.records.findIndex(({ q }) => hash);
-    const focusChanged = !isEqual(prevProps.focus, focus);
-    const recordsChanged = !isEqual(prevProps.records, this.props.records);
-    console.log({focus, prevFocus: prevProps.focus, focusChanged, recordsChanged});
-    if (focusChanged || recordsChanged) {
+    // const focusChanged = !isEqual(prevProps.focus, focus);
+    // const recordsChanged = !isEqual(prevProps.records, this.props.records);
+    // console.log({prc: this.props.records.length});
+    // if (focusChanged || recordsChanged)
+    {
       let onlyForHash: string | undefined;
       const records = this.props.records.filter(({ q, allTags }, index) =>
         // using not-some, so true value --> reject
@@ -291,21 +296,26 @@ export default class WordTable extends React.Component<IProps, IState> {
           elements.some(([key, tag]) => {
             const present = allTags && arraySetHas(allTags, key, tag);
             if (focusMode === Focus.hide) {
+              console.log(`${q}: ${tag} is hide -> present on q: ${present} (true will reject)`);
               return present;
             } else if (focusMode === Focus.focus) {
+              console.log(`${q}: ${tag} is focus -> present on q: ${present} (false will reject)`);
               return !present;
             } else {
+              console.log(`${q}: ${tag} is normal -> present on q: ${present}`)
               return false;
             }
-          })) || (index !== hashTargetIndex || !(onlyForHash = q)));
-      this.setState({ records, onlyForHash });
-    }
-    if (hashTargetIndex && hashTargetIndex >= 0) {
-      const page = Math.ceil(hashTargetIndex / show);
-      if (page !== currentPage) {
-        this.setState({ page });
+          }))); // || (index !== hashTargetIndex || !(onlyForHash = q)));
+      if (!isEqual(records, this.state.records)) {
+        this.setState({ records, onlyForHash });
       }
     }
+    // if (hashTargetIndex && hashTargetIndex >= 0) {
+    //   const page = Math.ceil(hashTargetIndex / show);
+    //   if (page !== currentPage) {
+    //     this.setState({ page });
+    //   }
+    // }
   }
 
   public render() {
@@ -313,7 +323,7 @@ export default class WordTable extends React.Component<IProps, IState> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const variant: ButtonProps["variant"] = "secondary";
     const outlineVariant: ButtonProps["variant"] = "outline-secondary";
-    const count = this.props.records.length;
+    const count = this.state.records.length;
     const maxPage = Math.ceil(count / this.state.show);
     let [minShownPage, maxShownPage] = [0, maxPage];
     if (Math.abs(currentPage - minShownPage) < Math.abs(currentPage - maxShownPage)) {
@@ -329,24 +339,27 @@ export default class WordTable extends React.Component<IProps, IState> {
           <InputGroup>
             <InputGroup.Prepend>
               <Button
-                variant={outlineVariant}
+                  key={"min page"}
+                  variant={outlineVariant}
                 disabled={this.state.page === 0}
                 onClick={() => this.setState({ page: 0 })}
               >
                 <span className={"flip oi oi-" + OpenIconicNames["media-step-forward"]} />
               </Button>
               <Button
-                variant={outlineVariant}
+                  key={"page - 1"}
+                  variant={outlineVariant}
                 disabled={this.state.page === 0}
                 onClick={() => this.setState(({ page }) => ({ page: clamp(page - 1, 0, maxPage) }))}
               >
                 <span className={"flip oi oi-" + OpenIconicNames["media-play"]} />
               </Button>
-              {0 < minShownPage && <InputGroup.Text>
+              {0 < minShownPage && <InputGroup.Text key={0}>
                 <span className={`oi oi-${OpenIconicNames.ellipses}`}/>
               </InputGroup.Text>}
               {minShownPage < currentPage && range(minShownPage, currentPage).map((page) => {
                 return <Button
+                  key={page + 1}
                   variant={outlineVariant}
                   onClick={() => this.setState({ page })}
                 >
@@ -355,7 +368,8 @@ export default class WordTable extends React.Component<IProps, IState> {
               })}
             </InputGroup.Prepend>
             <Form.Control
-              type="number"
+                  key={currentPage + 1}
+                  type="number"
               style={{textAlign: "center"}}
               min={1}
               max={maxPage + 1}
@@ -365,24 +379,27 @@ export default class WordTable extends React.Component<IProps, IState> {
             <InputGroup.Append>
               {currentPage < maxShownPage && range(currentPage + 1, maxShownPage).map((page) => {
                 return <Button
-                  variant={outlineVariant}
+                key={page + 1}
+                variant={outlineVariant}
                   onClick={() => this.setState({ page })}
                 >
                   {page + 1}
                 </Button>;
               })}
-              {maxShownPage < maxPage && <InputGroup.Text>
+              {maxShownPage < maxPage && <InputGroup.Text key={maxPage}>
                 <span className={`oi oi-${OpenIconicNames.ellipses}`}/>
               </InputGroup.Text>}
               <Button
-                variant={outlineVariant}
+                  key={"page + 1"}
+                  variant={outlineVariant}
                 disabled={this.state.page === maxPage}
                 onClick={() => this.setState(({ page }) => ({ page: clamp(page + 1, 0, maxPage) }))}
               >
                 <span className={"oi oi-" + OpenIconicNames["media-play"]} />
               </Button>
               <Button
-                variant={outlineVariant}
+                  key={"max page"}
+                  variant={outlineVariant}
                 disabled={this.state.page === maxPage}
                 onClick={() => this.setState({ page: maxPage })}
               >
@@ -392,6 +409,7 @@ export default class WordTable extends React.Component<IProps, IState> {
           </InputGroup>
         </Col>
       </Row>
+            <Row><Col>{this.props.records.length - this.state.records.length} hidden</Col></Row>
       <Row className="header">
         <Col xs={1} onClick={() => {
           this.props.records.sort((a, b) => a.q.localeCompare(b.q));
