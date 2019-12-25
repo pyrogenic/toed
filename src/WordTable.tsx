@@ -262,23 +262,28 @@ export default class WordTable extends React.Component<IProps, IState> {
     super(props);
     this.state = {
       page: 0,
-      records: props.records,
+      records: [],
       show: 10,
     };
   }
 
+  public componentDidMount() {
+    this.applyFilter();
+  }
+
   public componentDidUpdate(prevProps: Readonly<IProps>) {
+    this.applyFilter(prevProps);
+  }
+
+  public applyFilter(prevProps: Readonly<Partial<IProps>> = {}) {
     const { focus } = this.props;
     const { show, page: currentPage } = this.state;
     const hash = window.location.hash?.split(/^q-/)[1];
     const hashTargetIndex = hash && this.props.records.findIndex(({ q }) => hash);
-    if (hashTargetIndex && hashTargetIndex >= 0) {
-      const page = Math.ceil(hashTargetIndex / show);
-      if (page !== currentPage) {
-        this.setState({ page });
-      }
-    }
-    if (!isEqual(prevProps.focus, focus) || !isEqual(prevProps.records, this.props.records)) {
+    const focusChanged = !isEqual(prevProps.focus, focus);
+    const recordsChanged = !isEqual(prevProps.records, this.props.records);
+    console.log({focus, prevFocus: prevProps.focus, focusChanged, recordsChanged});
+    if (focusChanged || recordsChanged) {
       let onlyForHash: string | undefined;
       const records = this.props.records.filter(({ q, allTags }, index) =>
         // using not-some, so true value --> reject
@@ -294,6 +299,12 @@ export default class WordTable extends React.Component<IProps, IState> {
             }
           })) || (index !== hashTargetIndex || !(onlyForHash = q)));
       this.setState({ records, onlyForHash });
+    }
+    if (hashTargetIndex && hashTargetIndex >= 0) {
+      const page = Math.ceil(hashTargetIndex / show);
+      if (page !== currentPage) {
+        this.setState({ page });
+      }
     }
   }
 
@@ -394,8 +405,8 @@ export default class WordTable extends React.Component<IProps, IState> {
   }
 
   private renderVisibleRows(): React.ReactNode {
-    const { records, TagControl, MarksControl } = this.props;
-    const { page, show, onlyForHash } = this.state;
+    const { TagControl, MarksControl } = this.props;
+    const { page, records, show, onlyForHash } = this.state;
     return slice(records, page * show, page * show + show).map((record, index) =>
       <WordRow
         key={index}

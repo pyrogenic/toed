@@ -45,7 +45,10 @@ export default class RedisMemo<TProps, TResult> {
         }
         const newValue = await this.factory(props);
         if (cache) {
-            await this.cache(props, newValue, key);
+            const valid = this.validate?.(newValue) ?? "no validate func";
+            if (valid) {
+              await this.cache(props, newValue, key);
+            }
         }
         return newValue;
     }

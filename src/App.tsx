@@ -902,7 +902,6 @@ export default class App extends React.Component<IProps, IState> {
   private getFocusFor(prop: keyof IPipelineConfig, key: string) {
     const entry = [prop, key];
     const lookup = isEqual.bind(null, entry);
-    console.log({entry, focus: this.state.focus});
     if (this.state.focus.hide.find(lookup)) {
       return Focus.hide;
     }
@@ -914,6 +913,7 @@ export default class App extends React.Component<IProps, IState> {
 
   private setFocusFor(prop: keyof IPipelineConfig, key: string, value: Focus, solo: boolean) {
     this.setState(({focus}) => {
+      focus = cloneDeep(focus);
       if (solo) {
         Object.entries(focus).forEach(([focusType, e]) => {
           const items: TagFocusElement[] = focusType === value ? [[prop, key]] : [];

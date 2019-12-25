@@ -42,6 +42,7 @@ export default class Lookup {
     public set props(props: Partial<ILookupProps>) {
         this.propsValue = props;
         const {cache, enterprise, online} = this.effectiveProps;
+        const validate = (result: any) => typeof result === "object" && !("errno" in result) && !("error" in result);
         let lookup = online ? this.callOxfordDictionaries : (url: string) => Promise.resolve({error: "offline"} as any);
         if (enterprise) {
             this.redis = new RedisMemo({
@@ -49,6 +50,7 @@ export default class Lookup {
                 name(url) {
                     return compact(["memo", "od-api", ...url.split(/[/?#=]/)]);
                 },
+                validate,
                 webdis: "",
             });
             lookup = this.redis.get;
@@ -61,7 +63,7 @@ export default class Lookup {
             this.storage = new StorageMemo(
                 cache === "local" ? localStorage : sessionStorage, "fetchJson",
                 lookup,
-                (result) => typeof result === "object" && !("errno" in result) && !("error" in result));
+                validate);
             lookup = this.storage.get;
         }
         this.lookup = lookup;

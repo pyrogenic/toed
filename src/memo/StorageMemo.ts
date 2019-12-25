@@ -28,7 +28,10 @@ export default class StorageMemo<TProps, TResult> {
         }
         const newValue = await this.factory(props);
         if (cache) {
+          const valid = this.validate?.(newValue) ?? "no validate func";
+          if (valid) {
             this.storage.setItem(key, JSON.stringify(newValue));
+          }
         }
         return newValue;
     }
