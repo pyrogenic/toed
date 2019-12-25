@@ -846,7 +846,7 @@ export default class App extends React.Component<IProps, IState> {
         <Popover.Content>
           <PassComponent
             pass={value}
-            focus={this.getFocusFor(prop, key)}
+            focus={this.getFocusFor(prop, flag)}
             words={words}
             changePass={this.changePass.bind(this, query, prop, flag)}
             changeFocus={this.setFocusFor.bind(this, prop, flag)}
@@ -900,11 +900,13 @@ export default class App extends React.Component<IProps, IState> {
   private MarksControl = this.marksControl;
 
   private getFocusFor(prop: keyof IPipelineConfig, key: string) {
-    const lookup: TagFocusElement = [prop, key];
-    if (this.state.focus.hide.includes(lookup)) {
+    const entry = [prop, key];
+    const lookup = isEqual.bind(null, entry);
+    console.log({entry, focus: this.state.focus});
+    if (this.state.focus.hide.find(lookup)) {
       return Focus.hide;
     }
-    if (this.state.focus.focus.includes(lookup)) {
+    if (this.state.focus.focus.find(lookup)) {
       return Focus.focus;
     }
     return Focus.normal;
@@ -934,7 +936,6 @@ export default class App extends React.Component<IProps, IState> {
           }
         });
       }
-      console.log({focus});
       return {focus};
     });
   }
