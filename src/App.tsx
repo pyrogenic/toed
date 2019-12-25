@@ -2,6 +2,7 @@
 import cloneDeep from "lodash/cloneDeep";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
+import indexOf from "lodash/indexOf";
 import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
 import sortedIndexBy from "lodash/sortedIndexBy";
@@ -592,7 +593,7 @@ export default class App extends React.Component<IProps, IState> {
       backgroundSize: `100% ${Math.min(Math.ceil(100 * (rate / this.maxApiRate)), 100)}%`,
     };
     return <NavDropdownButtonGroup variant={variant} label={"Queue"} words={queue} className={"mr-3"}>
-      {promises.map(({q}) => <Button>{q}</Button>)}
+      {/* {promises.map(({q}) => <Button>{q}</Button>)} */}
       <Button
           variant={variant}
           onClick={this.togglePause}
@@ -919,7 +920,7 @@ export default class App extends React.Component<IProps, IState> {
       } else {
         Object.entries(focus).forEach(([focusType, e]) => {
           const element: TagFocusElement = [prop, key];
-          const index = e.indexOf(element);
+          const index = e.findIndex(isEqual.bind(null, element));
           if (index >= 0) {
             if (value === focusType) {
               return;
@@ -933,6 +934,8 @@ export default class App extends React.Component<IProps, IState> {
           }
         });
       }
+      console.log({focus});
+      return {focus};
     });
   }
 

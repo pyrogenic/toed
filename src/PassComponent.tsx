@@ -60,7 +60,7 @@ export default class PassComponent extends React.Component<IProps, IState> {
                         <span className="oi oi-list" title="list" aria-hidden={true} />
                     </Dropdown.Toggle>
                     <Dropdown.Menu>
-                        {words?.map((word) => <Dropdown.Item eventKey={word}>{word}</Dropdown.Item>)}
+                        {words?.map((word) => <Dropdown.Item key={word} eventKey={word}>{word}</Dropdown.Item>)}
                     </Dropdown.Menu>
                 </Dropdown>
             </ButtonGroup>
