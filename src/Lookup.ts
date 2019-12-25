@@ -19,6 +19,9 @@ export interface ILookupProps {
     cache: CacheMode;
     enterprise: boolean;
     online: boolean;
+    threads: number;
+    loaded: number;
+    apiRate: number;
 }
 
 // const LookupDefaults: ILookupProps = {
@@ -69,7 +72,17 @@ export default class Lookup {
         const enterprise = get(props, "enterprise", (process.env.REACT_APP_ENTERPRISE as unknown as boolean) ?? false);
         const cache = get(props, "cache", development ? CacheMode.local : CacheMode.session);
         const online = get(props, "online", true);
-        return {cache, enterprise, online};
+        const threads = get(props, "threads", 2);
+        const loaded = get(props, "loaded", 30);
+        const apiRate = get(props, "apiRate", 200);
+        return {
+            apiRate,
+            cache,
+            enterprise,
+            loaded,
+            online,
+            threads,
+        };
     }
 
     public storage?: StorageMemo<string, IRetrieveEntry>;

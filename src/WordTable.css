@@ -1,6 +1,10 @@
-.word-table {
-    font-size: smaller;
+.flip {
+    transform: scaleX(-1);
 }
+
+/* .word-table {
+    font-size: smaller;
+} */
 
 .word-table>.row>.marks {
     width: 0;
@@ -8,7 +12,7 @@
     white-space: nowrap;
 }
 
-.word-table>:first-child.row:not(.entry) {
+.word-table>:first-of-type(.header) {
     font-weight: bolder;
 }
 
@@ -27,12 +31,6 @@
 
 .word-table .not-found {
     color: red;
-}
-
-.word-table input {
-    padding: 0;
-
-    font-size: 50% !important;
 }
 
 .trigger-click {
