@@ -19,6 +19,7 @@ import IWordRecord, { ITags } from "./IWordRecord";
 import { arraySetHas } from "./Magic";
 import OpenIconicNames from "./OpenIconicNames";
 import { RECORD_SEP } from "./OxfordDictionariesPipeline";
+import { minDiff } from "./volumize";
 import "./WordTable.css";
 
 interface IProps {
@@ -260,7 +261,7 @@ interface IState {
 export default class WordTable extends React.Component<IProps, IState> {
   constructor(props: Readonly<IProps>) {
     super(props);
-    console.log("WordTable construct");
+    // console.log("WordTable construct");
     this.state = {
       page: 0,
       records: [],
@@ -269,12 +270,12 @@ export default class WordTable extends React.Component<IProps, IState> {
   }
 
   public componentDidMount() {
-    console.log("WordTable mount");
+    // console.log("WordTable mount");
     this.applyFilter();
   }
 
   public componentDidUpdate(prevProps: Readonly<IProps>) {
-    console.log("WordTable update");
+    // console.log("WordTable update");
     this.applyFilter(prevProps);
   }
 
@@ -295,13 +296,13 @@ export default class WordTable extends React.Component<IProps, IState> {
           elements.some(([key, tag]) => {
             const present = allTags && arraySetHas(allTags, key, tag);
             if (focusMode === Focus.hide) {
-              console.log(`${q}: ${tag} is hide -> present on q: ${present} (true will reject)`);
+              // console.log(`${q}: ${tag} is hide -> present on q: ${present} (true will reject)`);
               return present;
             } else if (focusMode === Focus.focus) {
-              console.log(`${q}: ${tag} is focus -> present on q: ${present} (false will reject)`);
+              // console.log(`${q}: ${tag} is focus -> present on q: ${present} (false will reject)`);
               return !present;
             } else {
-              console.log(`${q}: ${tag} is normal -> present on q: ${present}`);
+              // console.log(`${q}: ${tag} is normal -> present on q: ${present}`);
               return false;
             }
           }))); // || (index !== hashTargetIndex || !(onlyForHash = q)));
@@ -322,8 +323,9 @@ export default class WordTable extends React.Component<IProps, IState> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const variant: ButtonProps["variant"] = "secondary";
     const outlineVariant: ButtonProps["variant"] = "outline-secondary";
-    const count = this.state.records.length;
-    const maxPage = Math.ceil(count / this.state.show);
+    const {records: visibleRecords, show: pageSize} = this.state;
+    const count = visibleRecords.length;
+    const maxPage = Math.ceil(count / pageSize);
     let [minShownPage, maxShownPage] = [0, maxPage];
     if (Math.abs(currentPage - minShownPage) < Math.abs(currentPage - maxShownPage)) {
       minShownPage = Math.max(0, currentPage - 5);
@@ -332,6 +334,8 @@ export default class WordTable extends React.Component<IProps, IState> {
       maxShownPage = Math.min(maxShownPage, currentPage + 5);
       minShownPage = Math.max(0, maxShownPage - 10);
     }
+    const PageButton = this.pageButton;
+    const currentPageSpine = this.spine(currentPage);
     return <div className="word-table">
       <Row>
         <Col>
@@ -356,15 +360,9 @@ export default class WordTable extends React.Component<IProps, IState> {
               {0 < minShownPage && <InputGroup.Text key={0}>
                 <span className={`oi oi-${OpenIconicNames.ellipses}`}/>
               </InputGroup.Text>}
-              {minShownPage < currentPage && range(minShownPage, currentPage).map((page) => {
-                return <Button
-                  key={page + 1}
-                  variant={outlineVariant}
-                  onClick={() => this.setState({ page })}
-                >
-                  {page + 1}
-                </Button>;
-              })}
+              {minShownPage < currentPage && range(minShownPage, currentPage).map((page) =>
+                <PageButton page={page} variant={outlineVariant} />)}
+              {currentPageSpine[0] && <InputGroup.Text>{currentPageSpine[0]}</InputGroup.Text>}
             </InputGroup.Prepend>
             <Form.Control
                   key={currentPage + 1}
@@ -376,15 +374,9 @@ export default class WordTable extends React.Component<IProps, IState> {
               onChange={({ target: { value } }: any) => this.setState({ page: clamp(Number(value) - 1, 0, maxPage) })}
             />
             <InputGroup.Append>
-              {currentPage < maxShownPage && range(currentPage + 1, maxShownPage).map((page) => {
-                return <Button
-                key={page + 1}
-                variant={outlineVariant}
-                  onClick={() => this.setState({ page })}
-                >
-                  {page + 1}
-                </Button>;
-              })}
+              {currentPageSpine[1] && <InputGroup.Text>{currentPageSpine[1]}</InputGroup.Text>}
+              {currentPage < maxShownPage && range(currentPage + 1, maxShownPage).map((page) =>
+                <PageButton page={page} variant={outlineVariant} />)}
               {maxShownPage < maxPage && <InputGroup.Text key={maxPage}>
                 <span className={`oi oi-${OpenIconicNames.ellipses}`}/>
               </InputGroup.Text>}
@@ -408,7 +400,7 @@ export default class WordTable extends React.Component<IProps, IState> {
           </InputGroup>
         </Col>
       </Row>
-            <Row><Col>{this.props.records.length - this.state.records.length} hidden</Col></Row>
+            <Row><Col>{this.props.records.length - visibleRecords.length} hidden</Col></Row>
       <Row className="header">
         <Col xs={1} onClick={() => {
           this.props.records.sort((a, b) => a.q.localeCompare(b.q));
@@ -419,6 +411,30 @@ export default class WordTable extends React.Component<IProps, IState> {
       </Row>
       {this.renderVisibleRows()}
     </div>;
+  }
+
+  private spine(page: number) {
+    const { records: visibleRecords, show: pageSize } = this.state;
+    const count = visibleRecords.length;
+    if (count === 0) {
+      return [undefined, undefined];
+    }
+    const ai = Math.min(page * pageSize, count - 1);
+    const bi = Math.min(ai + pageSize - 1, count - 1);
+    const a = visibleRecords[ai].q;
+    const b = ai === bi ? undefined : visibleRecords[bi].q;
+    return minDiff(a, b);
+  }
+
+  private pageButton = ({page, variant}: {page: number, variant: ButtonProps["variant"]}) => {
+    const [spineA, spineB] = this.spine(page);
+    return <Button key={page + 1} variant={variant} onClick={() => this.setState({ page })}>
+      {page + 1}
+      {spineA && <><br />
+      {spineA}</>}
+      {spineB && <><br />
+      {spineB}</>}
+    </Button>;
   }
 
   private renderVisibleRows(): React.ReactNode {

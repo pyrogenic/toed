@@ -804,6 +804,7 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
+    q = q.toLocaleLowerCase();
     const {apiBaseUrl, languages} = this.state;
     const promises: Array<Promise<RetrieveEntry>> =
         languages.map((language) => this.lookup.get(apiBaseUrl, language, redirect || q));
