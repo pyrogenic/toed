@@ -1,5 +1,4 @@
 import clamp from "lodash/clamp";
-import cloneDeep from "lodash/cloneDeep";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
 import isEqual from "lodash/isEqual";
@@ -281,15 +280,15 @@ export default class WordTable extends React.Component<IProps, IState> {
 
   public applyFilter(prevProps: Readonly<Partial<IProps>> = {}) {
     const { focus } = this.props;
-    const { show, page: currentPage } = this.state;
-    const hash = window.location.hash?.split(/^q-/)[1];
-    const hashTargetIndex = hash && this.props.records.findIndex(({ q }) => hash);
+    // const { show, page: currentPage } = this.state;
+    // const hash = window.location.hash?.split(/^q-/)[1];
+    // const hashTargetIndex = hash && this.props.records.findIndex(({ q }) => hash);
     // const focusChanged = !isEqual(prevProps.focus, focus);
     // const recordsChanged = !isEqual(prevProps.records, this.props.records);
     // console.log({prc: this.props.records.length});
     // if (focusChanged || recordsChanged)
     {
-      let onlyForHash: string | undefined;
+      // let onlyForHash: string | undefined;
       const records = this.props.records.filter(({ q, allTags }, index) =>
         // using not-some, so true value --> reject
         !Object.entries(focus).some(([focusMode, elements]) =>
@@ -302,12 +301,12 @@ export default class WordTable extends React.Component<IProps, IState> {
               console.log(`${q}: ${tag} is focus -> present on q: ${present} (false will reject)`);
               return !present;
             } else {
-              console.log(`${q}: ${tag} is normal -> present on q: ${present}`)
+              console.log(`${q}: ${tag} is normal -> present on q: ${present}`);
               return false;
             }
           }))); // || (index !== hashTargetIndex || !(onlyForHash = q)));
       if (!isEqual(records, this.state.records)) {
-        this.setState({ records, onlyForHash });
+        this.setState({ records, onlyForHash: undefined });
       }
     }
     // if (hashTargetIndex && hashTargetIndex >= 0) {

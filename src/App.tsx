@@ -2,7 +2,6 @@
 import cloneDeep from "lodash/cloneDeep";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
-import indexOf from "lodash/indexOf";
 import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
 import sortedIndexBy from "lodash/sortedIndexBy";
@@ -417,6 +416,12 @@ export default class App extends React.Component<IProps, IState> {
     return allowed;
   }
 
+  public getMarksFor = (query: string) => {
+    const { xref: { marks } } = this.state;
+    return Object.keys(marks).filter((key) =>
+      arraySetHas(marks, key, query));
+  }
+
   public processed = (query: string, {allTags}: PartialWordRecord) => {
     if (!allTags) {
       return;
@@ -583,7 +588,7 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private QueueComponent = () => {
-    const {paused, promises, queue, rate} = this.state;
+    const {paused, queue, rate} = this.state;
     const variant: ButtonProps["variant"] = "outline-secondary";
     const NavDropdownButtonGroup = this.NavDropdownButtonGroup;
     const style = rate <= 0 ? undefined : {
@@ -813,7 +818,13 @@ export default class App extends React.Component<IProps, IState> {
     }
     return new Promise((resolve) => {
       this.setState(({records, history}) => {
-        const pipeline = new OxfordDictionariesPipeline(q, re.results || [], this.allowed, this.processed);
+        const pipeline = new OxfordDictionariesPipeline({
+          allowed: this.allowed,
+          entries: re.results || [],
+          getMarksFor: this.getMarksFor,
+          processed: this.processed,
+          query: q,
+        });
         const record = new WordRecord(q, re, pipeline);
         const index = sortedIndexBy(records, record, "q");
         if (records[index]?.q === q) {
@@ -945,10 +956,6 @@ export default class App extends React.Component<IProps, IState> {
       arraySetToggle(xref.marks, mark, query);
       return {xref};
     }, () => this.unshift([query]));
-  }
-
-  private getMarksFor(query: string) {
-    return Object.keys(this.state.xref.marks).filter((key) => arraySetHas(this.state.xref.marks, key, query));
   }
 
   private updateRate = () => {

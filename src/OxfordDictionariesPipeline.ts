@@ -5,8 +5,9 @@ import uniq from "lodash/uniq";
 import App from "./App";
 import IDictionaryEntry from "./IDictionaryEntry";
 import IWordRecord, {ITags} from "./IWordRecord";
-import {arraySetAdd, arraySetAddAll, ensure} from "./Magic";
+import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure} from "./Magic";
 import map from "./map";
+import Marks from "./Marks";
 import needsMoreDefinitions from "./needsMoreDefinitions";
 import Pass from "./Pass";
 import IHeadwordEntry from "./types/gen/IHeadwordEntry";
@@ -61,10 +62,18 @@ export default class OxfordDictionariesPipeline {
     public allEntryTexts: string[];
 
     private readonly allowed: App["allowed"];
+    private readonly getMarksFor: App["getMarksFor"];
     private readonly processed: App["processed"];
 
-    constructor(query: string, entries: IHeadwordEntry[], allowed: App["allowed"], processed: App["processed"]) {
+    constructor({ query, entries, allowed, getMarksFor, processed }: {
+      query: string,
+      entries: IHeadwordEntry[],
+      allowed: App["allowed"],
+      getMarksFor: App["getMarksFor"],
+      processed: App["processed"],
+    }) {
         this.allowed = allowed;
+        this.getMarksFor = getMarksFor;
         this.processed = processed;
         this.query = query;
         this.entries = entries;
@@ -77,6 +86,16 @@ export default class OxfordDictionariesPipeline {
         const result = ensure(record, "result", Object);
         const resultTags = ensure(record, "resultTags", Object);
         const allTags = ensure(record, "allTags", Object);
+
+        const marks = this.getMarksFor(query);
+        Object.values(Marks).forEach(([mark]) => {
+          if (marks.includes(mark)) {
+            arraySetAdd(allTags, "marks", mark);
+          } else {
+            arraySetRemove(allTags, "marks", mark);
+          }
+        });
+
         const lowercaseMatchingEntryTexts = undefIfEmpty(this.allEntryTexts.filter((text) =>
             query.toLocaleLowerCase() === text));
         const mixedCaseMatchingEntryTexts = undefIfEmpty(this.allEntryTexts.filter((text) => {
