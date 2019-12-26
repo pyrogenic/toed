@@ -428,12 +428,14 @@ export default class WordTable extends React.Component<IProps, IState> {
 
   private pageButton = ({page, variant}: {page: number, variant: ButtonProps["variant"]}) => {
     const [spineA, spineB] = this.spine(page);
-    return <Button key={page + 1} variant={variant} onClick={() => this.setState({ page })}>
+    return <Button className="spine" key={page + 1} variant={variant} onClick={() => this.setState({ page })}>
+      <div className="from">
+      {spineA}
+      </div>
       {page + 1}
-      {spineA && <><br />
-      {spineA}</>}
-      {spineB && <><br />
-      {spineB}</>}
+      <div className="to">
+      {spineB}
+      </div>
     </Button>;
   }
 
