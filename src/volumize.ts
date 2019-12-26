@@ -17,16 +17,25 @@ import zip from "lodash/zip";
 
 //   return result;
 // }
-function minDiff(a: string | undefined, b: string | undefined,
-  { knownPreceeder }: { knownPreceeder?: string; } = {}): [string | undefined, string | undefined] {
+type stringOrNot = string | undefined;
+function minDiff(
+  a: stringOrNot,
+  b: stringOrNot,
+  { preA, postB }: {
+    preA?: string,
+    postB?: string} = {}): [stringOrNot, stringOrNot] {
   if (a === undefined) {
     if (b === undefined) {
       return [undefined, undefined];
     }
+    if (postB !== undefined) {
+      const [br, ] = minDiff(b, postB);
+      return [undefined, br];
+    }
     return [undefined, b[0]];
   } else if (b === undefined) {
-    if (knownPreceeder !== undefined) {
-      const [, ar] = minDiff(knownPreceeder, a);
+    if (preA !== undefined) {
+      const [, ar] = minDiff(preA, a);
       return [ar, undefined];
     }
     return [a[0], undefined];
@@ -35,16 +44,22 @@ function minDiff(a: string | undefined, b: string | undefined,
   let bb = "";
   const zipped = zip(a.split(""), b.split(""));
   for (const [ca, cb] of zipped) {
-    aa += ca;
-    bb += cb;
+    if (ca) { aa += ca; }
+    if (cb) { bb += cb; }
     if (ca !== cb) {
       break;
     }
   }
-  if (knownPreceeder) {
-    const [, pa] = minDiff(knownPreceeder, a);
+  if (preA) {
+    const [, pa] = minDiff(preA, a);
     if (pa && pa.length > aa.length) {
       aa = pa;
+    }
+  }
+  if (postB) {
+    const [pb, ] = minDiff(b, postB);
+    if (pb && pb.length > aa.length) {
+      bb = pb;
     }
   }
   return [aa, bb];
