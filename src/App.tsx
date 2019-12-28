@@ -29,7 +29,7 @@ import "./App.css";
 import badWords from "./badWords";
 import defaultConfig from "./default.od3config.json";
 import Focus from "./Focus";
-import { ITags } from "./IWordRecord";
+import IWordRecord, { ITags } from "./IWordRecord";
 import Lookup, { CacheMode, ILookupProps } from "./Lookup";
 import {
   arraySetAdd,
@@ -89,7 +89,6 @@ interface IState {
   lookupProps: Partial<ILookupProps>;
 
   history: string[];
-  hidden: string[];
   records: WordRecord[];
 
   re?: IRetrieveEntry;
@@ -97,6 +96,7 @@ interface IState {
   config: IPipelineConfig;
   xref: ITagCrossReference;
   focus: TagFocus;
+  visibleRecordCount: number;
 }
 
 function odApiCallsLastMinute() {
@@ -200,7 +200,6 @@ export default class App extends React.Component<IProps, IState> {
     });
     Marks.forEach(([key]) => config.marks[key] = config.marks[key] ?? Pass.primary);
     const history: string[] = uniq(JSON.parse(localStorage.getItem("oed/history") || "[]"));
-    const hidden: string[] = uniq(JSON.parse(localStorage.getItem("oed/hidden") || "[]"));
     const lookupProps = JSON.parse(localStorage.getItem("oed/lookupProps") ?? "{}");
     this.state = {
       apiBaseUrl: "/api/v2",
@@ -208,7 +207,6 @@ export default class App extends React.Component<IProps, IState> {
       app_key: localStorage.getItem("oed/app_key") || undefined,
       config,
       focus,
-      hidden,
       history,
       languages: [OxfordLanguage.americanEnglish, OxfordLanguage.britishEnglish],
       lookupProps,
@@ -217,6 +215,7 @@ export default class App extends React.Component<IProps, IState> {
       queue: [],
       rate: 0,
       records: [],
+      visibleRecordCount: 0,
       xref,
     };
     this.lookup = new Lookup(lookupProps);
@@ -284,6 +283,7 @@ export default class App extends React.Component<IProps, IState> {
     const remainingBadWords = without(badWords, ...loaded, ...history);
     const WordListComponent = this.WordListComponent;
     const QueueComponent = this.QueueComponent;
+    const hiddenCount = this.state.records.length - this.state.visibleRecordCount;
     return <>
       <Navbar bg="light" expand="lg">
         <Navbar.Toggle aria-controls="nav" as={NavbarBrand}>OD³</Navbar.Toggle>
@@ -372,7 +372,9 @@ export default class App extends React.Component<IProps, IState> {
       </Navbar>
       <Container>
 
-        <DisclosureBar title="filters and tags">
+        <DisclosureBar title={
+          compact(["filters and tags", hiddenCount > 0 && `${hiddenCount} hidden`]).join(" — ")
+        }>
           {this.renderFilters()}
         </DisclosureBar>
 
@@ -394,6 +396,7 @@ export default class App extends React.Component<IProps, IState> {
             <WordTable
                 records={this.state.records}
                 focus={this.state.focus}
+                onFiltered={this.onFiltered}
                 TagControl={this.TagControl}
                 MarksControl={this.MarksControl}
             />
@@ -645,6 +648,10 @@ export default class App extends React.Component<IProps, IState> {
                 title="Process One"/>
       </Button>
     </NavDropdownButtonGroup>;
+  }
+
+  private onFiltered = (visibleRecords: IWordRecord[]) => {
+    this.setState({visibleRecordCount: visibleRecords.length});
   }
 
   private get maxThreads() {

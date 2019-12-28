@@ -27,6 +27,7 @@ interface IProps {
   focus: TagFocus;
   TagControl: TagControlFactory;
   MarksControl: MarksControlFactory;
+  onFiltered(visibleRecords: IWordRecord[]): void;
 }
 
 function Maybe({ when, children }: React.PropsWithChildren<{ when: any; }>):
@@ -308,7 +309,9 @@ export default class WordTable extends React.Component<IProps, IState> {
             }
           }))); // || (index !== hashTargetIndex || !(onlyForHash = q)));
       if (!isEqual(records, this.state.records)) {
-        this.setState({ records, onlyForHash: undefined });
+        this.setState({ records, onlyForHash: undefined }, () => {
+          this.props.onFiltered(records);
+        });
       }
     }
     // if (hashTargetIndex && hashTargetIndex >= 0) {
@@ -362,7 +365,7 @@ export default class WordTable extends React.Component<IProps, IState> {
                 <span className={`oi oi-${OpenIconicNames.ellipses}`}/>
               </InputGroup.Text>}
               {minShownPage < currentPage && range(minShownPage, currentPage).map((page) =>
-                <PageButton page={page} variant={outlineVariant} />)}
+                <PageButton key={page} page={page} variant={outlineVariant} />)}
               {currentPageSpine[0] && <InputGroup.Text>{currentPageSpine[0]}</InputGroup.Text>}
             </InputGroup.Prepend>
             <Form.Control
@@ -377,7 +380,7 @@ export default class WordTable extends React.Component<IProps, IState> {
             <InputGroup.Append>
               {currentPageSpine[1] && <InputGroup.Text>{currentPageSpine[1]}</InputGroup.Text>}
               {currentPage < maxShownPage && range(currentPage + 1, maxShownPage).map((page) =>
-                <PageButton page={page} variant={outlineVariant} />)}
+                <PageButton key={page} page={page} variant={outlineVariant} />)}
               {maxShownPage < maxPage && <InputGroup.Text key={maxPage}>
                 <span className={`oi oi-${OpenIconicNames.ellipses}`}/>
               </InputGroup.Text>}
