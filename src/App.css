@@ -2,6 +2,40 @@ body {
     overflow-y: scroll;
 }
 
+.disclosure {
+  transition-duration: 200ms;
+  transition-property: all;
+  padding: 0 .75rem;
+  background: var(--light);
+  border-top-right-radius: 0;
+  border-top-left-radius: 0;
+  font-size: 80%;
+  margin-bottom: 0.25rem;
+}
+
+.disclosure .show {
+  transition-duration: 200ms;
+  transition-property: all;
+  width: 100%;
+}
+
+.disclosure-bar {
+  text-align: center;
+  border: 1px solid transparent;
+  padding: 0 .75rem;
+  font-size: 80%;
+  line-height: 1.5;
+  border-radius: .25rem;
+  width: max-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.disclosure-bar:hover {
+  text-decoration: underline;
+  color: var(--blue);
+}
+
 .navbar > * > * {
     white-space: pre;
     flex-flow: nowrap;

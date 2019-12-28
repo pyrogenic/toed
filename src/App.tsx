@@ -58,6 +58,7 @@ import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
+import Collapse from "react-bootstrap/Collapse";
 
 interface IStringMap { [key: string]: string[]; }
 
@@ -100,6 +101,34 @@ interface IState {
 
 function odApiCallsLastMinute() {
   return OpTrack.history("odapi", 60 * 1000)[0]?.length ?? 0;
+}
+
+function DisclosureBar({title, children}: React.PropsWithChildren<{title: string}>) {
+  const [open, setOpen] = React.useState(false);
+  const [closing, setClosing] = React.useState(false);
+  return (
+    <div className="disclosure">
+      <div
+        className={compact(["disclosure-bar", (open || closing) && "show"]).join(" ")}
+        onClick={open ? close : setOpen.bind(null, true)}
+        aria-controls={title}
+        aria-expanded={open}
+      >
+        {title}
+      </div>
+      <Collapse in={open}>
+        <div id={title}>
+          {(open || closing) && children}
+        </div>
+      </Collapse>
+    </div>
+  );
+
+  function close() {
+    setOpen(false);
+    setClosing(true);
+    setTimeout(setClosing, 500, false);
+  }
 }
 
 export default class App extends React.Component<IProps, IState> {
@@ -342,23 +371,10 @@ export default class App extends React.Component<IProps, IState> {
         </Form>
       </Navbar>
       <Container>
-        <Row>
-          <Col>
-            <Form inline={true}>
-              <Form.Row>
-                <Col>
-                </Col>
-              </Form.Row>
-            </Form>
-          </Col>
-        </Row>
 
-        {this.renderFilter("Parts of Speech", "partsOfSpeech")}
-        {this.renderFilter("Grammatical Features", "grammaticalFeatures")}
-        {this.renderFilter("Registers", "registers")}
-        {this.renderFilter("Domains", "domains")}
-        {this.renderFilter("Imputed", "imputed")}
-        {this.renderFilter("Marks", "marks", true)}
+        <DisclosureBar title="filters and tags">
+          {this.renderFilters()}
+        </DisclosureBar>
 
         {/* {this.state.re && this.state.re.results &&
         <Row>
@@ -430,6 +446,17 @@ export default class App extends React.Component<IProps, IState> {
     setImmediate(this.updateXref, query, cloneDeep(allTags));
   }
 
+  private renderFilters = () => {
+    return <>
+      {this.renderFilter("Parts of Speech", "partsOfSpeech")}
+      {this.renderFilter("Grammatical Features", "grammaticalFeatures")}
+      {this.renderFilter("Registers", "registers")}
+      {this.renderFilter("Domains", "domains")}
+      {this.renderFilter("Imputed", "imputed")}
+      {this.renderFilter("Marks", "marks", true)}
+    </>;
+  }
+
   private lookupConfig<TEnum>(props: ({
                                     as: "checkbox",
                                     prop: PropertyNamesOfType<ILookupProps, boolean>,
@@ -491,7 +518,7 @@ export default class App extends React.Component<IProps, IState> {
           max={props.range?.[1]}
           placeholder={`${defaultValue}`}
           defaultValue={this.state.lookupProps[props.prop] === undefined ? `${defaultValue}` : undefined}
-          value={`${this.state.lookupProps[props.prop]}`}
+          value={this.state.lookupProps[props.prop] === undefined ? undefined : `${this.state.lookupProps[props.prop]}`}
             onChange={(event: any) => {
               const value = event.currentTarget.value;
               this.setState(({ lookupProps }) => {

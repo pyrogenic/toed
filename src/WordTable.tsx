@@ -149,7 +149,8 @@ function WordRow(
       <TaggedComponent
         query={record.q}
         word={word}
-        title="Rich Entry" tags={resultTags.entry_rich}
+        title="Rich Entry"
+        tags={resultTags.entry_rich ?? record.allTags}
         TagControl={TagControl}
         MarksControl={MarksControl}>
         <Row className={result.entry_rich ? "headword" : "headword not-found"}>
@@ -420,10 +421,14 @@ export default class WordTable extends React.Component<IProps, IState> {
       return [undefined, undefined];
     }
     const ai = Math.min(page * pageSize, count - 1);
+    const pai = ai > 0 ? ai - 1 : undefined;
     const bi = Math.min(ai + pageSize - 1, count - 1);
+    const pbi = bi < count - 1 ? bi + 1 : undefined;
     const a = visibleRecords[ai].q;
     const b = ai === bi ? undefined : visibleRecords[bi].q;
-    return minDiff(a, b);
+    const preA = pai === undefined ? undefined : visibleRecords[pai].q;
+    const postB = pbi === undefined ? undefined : visibleRecords[pbi].q;
+    return minDiff(a, b, {preA, postB});
   }
 
   private pageButton = ({page, variant}: {page: number, variant: ButtonProps["variant"]}) => {

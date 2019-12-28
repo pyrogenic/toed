@@ -87,6 +87,10 @@ export default class OxfordDictionariesPipeline {
         const resultTags = ensure(record, "resultTags", Object);
         const allTags = ensure(record, "allTags", Object);
 
+        if (entries.length === 0) {
+          arraySetAdd(allTags, "imputed", ["404"]);
+        }
+
         const marks = this.getMarksFor(query);
         Object.values(Marks).forEach(([mark]) => {
           if (marks.includes(mark)) {
@@ -359,6 +363,9 @@ export default class OxfordDictionariesPipeline {
         }
         if (resultTags.pronunciation_ipa) {
             copyTags(resultTags.pronunciation_ipa, allTags);
+        }
+        if ((result.definitions?.length ?? 0) === 0) {
+          arraySetAdd(allTags, "imputed", ["undefined"]);
         }
         this.processed(this.query, record);
         return result;
