@@ -42,7 +42,8 @@ export default class Lookup {
     public set props(props: Partial<ILookupProps>) {
         this.propsValue = props;
         const {cache, enterprise, online} = this.effectiveProps;
-        const validate = (result: any) => typeof result === "object" && !("errno" in result) && !("error" in result);
+        const validate = (result: any) =>
+          typeof result === "object" && Object.keys(result).length > 0 && !("errno" in result);
         let lookup = online ? this.callOxfordDictionaries : (url: string) => Promise.resolve({error: "offline"} as any);
         if (enterprise) {
             this.redis = new RedisMemo({
@@ -110,7 +111,11 @@ export default class Lookup {
         const promise = fetch(url, { headers: { Accept: "application/json", app_id, app_key } });
         OpTrack.track("odapi", url, promise);
         const queryResult = await promise;
-        return await queryResult.json();
+        // tslint:disable-next-line:no-console
+        const json = await queryResult.json();
+        json.status = json.status ?? queryResult.status;
+        console.warn({fetch: url, queryResult, json});
+        return json;
     }
 
     public readonly get = async (

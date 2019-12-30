@@ -81,7 +81,7 @@ interface IState {
   app_key?: string;
 
   languages: OxfordLanguage[];
-  q?: string;
+  q: string;
   queue: string[];
   rate: number;
   paused?: boolean | number;
@@ -211,7 +211,7 @@ export default class App extends React.Component<IProps, IState> {
       languages: [OxfordLanguage.americanEnglish, OxfordLanguage.britishEnglish],
       lookupProps,
       promises: [],
-      q: sessionStorage.getItem("oed/q") || undefined,
+      q: sessionStorage.getItem("oed/q") || "",
       queue: [],
       rate: 0,
       records: [],
@@ -1043,7 +1043,8 @@ function FilterRow({
                        }) {
     const [open, setOpen] = React.useState(showAll);
     const flags = Object.keys(config).sort();
-    without(Object.keys(xref), ...flags).forEach((key) => config[key] = Pass.primary);
+    // These orphaned tags (like "404") are probably from old bugs:
+    // without(Object.keys(xref), ...flags).forEach((key) => config[key] = Pass.primary);
     let hidden = 0;
     return <Row>
     <Col xs={3}>
