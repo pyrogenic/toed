@@ -14,6 +14,7 @@ import ButtonGroup from "react-bootstrap/ButtonGroup";
 import ButtonToolbar from "react-bootstrap/ButtonToolbar";
 import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
+import Collapse from "react-bootstrap/Collapse";
 import Container from "react-bootstrap/Container";
 import Dropdown from "react-bootstrap/Dropdown";
 import Form from "react-bootstrap/Form";
@@ -58,7 +59,6 @@ import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
-import Collapse from "react-bootstrap/Collapse";
 
 interface IStringMap { [key: string]: string[]; }
 
@@ -1028,6 +1028,7 @@ function variantForPass(value: Pass): BadgeProps["variant"] {
 function FilterRow({
                      label,
                      config,
+                     xref,
                      prop,
                      TagControl,
                      showAll = false,
@@ -1042,6 +1043,7 @@ function FilterRow({
                        }) {
     const [open, setOpen] = React.useState(showAll);
     const flags = Object.keys(config).sort();
+    without(Object.keys(xref), ...flags).forEach((key) => config[key] = Pass.primary);
     let hidden = 0;
     return <Row>
     <Col xs={3}>
