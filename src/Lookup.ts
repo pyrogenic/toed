@@ -111,9 +111,9 @@ export default class Lookup {
         const promise = fetch(url, { headers: { Accept: "application/json", app_id, app_key } });
         OpTrack.track("odapi", url, promise);
         const queryResult = await promise;
-        // tslint:disable-next-line:no-console
         const json = await queryResult.json();
         json.status = json.status ?? queryResult.status;
+        // tslint:disable-next-line:no-console
         console.warn({fetch: url, queryResult, json});
         return json;
     }
