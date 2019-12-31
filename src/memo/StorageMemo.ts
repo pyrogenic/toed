@@ -1,7 +1,4 @@
-export interface IOptions {
-    cache?: boolean;
-    bypass?: boolean;
-}
+import IMemoOptions from "./IMemoOptions";
 
 export default class StorageMemo<TProps, TResult> {
     public readonly storage: Storage;
@@ -17,7 +14,7 @@ export default class StorageMemo<TProps, TResult> {
         this.validate = validate;
     }
 
-    public async get(props: TProps, {cache, bypass}: IOptions = {}) {
+    public get = async (props: TProps, {cache, bypass}: IMemoOptions = {}) => {
         if (cache === undefined) { cache = true; }
         if (bypass === undefined) { bypass = false; }
         const key = `${this.name}/${JSON.stringify(props)}`;
@@ -31,7 +28,10 @@ export default class StorageMemo<TProps, TResult> {
         }
         const newValue = await this.factory(props);
         if (cache) {
+          const valid = this.validate?.(newValue) ?? "no validate func";
+          if (valid) {
             this.storage.setItem(key, JSON.stringify(newValue));
+          }
         }
         return newValue;
     }

@@ -1,4 +1,6 @@
 import isEqual from "lodash/isEqual";
+import upperFirst from "lodash/upperFirst";
+import words from "lodash/words";
 
 type Diff<T, U> = T extends U ? never : T;  // Remove types from T that are assignable to U
 type Filter<T, U> = T extends U ? T : never;  // Remove types from T that are not assignable to U
@@ -8,6 +10,20 @@ export type PropertyNamesOfType<T, P> = {
 }[keyof T];
 
 export type PropertiesOfType<T, P> = Pick<T, PropertyNamesOfType<T, P>>;
+
+export type MultipleValue<T, P extends keyof T> = {
+  [K in keyof T]: K extends P ? Array<T[K]> : T[K];
+};
+
+export function array<T>(value: undefined | T | T[]) {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return [value];
+}
 
 export type Comparer<T> = Parameters<T[]["sort"]>;
 
@@ -205,4 +221,8 @@ export function ensureMap<
         container[key] = value;
     }
     return value;
+}
+
+export function titleCase(str?: string) {
+    return words(str).map(upperFirst).join(" ");
 }

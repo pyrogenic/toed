@@ -1,16 +1,22 @@
 {
-    "defaultSeverity": "error",
-    "extends": [
-        "tslint:recommended"
+  "defaultSeverity": "warning",
+  "extends": [
+    "tslint:recommended"
+  ],
+  "jsRules": {},
+  "rules": {
+    "indent": [
+      true,
+      "spaces",
+      2
     ],
-    "jsRules": {},
-    "rules": {
-        "no-empty-interface": false
-    },
-    "rulesDirectory": [],
-    "linterOptions": {
-        "exclude": [
-            "./src/types/gen/**/*"
-        ]
-    }
+    "no-empty-interface": false,
+    "no-invalid-template-strings": true
+  },
+  "rulesDirectory": [],
+  "linterOptions": {
+    "exclude": [
+      "./src/types/gen/**/*"
+    ]
+  }
 }

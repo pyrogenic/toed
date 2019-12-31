@@ -4,15 +4,17 @@ import compact from "lodash/compact";
 import flatten from "lodash/flatten";
 import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
+import sortedIndexBy from "lodash/sortedIndexBy";
 import uniq from "lodash/uniq";
 import without from "lodash/without";
 import React from "react";
-import Badge, {BadgeProps} from "react-bootstrap/Badge";
-import Button, {ButtonProps} from "react-bootstrap/Button";
+import Badge, { BadgeProps } from "react-bootstrap/Badge";
+import Button, { ButtonProps } from "react-bootstrap/Button";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
 import ButtonToolbar from "react-bootstrap/ButtonToolbar";
 import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
+import Collapse from "react-bootstrap/Collapse";
 import Container from "react-bootstrap/Container";
 import Dropdown from "react-bootstrap/Dropdown";
 import Form from "react-bootstrap/Form";
@@ -27,34 +29,44 @@ import Row from "react-bootstrap/Row";
 import "./App.css";
 import badWords from "./badWords";
 import defaultConfig from "./default.od3config.json";
-import fetchWord from "./fetchWord";
-import Focus from "./Focus";
-import {ITags} from "./IWordRecord";
-import {arraySetAdd, arraySetHas, arraySetToggle, ensureMap} from "./Magic";
+import Focus, { FocusIcons } from "./Focus";
+import IWordRecord, { ITags } from "./IWordRecord";
+import Lookup, { CacheMode, ILookupProps } from "./Lookup";
+import {
+  arraySetAdd,
+  arraySetHas,
+  arraySetToggle,
+  ensureMap,
+  PropertyNamesOfType,
+  titleCase,
+} from "./Magic";
 import Marks from "./Marks";
 import OpenIconicNames from "./OpenIconicNames";
 import OpTrack from "./OpTrack";
-import OxfordDictionariesPipeline, {IPassMap, IPipelineConfig, PartialWordRecord} from "./OxfordDictionariesPipeline";
+import OxfordDictionariesPipeline,
+{
+  IPassMap,
+  IPipelineConfig,
+  PartialWordRecord,
+} from "./OxfordDictionariesPipeline";
 import Pass from "./Pass";
 import PassComponent from "./PassComponent";
 import IEntry from "./types/gen/IEntry";
 import IHeadwordEntry from "./types/gen/IHeadwordEntry";
 import ILexicalEntry from "./types/gen/ILexicalEntry";
 import IRetrieveEntry from "./types/gen/IRetrieveEntry";
+import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
-import RetrieveEntry from "./types/gen/RetrieveEntry";
-
-const MAX_THREADS = 1;
-const MAX_API_RATE = 20;
+import Icon from "./Icon";
 
 interface IStringMap { [key: string]: string[]; }
 
 type ITagCrossReference = { [K in keyof IPipelineConfig]: IStringMap };
 
-type TagFocusElement = [keyof IPipelineConfig, string];
-type TagFocus = {
+export type TagFocusElement = [keyof IPipelineConfig, string];
+export type TagFocus = {
   [K in Exclude<Focus, Focus.normal>]: TagFocusElement[];
 };
 
@@ -62,20 +74,22 @@ interface IProps {
 
 }
 
+interface IPromiseEntry { q: string; promise: Promise<any>; }
+
 interface IState {
   apiBaseUrl: string;
   app_id?: string;
   app_key?: string;
 
   languages: OxfordLanguage[];
-  q?: string;
+  q: string;
   queue: string[];
   rate: number;
   paused?: boolean | number;
-  promises: Array<Promise<any>>;
+  promises: IPromiseEntry[];
+  lookupProps: Partial<ILookupProps>;
 
   history: string[];
-  hidden: string[];
   records: WordRecord[];
 
   re?: IRetrieveEntry;
@@ -83,10 +97,39 @@ interface IState {
   config: IPipelineConfig;
   xref: ITagCrossReference;
   focus: TagFocus;
+  visibleRecordCount: number;
 }
 
 function odApiCallsLastMinute() {
   return OpTrack.history("odapi", 60 * 1000)[0]?.length ?? 0;
+}
+
+function DisclosureBar({title, children}: React.PropsWithChildren<{title: string}>) {
+  const [open, setOpen] = React.useState(false);
+  const [closing, setClosing] = React.useState(false);
+  return (
+    <div className={compact(["disclosure", open && "show"]).join(" ")}>
+      <div
+        className="disclosure-bar"
+        onClick={open ? close : setOpen.bind(null, true)}
+        aria-controls={title}
+        aria-expanded={open}
+      >
+        {title}
+      </div>
+      <Collapse in={open}>
+        <div id={title}>
+          {(open || closing) && children}
+        </div>
+      </Collapse>
+    </div>
+  );
+
+  function close() {
+    setOpen(false);
+    setClosing(true);
+    setTimeout(setClosing, 500, false);
+  }
 }
 
 export default class App extends React.Component<IProps, IState> {
@@ -94,6 +137,7 @@ export default class App extends React.Component<IProps, IState> {
   private static highlightedTag?: string;
   private static ruleIndex: Map<string, CSSStyleRule> = new Map();
   private timer?: NodeJS.Timeout;
+  private readonly lookup: Lookup;
 
   constructor(props: Readonly<IProps>) {
     super(props);
@@ -157,23 +201,25 @@ export default class App extends React.Component<IProps, IState> {
     });
     Marks.forEach(([key]) => config.marks[key] = config.marks[key] ?? Pass.primary);
     const history: string[] = uniq(JSON.parse(localStorage.getItem("oed/history") || "[]"));
-    const hidden: string[] = uniq(JSON.parse(localStorage.getItem("oed/hidden") || "[]"));
+    const lookupProps = JSON.parse(localStorage.getItem("oed/lookupProps") ?? "{}");
     this.state = {
       apiBaseUrl: "/api/v2",
       app_id: localStorage.getItem("oed/app_id") || undefined,
       app_key: localStorage.getItem("oed/app_key") || undefined,
       config,
       focus,
-      hidden,
       history,
       languages: [OxfordLanguage.americanEnglish, OxfordLanguage.britishEnglish],
+      lookupProps,
       promises: [],
-      q: sessionStorage.getItem("oed/q") || undefined,
+      q: sessionStorage.getItem("oed/q") || "",
       queue: [],
       rate: 0,
       records: [],
+      visibleRecordCount: 0,
       xref,
     };
+    this.lookup = new Lookup(lookupProps);
   }
 
   public componentDidMount() {
@@ -191,7 +237,7 @@ export default class App extends React.Component<IProps, IState> {
       });
     }
     this.timer = setInterval(this.tick, 100);
-    OpTrack.listeners.push(this.updateRate);
+    OpTrack.listeners.push(setImmediate.bind(null, this.updateRate));
   }
 
   public componentWillUnmount() {
@@ -222,13 +268,14 @@ export default class App extends React.Component<IProps, IState> {
     } else {
       localStorage.removeItem("oed/app_key");
     }
-    const { q } = this.state;
-    if (q && this.state.re && this.state.re.results) {
+    const { history, lookupProps, q, re } = this.state;
+    if (q && re && re.results) {
       sessionStorage.setItem("oed/q", q);
     } else {
       localStorage.removeItem("oed/q");
     }
-    localStorage.setItem("oed/history", JSON.stringify(this.state.history));
+    localStorage.setItem("oed/history", JSON.stringify(history));
+    localStorage.setItem("oed/lookupProps", JSON.stringify(lookupProps));
   }
 
   public render() {
@@ -237,13 +284,13 @@ export default class App extends React.Component<IProps, IState> {
     const remainingBadWords = without(badWords, ...loaded, ...history);
     const WordListComponent = this.WordListComponent;
     const QueueComponent = this.QueueComponent;
+    const hiddenCount = this.state.records.length - this.state.visibleRecordCount;
     return <>
-      <Navbar bg="light" expand="sm">
+      <Navbar bg="light" expand="lg">
         <Navbar.Toggle aria-controls="nav" as={NavbarBrand}>OD³</Navbar.Toggle>
         <Navbar.Collapse id="nav">
-          <Navbar.Brand href="#home">OD³</Navbar.Brand>
           <Navbar.Text className="powered-by-oxford"> Oxford Dictionaries Definition Distiller</Navbar.Text>
-          <NavDropdown title="Keys" id="nav-import" as={Button}>
+          <NavDropdown title="Keys" id="nav-keys" as={Button}>
             <Container>
               <Form>
                 <Form.Group>
@@ -253,6 +300,7 @@ export default class App extends React.Component<IProps, IState> {
                       value={this.state.app_id || undefined}
                       style={{fontFamily: "monospace"}}
                       onChange={(e: any) => this.setState({app_id: e.target.value})}/>
+                  {this.lookupConfig({prop: "enterprise", as: "checkbox"})}
                 </Form.Group>
                 <Form.Group>
                   <Form.Label>App Key</Form.Label>
@@ -261,6 +309,28 @@ export default class App extends React.Component<IProps, IState> {
                       value={this.state.app_key || undefined}
                       style={{fontFamily: "monospace"}}
                       onChange={(e: any) => this.setState({app_key: e.target.value})}/>
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label>Lookup</Form.Label>
+                  {this.lookupConfig({as: "checkbox", prop: "online"})}
+                  {this.lookupConfig({as: "select", prop: "cache", enumType: CacheMode})}
+                </Form.Group>
+              </Form>
+            </Container>
+          </NavDropdown>
+          <NavDropdown title="Perf" id="nav-perf" as={Button}>
+            <Container>
+              <Form>
+              <Form.Group>
+                  <Form.Label>Lookup</Form.Label>
+                  {this.lookupConfig({as: "checkbox", prop: "online"})}
+                  {this.lookupConfig({as: "select", prop: "cache", enumType: CacheMode})}
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label>Limits</Form.Label>
+                  {this.lookupConfig({as: "number", prop: "threads", range: [1, 10]})}
+                  {this.lookupConfig({as: "number", prop: "apiRate", range: [1, 500]})}
+                  {this.lookupConfig({as: "number", prop: "loaded", range: [1, 1000]})}
                 </Form.Group>
               </Form>
             </Container>
@@ -272,12 +342,16 @@ export default class App extends React.Component<IProps, IState> {
                   setConfig={(config) => this.setState({config})}/>
             </Container>
           </NavDropdown>
+          <NavDropdown title="Words" id="nav-words">
+            <Container>
+              <WordListComponent label={"Bad Words"} words={remainingBadWords} variant={"outline-warning"}/>
+              <WordListComponent label={"History"} words={history}/>
+            </Container>
+          </NavDropdown>
 
           <Nav className="mr-auto"/>
 
-          <WordListComponent label={"Bad Words"} words={remainingBadWords} variant={"outline-warning"}/>
-          <WordListComponent label={"History"} words={history}/>
-          <QueueComponent />
+          <QueueComponent/>
         </Navbar.Collapse>
         <Form inline={true} onSubmitCapture={this.go} action={"#"}>
           <InputGroup>
@@ -297,23 +371,12 @@ export default class App extends React.Component<IProps, IState> {
         </Form>
       </Navbar>
       <Container>
-        <Row>
-          <Col>
-            <Form inline={true}>
-              <Form.Row>
-                <Col>
-                </Col>
-              </Form.Row>
-            </Form>
-          </Col>
-        </Row>
 
-        {this.renderFilter("Parts of Speech", "partsOfSpeech")}
-        {this.renderFilter("Grammatical Features", "grammaticalFeatures")}
-        {this.renderFilter("Registers", "registers")}
-        {this.renderFilter("Domains", "domains")}
-        {this.renderFilter("Imputed", "imputed")}
-        {this.renderFilter("Marks", "marks", true)}
+        <DisclosureBar title={
+          compact(["filters and tags", hiddenCount > 0 && `${hiddenCount} hidden`]).join(" — ")
+        }>
+          {this.renderFilters()}
+        </DisclosureBar>
 
         {/* {this.state.re && this.state.re.results &&
         <Row>
@@ -332,6 +395,8 @@ export default class App extends React.Component<IProps, IState> {
           <Col>
             <WordTable
                 records={this.state.records}
+                focus={this.state.focus}
+                onFiltered={this.onFiltered}
                 TagControl={this.TagControl}
                 MarksControl={this.MarksControl}
             />
@@ -370,12 +435,116 @@ export default class App extends React.Component<IProps, IState> {
     return allowed;
   }
 
+  public getMarksFor = (query: string) => {
+    const { xref: { marks } } = this.state;
+    return Object.keys(marks).filter((key) =>
+      arraySetHas(marks, key, query));
+  }
+
   public processed = (query: string, {allTags}: PartialWordRecord) => {
     if (!allTags) {
       return;
     }
 
     setImmediate(this.updateXref, query, cloneDeep(allTags));
+  }
+
+  private renderFilters = () => {
+    return <Container>
+      {this.renderFilter("Parts of Speech", "partsOfSpeech")}
+      {this.renderFilter("Grammatical Features", "grammaticalFeatures")}
+      {this.renderFilter("Registers", "registers")}
+      {this.renderFilter("Domains", "domains")}
+      {this.renderFilter("Imputed", "imputed")}
+      {this.renderFilter("Marks", "marks", true)}
+    </Container>;
+  }
+
+  private lookupConfig<TEnum>(props: ({
+                                    as: "checkbox",
+                                    prop: PropertyNamesOfType<ILookupProps, boolean>,
+                                  } | {
+                                    as: "select",
+                                    prop: PropertyNamesOfType<ILookupProps, TEnum>,
+                                    enumType: {[key: string]: TEnum},
+                                  } | {
+                                    as: "number",
+                                    prop: PropertyNamesOfType<ILookupProps, number>,
+                                    range?: [number, number],
+                                  })) {
+    const defaultValue = Lookup.effectiveProps()[(props.prop)];
+    const defaultValueLabel = `Default (${defaultValue.toString()})`;
+    return <>
+      {props.as === "checkbox" &&
+      <Form.Check
+          className="mr-auto"
+          label={titleCase(props.prop)}
+          checked={this.state.lookupProps[props.prop]}
+          onChange={() =>
+              this.setState(({lookupProps}) =>
+                      ({lookupProps: {...lookupProps, [props.prop]: !lookupProps[(props.prop)]}}),
+                  () => this.lookup.props = this.state.lookupProps)
+          }
+      />}
+      {props.as === "select" &&
+      <>
+      <Form.Text>{titleCase(props.prop)}</Form.Text>
+      <Form.Control
+          as={"select"}
+          value={(this.state.lookupProps[props.prop] ?? defaultValueLabel).toString()}
+          onChange={(event) => {
+            const value = event.currentTarget.value;
+            this.setState(({ lookupProps }) => {
+              const realValue = value === defaultValueLabel ? undefined : value;
+              return ({
+                lookupProps: {
+                  ...lookupProps,
+                  [props.prop]: realValue,
+                },
+              });
+            },
+              () => this.lookup.props = this.state.lookupProps);
+          }}
+      >
+        <option value={defaultValueLabel}>{defaultValueLabel}</option>
+        <option>-</option>
+        {Object.keys(props.enumType).sort().map((value) =>
+            <option key={value} value={value}>{value}</option>)}
+      </Form.Control>
+        </>}
+        {props.as === "number" &&
+      <>
+        <Form.Text>{titleCase(props.prop)}</Form.Text>
+        <Form.Control
+          type={"number"}
+          min={props.range?.[0]}
+          max={props.range?.[1]}
+          placeholder={`${defaultValue}`}
+          defaultValue={this.state.lookupProps[props.prop] === undefined ? `${defaultValue}` : undefined}
+          value={this.state.lookupProps[props.prop] === undefined ? undefined : `${this.state.lookupProps[props.prop]}`}
+            onChange={(event: any) => {
+              const value = event.currentTarget.value;
+              this.setState(({ lookupProps }) => {
+                return ({
+                  lookupProps: {
+                    ...lookupProps,
+                    [props.prop]: value,
+                  },
+                });
+              },
+                () => this.lookup.props = this.state.lookupProps);
+            }} />
+        </>}
+      {props.as !== "select" && this.state.lookupProps[(props.prop)] !== undefined &&
+      <Button size="sm" variant="warning" onClick={() =>
+          this.setState(({lookupProps}) =>
+                  ({lookupProps: {...lookupProps, [props.prop]: undefined}}),
+              () => this.lookup.props = this.state.lookupProps)
+      }>
+        {defaultValueLabel}
+      </Button>
+      }
+    </>;
   }
 
   private updateXref = (query: string, allTags: ITags) => {
@@ -393,7 +562,10 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private WordListComponent = ({label, words, variant = "outline-primary"}:
-                                   { label: string, words: string[], variant?: ButtonProps["variant"] }) => {
+                                   { label: string,
+                                     className?: string,
+                                     words: string[],
+                                     variant?: ButtonProps["variant"] }) => {
     const NavDropdownButtonGroup = this.NavDropdownButtonGroup;
     return <NavDropdownButtonGroup variant={variant} label={label} words={words}>
       {[1, 2, 10].map((n) =>
@@ -408,14 +580,17 @@ export default class App extends React.Component<IProps, IState> {
     </NavDropdownButtonGroup>;
   }
 
-  private NavDropdownButtonGroup = ({variant, label, words, children}:
+  private NavDropdownButtonGroup = ({variant, label, className, words, children}:
                                         React.PropsWithChildren<{
-                                          variant: ButtonProps["variant"], label: string, words: string[],
+                                          variant: ButtonProps["variant"],
+                                          label: string,
+                                          className?: string,
+                                          words: string[],
                                         }>) => {
     const disabled = words.length === 0;
     const fakeButtonClassName = compact(["btn", `btn-${variant}`, disabled && "disabled"]).join(" ");
     return <Nav>
-      <Navbar.Text className="mr-3">
+      <Navbar.Text className={className}>
         <ButtonGroup>
           <div className={fakeButtonClassName} style={{padding: 0}}>
             <Dropdown className="d-flex justify-content-start">
@@ -450,9 +625,10 @@ export default class App extends React.Component<IProps, IState> {
       backgroundImage: "linear-gradient(transparent 0%, var(--warning) 0%)",
       backgroundPosition: "bottom",
       backgroundRepeat: "no-repeat",
-      backgroundSize: `100% ${Math.min(Math.ceil(100 * rate / MAX_API_RATE), 100)}%`,
+      backgroundSize: `100% ${Math.min(Math.ceil(100 * (rate / this.maxApiRate)), 100)}%`,
     };
-    return <NavDropdownButtonGroup variant={variant} label={"Queue"} words={queue}>
+    return <NavDropdownButtonGroup variant={variant} label={"Queue"} words={queue} className={"mr-3"}>
+      {/* {promises.map(({q}) => <Button>{q}</Button>)} */}
       <Button
           variant={variant}
           onClick={this.togglePause}
@@ -472,6 +648,22 @@ export default class App extends React.Component<IProps, IState> {
                 title="Process One"/>
       </Button>
     </NavDropdownButtonGroup>;
+  }
+
+  private onFiltered = (visibleRecords: IWordRecord[]) => {
+    this.setState({visibleRecordCount: visibleRecords.length});
+  }
+
+  private get maxThreads() {
+    return this.lookup.effectiveProps.threads;
+  }
+
+  private get maxLoaded() {
+    return this.lookup.effectiveProps.loaded;
+  }
+
+  private get maxApiRate() {
+    return this.lookup.effectiveProps.apiRate;
   }
 
   private getOnClick(q: string) {
@@ -536,6 +728,7 @@ export default class App extends React.Component<IProps, IState> {
     return <FilterRow
         label={label}
         prop={prop}
+        focus={this.getFocusFor}
         config={this.state.config[prop]}
         xref={this.state.xref[prop]}
         TagControl={this.TagControl}
@@ -618,10 +811,10 @@ export default class App extends React.Component<IProps, IState> {
 
   private tick = () => {
     this.setState(({queue: [item, ...queue], paused, promises, rate}) => {
-      if (paused === true || item === undefined || promises.length > MAX_THREADS) {
+      if (paused === true || item === undefined || promises.length > this.maxThreads) {
         return null;
       }
-      if (rate > MAX_API_RATE) {
+      if (rate > this.maxApiRate) {
         return null;
       }
       if (typeof paused === "number") {
@@ -632,22 +825,24 @@ export default class App extends React.Component<IProps, IState> {
       }
       const promise: Promise<any> = this.get(item);
       OpTrack.track("lookup", item, promise);
-      promise.then(...this.resolvePromise(promise));
-      promises.push(promise);
+      const promiseEntry = { q: item, promise };
+      promise.then(...this.resolvePromise(promiseEntry));
+      promises.push(promiseEntry);
       return {queue, promises, paused};
-    });
+    }, this.updateRate);
   }
 
-  private resolvePromise = (promise: Promise<any>) => {
+  private resolvePromise = (promiseEntry: IPromiseEntry) => {
     const c = () => new Promise((resolve) => this.setState(({promises}) =>
-        ({promises: without(promises, promise)}), resolve));
+        ({promises: without(promises, promiseEntry)}), resolve));
     return [c, c];
   }
 
   private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
+    q = q.toLocaleLowerCase();
     const {apiBaseUrl, languages} = this.state;
     const promises: Array<Promise<RetrieveEntry>> =
-        languages.map((language) => fetchWord(apiBaseUrl, language, redirect || q));
+        languages.map((language) => this.lookup.get(apiBaseUrl, language, redirect || q));
     const res = await Promise.all(promises);
     const re = res.reduce((re0, re1) => {
       re0.results = flatten(compact([re0.results, re1.results]));
@@ -659,13 +854,20 @@ export default class App extends React.Component<IProps, IState> {
     }
     return new Promise((resolve) => {
       this.setState(({records, history}) => {
-        const index = records.findIndex((e) => e.q === q);
-        if (index >= 0) {
-          records.splice(index, 1);
-        }
-        const pipeline = new OxfordDictionariesPipeline(q, re.results || [], this.allowed, this.processed);
+        const pipeline = new OxfordDictionariesPipeline({
+          allowed: this.allowed,
+          entries: re.results || [],
+          getMarksFor: this.getMarksFor,
+          processed: this.processed,
+          query: q,
+        });
         const record = new WordRecord(q, re, pipeline);
-        records.push(record);
+        const index = sortedIndexBy(records, record, "q");
+        if (records[index]?.q === q) {
+          records[index] = record;
+        } else {
+          records.splice(index, 0, record);
+        }
         arraySetAdd({history}, "history", q, "mru");
         return {re, records, history};
       }, resolve);
@@ -675,7 +877,7 @@ export default class App extends React.Component<IProps, IState> {
   private tagControl = ({prop, flag, detail, value, query}: {
     prop: keyof ITagCrossReference,
     flag: string,
-    detail?: string,
+    detail?: ReturnType<React.Component["render"]>,
     value?: Pass,
     query: string | undefined,
   }) => {
@@ -691,7 +893,7 @@ export default class App extends React.Component<IProps, IState> {
         <Popover.Content>
           <PassComponent
             pass={value}
-            focus={this.getFocusFor(prop, key)}
+            focus={this.getFocusFor(prop, flag)}
             words={words}
             changePass={this.changePass.bind(this, query, prop, flag)}
             changeFocus={this.setFocusFor.bind(this, prop, flag)}
@@ -744,12 +946,13 @@ export default class App extends React.Component<IProps, IState> {
   // tslint:disable-next-line:member-ordering
   private MarksControl = this.marksControl;
 
-  private getFocusFor(prop: keyof IPipelineConfig, key: string) {
-    const lookup: TagFocusElement = [prop, key];
-    if (this.state.focus.hide.includes(lookup)) {
+  private getFocusFor = (prop: keyof IPipelineConfig, key: string) => {
+    const entry = [prop, key];
+    const lookup = isEqual.bind(null, entry);
+    if (this.state.focus.hide.find(lookup)) {
       return Focus.hide;
     }
-    if (this.state.focus.focus.includes(lookup)) {
+    if (this.state.focus.focus.find(lookup)) {
       return Focus.focus;
     }
     return Focus.normal;
@@ -757,6 +960,7 @@ export default class App extends React.Component<IProps, IState> {
 
   private setFocusFor(prop: keyof IPipelineConfig, key: string, value: Focus, solo: boolean) {
     this.setState(({focus}) => {
+      focus = cloneDeep(focus);
       if (solo) {
         Object.entries(focus).forEach(([focusType, e]) => {
           const items: TagFocusElement[] = focusType === value ? [[prop, key]] : [];
@@ -765,7 +969,7 @@ export default class App extends React.Component<IProps, IState> {
       } else {
         Object.entries(focus).forEach(([focusType, e]) => {
           const element: TagFocusElement = [prop, key];
-          const index = e.indexOf(element);
+          const index = e.findIndex(isEqual.bind(null, element));
           if (index >= 0) {
             if (value === focusType) {
               return;
@@ -779,6 +983,7 @@ export default class App extends React.Component<IProps, IState> {
           }
         });
       }
+      return {focus};
     });
   }
 
@@ -789,17 +994,10 @@ export default class App extends React.Component<IProps, IState> {
     }, () => this.unshift([query]));
   }
 
-  private getMarksFor(query: string) {
-    return Object.keys(this.state.xref.marks).filter((key) => arraySetHas(this.state.xref.marks, key, query));
-  }
-
   private updateRate = () => {
     this.setState(({rate}) => {
           const newRate = odApiCallsLastMinute();
           if (newRate === rate) {
-            if (newRate > 0) {
-              setTimeout(this.updateRate, 100);
-            }
             return null;
           }
           return {rate: newRate};
@@ -830,14 +1028,17 @@ function variantForPass(value: Pass): BadgeProps["variant"] {
 
 function FilterRow({
                      label,
-                     config,
                      prop,
+                     focus,
+                     config,
+                     xref,
                      TagControl,
                      showAll = false,
                    }:
                        {
                          label: string,
                          prop: keyof ITagCrossReference,
+                         focus: App["getFocusFor"],
                          config: IPassMap,
                          xref: IStringMap,
                          TagControl: TagControlFactory;
@@ -845,6 +1046,8 @@ function FilterRow({
                        }) {
     const [open, setOpen] = React.useState(showAll);
     const flags = Object.keys(config).sort();
+    // These orphaned tags (like "404") are probably from old bugs:
+    // without(Object.keys(xref), ...flags).forEach((key) => config[key] = Pass.primary);
     let hidden = 0;
     return <Row>
     <Col xs={3}>
@@ -853,14 +1056,16 @@ function FilterRow({
     <Col className="tags">
       {flags.map((flag) => {
         const value = config[flag];
-        if (!open && value === Pass.primary) {
+        const flagFocus = focus(prop, flag);
+        if (!open && value === Pass.primary && flagFocus === Focus.normal) {
           hidden++;
           return false;
         }
-        return <TagControl prop={prop} flag={flag} value={value} query={undefined}/>;
+        return <TagControl key={flag} prop={prop} flag={flag} value={value} query={undefined}
+        detail={flagFocus !== Focus.normal && <Icon icon={FocusIcons[flagFocus]} />}/>;
       })}
     </Col>
-    <Col xs={2} className="tags">
+    <Col xs={"auto"} className="tags">
     <TagBadge
         pass={Pass.primary}
         onClick={() => setOpen(!open)}>

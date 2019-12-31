@@ -3,6 +3,9 @@
     "tslint.alwaysShowStatus": true,
     "tslint.autoFixOnSave": true,
     "tslint.packageManager": "yarn",
+    "tslint.run": "onSave",
     "typescript.format.semicolons": "insert",
     "typescript.tsdk": "./node_modules/typescript/lib",
+    "editor.detectIndentation": false,
+    "editor.tabSize": 2,
 }

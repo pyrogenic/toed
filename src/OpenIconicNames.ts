@@ -225,3 +225,7 @@ enum OpenIconicNames {
 }
 
 export default OpenIconicNames;
+
+export function iconClassName(icon: OpenIconicNames) {
+  return "oi oi-" + icon;
+}

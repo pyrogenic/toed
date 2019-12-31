@@ -1,14 +1,14 @@
 import cloneDeep from "lodash/cloneDeep";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
-import uniq from "lodash/uniq";
 import App from "./App";
 import IDictionaryEntry from "./IDictionaryEntry";
 import IWordRecord, {ITags} from "./IWordRecord";
-import {arraySetAdd, arraySetAddAll, ensure} from "./Magic";
+import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure, ensureArray} from "./Magic";
 import map from "./map";
-import needsMoreDefinitions from "./needsMoreDefinitions";
+import Marks from "./Marks";
 import Pass from "./Pass";
+import sufficientDefinitions from "./sufficientDefinitions";
 import IHeadwordEntry from "./types/gen/IHeadwordEntry";
 import ILexicalEntry from "./types/gen/ILexicalEntry";
 import IPronunciation from "./types/gen/IPronunciation";
@@ -61,10 +61,18 @@ export default class OxfordDictionariesPipeline {
     public allEntryTexts: string[];
 
     private readonly allowed: App["allowed"];
+    private readonly getMarksFor: App["getMarksFor"];
     private readonly processed: App["processed"];
 
-    constructor(query: string, entries: IHeadwordEntry[], allowed: App["allowed"], processed: App["processed"]) {
+    constructor({ query, entries, allowed, getMarksFor, processed }: {
+      query: string,
+      entries: IHeadwordEntry[],
+      allowed: App["allowed"],
+      getMarksFor: App["getMarksFor"],
+      processed: App["processed"],
+    }) {
         this.allowed = allowed;
+        this.getMarksFor = getMarksFor;
         this.processed = processed;
         this.query = query;
         this.entries = entries;
@@ -77,6 +85,20 @@ export default class OxfordDictionariesPipeline {
         const result = ensure(record, "result", Object);
         const resultTags = ensure(record, "resultTags", Object);
         const allTags = ensure(record, "allTags", Object);
+
+        if (entries.length === 0) {
+          arraySetAdd(allTags, "imputed", ["404"]);
+        }
+
+        const marks = this.getMarksFor(query);
+        Object.values(Marks).forEach(([mark]) => {
+          if (marks.includes(mark)) {
+            arraySetAdd(allTags, "marks", mark);
+          } else {
+            arraySetRemove(allTags, "marks", mark);
+          }
+        });
+
         const lowercaseMatchingEntryTexts = undefIfEmpty(this.allEntryTexts.filter((text) =>
             query.toLocaleLowerCase() === text));
         const mixedCaseMatchingEntryTexts = undefIfEmpty(this.allEntryTexts.filter((text) => {
@@ -177,7 +199,7 @@ export default class OxfordDictionariesPipeline {
                 arraySetAdd(entryTags, "imputed",
                     [`redirect-${redirectedFrom.lexicalCategory.id}`, `from '${internalRedirect.word}'`]);
             });
-            const {lexicalCategory: {id: partOfSpeech}, text} = lexicalEntry;
+            const {text} = lexicalEntry;
             const lexicalEntryTags = cloneDeep(entryTags);
             if (text === query.toLocaleLowerCase()) {
                 arraySetAdd(lexicalEntryTags, "imputed", ["exact"]);
@@ -304,13 +326,11 @@ export default class OxfordDictionariesPipeline {
                         if (senses === undefined || senses.length === 0) { return; }
                         const lentryGrammaticalFeatures = appendGrammaticalFeatures(lentry, grammaticalFeatures);
                         if (lentryGrammaticalFeatures.length > 0) {
-                            const disallowed = lentryGrammaticalFeatures.filter((tag) => {
+                            const disallowed = lentryGrammaticalFeatures.some((tag) => {
                                 const tagAllowedForPass = this.allowed("grammaticalFeatures", tag);
                                 return tagAllowedForPass > pass.pass;
                             });
-                            if (disallowed.length > 0) {
-                                // tslint:disable-next-line:no-console
-                                console.log(`entry ${entryIndex}.${lentryIndex} rejected because ${disallowed.join(" & ")} is/are disallowed for pass ${pass.pass}`);
+                            if (disallowed) {
                                 return;
                             }
                         }
@@ -342,6 +362,9 @@ export default class OxfordDictionariesPipeline {
         }
         if (resultTags.pronunciation_ipa) {
             copyTags(resultTags.pronunciation_ipa, allTags);
+        }
+        if ((result.definitions?.length ?? 0) === 0) {
+          arraySetAdd(allTags, "imputed", ["undefined"]);
         }
         this.processed(this.query, record);
         return result;
@@ -434,7 +457,8 @@ export default class OxfordDictionariesPipeline {
         }
         if (definitions) {
             definitions.forEach((definition) => {
-                if (needsMoreDefinitions(result, partOfSpeech, short, pass)) {
+              const haveSufficient = sufficientDefinitions(result, partOfSpeech, short, pass);
+              if (haveSufficient === false) {
                     if (!result.entry_rich) {
                         result.entry_rich = text;
                         resultTags.entry_rich = { partsOfSpeech: [partOfSpeech], grammaticalFeatures };
@@ -467,12 +491,17 @@ export default class OxfordDictionariesPipeline {
                         }
                     }
                     if (discardedExamples && discardedExamples.length > 0) {
-                        const discards = ensure(record, "resultDiscarded", Object);
-                        discards.example = uniq(compact([
-                            discards.example, ...discardedExamples.map((e) => e.text)])).join(RECORD_SEP);
+                      const discardExamples = ensureArray(ensure(record, "resultDiscarded", Object), "example");
+                      const discardExamplesTags = ensureArray(ensure(record, "resultDiscardedTags", Object), "example");
+                      const discardTags = cloneDeep(tags);
+                      arraySetAdd(discardTags, "imputed", ["extra", "example"]);
+                      discardedExamples.forEach(({ text: example }) => {
+                        discardExamples.push(example);
+                        discardExamplesTags.push(discardTags);
+                      });
                     }
                 } else {
-                    arraySetAdd(tags, "imputed", ["extra"]);
+                    arraySetAdd(tags, "imputed", ["extra", haveSufficient]);
                     discard({
                         entries: [{
                             senses: [{

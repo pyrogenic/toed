@@ -9,3 +9,6 @@ Oxford Dictionaries TypesScript Client
 | Component | Source | License |
 | === | === | === |
 | [src/bad-words.txt] | [Luis von Ahn's Research Group](https://www.cs.cmu.edu/~biglou/resources/) at CMU | _unspecified_ |
+
+## TODO
+- [ ] "undefined" tag not removed when refresh finds definition
