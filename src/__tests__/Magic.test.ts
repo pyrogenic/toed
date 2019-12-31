@@ -1,4 +1,4 @@
-import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure, ensureArray, MutipleValue} from "../Magic";
+import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure, ensureArray, MultipleValue} from "../Magic";
 
 class Container {
     public req: string[] = [];
@@ -163,7 +163,7 @@ describe("Multiplex", () => {
   test("simple", () => {
     const simple: IMutiplexBase = { plain: 1, enumerable: [2] };
     expect(simple).toHaveProperty("plain", 1);
-    const multiplex: MutipleValue<IMutiplexBase> = { plain: [1], enumerable: [2] };
+    const multiplex: MultipleValue<IMutiplexBase, "plain" | "optPlain"> = { plain: [1], enumerable: [2] };
     expect(multiplex).toHaveProperty("plain", [1]);
     ensureArray(multiplex, "optPlain");
     expect(multiplex).toHaveProperty("optPlain", []);

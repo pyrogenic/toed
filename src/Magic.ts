@@ -11,9 +11,19 @@ export type PropertyNamesOfType<T, P> = {
 
 export type PropertiesOfType<T, P> = Pick<T, PropertyNamesOfType<T, P>>;
 
-export type MultipleValue<T> = {
-  [K in keyof T]: T[K] extends Array<infer E> ? T[K] : Array<T[K]>;
+export type MultipleValue<T, P extends keyof T> = {
+  [K in keyof T]: K extends P ? Array<T[K]> : T[K];
 };
+
+export function array<T>(value: undefined | T | T[]) {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return [value];
+}
 
 export type Comparer<T> = Parameters<T[]["sort"]>;
 

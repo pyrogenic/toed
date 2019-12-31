@@ -15,10 +15,9 @@ import Popover from "react-bootstrap/Popover";
 import Row from "react-bootstrap/Row";
 import { MarksControlFactory, TagControlFactory, TagFocus } from "./App";
 import Focus from "./Focus";
-import IWordRecord, { ITags } from "./IWordRecord";
-import { arraySetHas } from "./Magic";
+import IWordRecord, { IDiscardedWordRecord, ITags } from "./IWordRecord";
+import { array, arraySetHas } from "./Magic";
 import OpenIconicNames from "./OpenIconicNames";
-import { RECORD_SEP } from "./OxfordDictionariesPipeline";
 import { minDiff } from "./volumize";
 import "./WordTable.css";
 
@@ -125,7 +124,7 @@ function WordRow(
   }:
     {
       id?: string,
-      record: IWordRecord,
+      record: IWordRecord | IDiscardedWordRecord,
       onlyForHash: boolean,
       TagControl: TagControlFactory,
       MarksControl: MarksControlFactory,
@@ -133,11 +132,12 @@ function WordRow(
     }) {
   const result = record.result || {};
   const resultTags = record.resultTags || {};
-  const { etymology, example } = result;
+  const etymologies = array(result.etymology);
+  const examples = array(result.example);
   const definitions = result.definitions || {};
   const partsOfSpeech = Object.keys(definitions);
   const { pipelineNotes, resultDiscarded, resultDiscardedTags } = record;
-  const notFound = !(partsOfSpeech.length || etymology || example);
+  const notFound = !(partsOfSpeech.length || etymologies || examples);
   const word = result.entry_rich || record.q;
   const moreInfo = (pipelineNotes && pipelineNotes.length > 0)
     || resultDiscarded || resultDiscardedTags;
@@ -194,34 +194,41 @@ function WordRow(
             }
           </Col>
         </Row>)}
-        {etymology &&
-          <TaggedComponent
-            query={record.q}
-            word={word}
-            title="Etymology" tags={resultTags.etymology}
-            TagControl={TagControl}
-            MarksControl={MarksControl}>
-            <Row>
-              <Col xs={fluid ? "auto" : 2}>etymology</Col>
-              <Col>{etymology}</Col>
-            </Row>
-          </TaggedComponent>}
-        {example &&
-          <TaggedComponent
-            query={record.q}
-            word={word}
-            title="Example" tags={resultTags.example}
-            TagControl={TagControl}
-            MarksControl={MarksControl}>
-            <Row>
-              <Col xs={fluid ? "auto" : 2}>example</Col>
-              <Col>{
-                example.includes(RECORD_SEP)
-                  ? example.split(RECORD_SEP).map((s) => <li>{s}</li>)
-                  : example
-              }</Col>
-            </Row>
-          </TaggedComponent>}
+        {etymologies &&
+          <Row>
+            <Col xs={fluid ? "auto" : 2}>etymology</Col>
+            <Col>
+              {etymologies.map((etymology, index) => <div key={index}>
+                <TaggedComponent
+                  query={record.q}
+                  word={word}
+                  title="Etymology"
+                  tags={array(resultTags?.etymology)?.[index]}
+                  TagControl={TagControl}
+                  MarksControl={MarksControl}>
+                  {etymology}
+                </TaggedComponent>
+              </div>)}
+            </Col>
+          </Row>
+        }
+        {examples &&
+          <Row>
+            <Col xs={fluid ? "auto" : 2}>example</Col>
+            <Col>
+              {examples.map((example, index) => <div key={index}>
+                <TaggedComponent
+                  query={record.q}
+                  word={word}
+                  title="Example"
+                  tags={array(resultTags?.example)?.[index]}
+                  TagControl={TagControl}
+                  MarksControl={MarksControl}>
+                  {example}
+                </TaggedComponent>
+              </div>)}
+            </Col>
+          </Row>}
       </Col>
     </>}
     {(!fluid || moreInfo) && <Col xs={1}>{moreInfo &&

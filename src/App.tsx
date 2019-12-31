@@ -288,7 +288,6 @@ export default class App extends React.Component<IProps, IState> {
       <Navbar bg="light" expand="lg">
         <Navbar.Toggle aria-controls="nav" as={NavbarBrand}>OD³</Navbar.Toggle>
         <Navbar.Collapse id="nav">
-          <Navbar.Brand href="#home">OD³</Navbar.Brand>
           <Navbar.Text className="powered-by-oxford"> Oxford Dictionaries Definition Distiller</Navbar.Text>
           <NavDropdown title="Keys" id="nav-keys" as={Button}>
             <Container>
