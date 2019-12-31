@@ -107,9 +107,9 @@ function DisclosureBar({title, children}: React.PropsWithChildren<{title: string
   const [open, setOpen] = React.useState(false);
   const [closing, setClosing] = React.useState(false);
   return (
-    <div className="disclosure">
+    <div className={compact(["disclosure", open && "show"]).join(" ")}>
       <div
-        className={compact(["disclosure-bar", (open || closing) && "show"]).join(" ")}
+        className="disclosure-bar"
         onClick={open ? close : setOpen.bind(null, true)}
         aria-controls={title}
         aria-expanded={open}
@@ -449,14 +449,14 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private renderFilters = () => {
-    return <>
+    return <Container>
       {this.renderFilter("Parts of Speech", "partsOfSpeech")}
       {this.renderFilter("Grammatical Features", "grammaticalFeatures")}
       {this.renderFilter("Registers", "registers")}
       {this.renderFilter("Domains", "domains")}
       {this.renderFilter("Imputed", "imputed")}
       {this.renderFilter("Marks", "marks", true)}
-    </>;
+    </Container>;
   }
 
   private lookupConfig<TEnum>(props: ({
@@ -1059,7 +1059,7 @@ function FilterRow({
         return <TagControl key={flag} prop={prop} flag={flag} value={value} query={undefined}/>;
       })}
     </Col>
-    <Col xs={2} className="tags">
+    <Col xs={"auto"} className="tags">
     <TagBadge
         pass={Pass.primary}
         onClick={() => setOpen(!open)}>
