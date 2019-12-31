@@ -303,15 +303,16 @@ export default class WordTable extends React.Component<IProps, IState> {
         // using not-some, so true value --> reject
         !Object.entries(focus).some(([focusMode, elements]) =>
           elements.some(([key, tag]) => {
-            const present = allTags && arraySetHas(allTags, key, tag);
+            const present = allTags && (arraySetHas(allTags, key, tag) ||
+              (key === "imputed" && allTags.imputed?.find(([e]) => e === tag)));
             if (focusMode === Focus.hide) {
-              // console.log(`${q}: ${tag} is hide -> present on q: ${present} (true will reject)`);
+              // console.log(`${q}: '${tag}' is hide -> present on q: '${present}' (true will reject)`);
               return present;
             } else if (focusMode === Focus.focus) {
-              // console.log(`${q}: ${tag} is focus -> present on q: ${present} (false will reject)`);
+              // console.log(`${q}: '${tag}' is focus -> present on q: '${present}' (false will reject)`);
               return !present;
             } else {
-              // console.log(`${q}: ${tag} is normal -> present on q: ${present}`);
+              // console.log(`${q}: '${tag}' is normal -> present on q: '${present}'`);
               return false;
             }
           }))); // || (index !== hashTargetIndex || !(onlyForHash = q)));

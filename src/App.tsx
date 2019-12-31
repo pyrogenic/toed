@@ -29,7 +29,7 @@ import Row from "react-bootstrap/Row";
 import "./App.css";
 import badWords from "./badWords";
 import defaultConfig from "./default.od3config.json";
-import Focus from "./Focus";
+import Focus, { FocusIcons } from "./Focus";
 import IWordRecord, { ITags } from "./IWordRecord";
 import Lookup, { CacheMode, ILookupProps } from "./Lookup";
 import {
@@ -59,6 +59,7 @@ import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
+import Icon from "./Icon";
 
 interface IStringMap { [key: string]: string[]; }
 
@@ -727,6 +728,7 @@ export default class App extends React.Component<IProps, IState> {
     return <FilterRow
         label={label}
         prop={prop}
+        focus={this.getFocusFor}
         config={this.state.config[prop]}
         xref={this.state.xref[prop]}
         TagControl={this.TagControl}
@@ -875,7 +877,7 @@ export default class App extends React.Component<IProps, IState> {
   private tagControl = ({prop, flag, detail, value, query}: {
     prop: keyof ITagCrossReference,
     flag: string,
-    detail?: string,
+    detail?: ReturnType<React.Component["render"]>,
     value?: Pass,
     query: string | undefined,
   }) => {
@@ -944,7 +946,7 @@ export default class App extends React.Component<IProps, IState> {
   // tslint:disable-next-line:member-ordering
   private MarksControl = this.marksControl;
 
-  private getFocusFor(prop: keyof IPipelineConfig, key: string) {
+  private getFocusFor = (prop: keyof IPipelineConfig, key: string) => {
     const entry = [prop, key];
     const lookup = isEqual.bind(null, entry);
     if (this.state.focus.hide.find(lookup)) {
@@ -1026,15 +1028,17 @@ function variantForPass(value: Pass): BadgeProps["variant"] {
 
 function FilterRow({
                      label,
+                     prop,
+                     focus,
                      config,
                      xref,
-                     prop,
                      TagControl,
                      showAll = false,
                    }:
                        {
                          label: string,
                          prop: keyof ITagCrossReference,
+                         focus: App["getFocusFor"],
                          config: IPassMap,
                          xref: IStringMap,
                          TagControl: TagControlFactory;
@@ -1052,11 +1056,13 @@ function FilterRow({
     <Col className="tags">
       {flags.map((flag) => {
         const value = config[flag];
-        if (!open && value === Pass.primary) {
+        const flagFocus = focus(prop, flag);
+        if (!open && value === Pass.primary && flagFocus === Focus.normal) {
           hidden++;
           return false;
         }
-        return <TagControl key={flag} prop={prop} flag={flag} value={value} query={undefined}/>;
+        return <TagControl key={flag} prop={prop} flag={flag} value={value} query={undefined}
+        detail={flagFocus !== Focus.normal && <Icon icon={FocusIcons[flagFocus]} />}/>;
       })}
     </Col>
     <Col xs={"auto"} className="tags">
