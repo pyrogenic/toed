@@ -1,4 +1,4 @@
-import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure, ensureArray} from "../Magic";
+import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure, ensureArray, MutipleValue} from "../Magic";
 
 class Container {
     public req: string[] = [];
@@ -150,4 +150,22 @@ describe("Array Sets", () => {
         expect(arraySetAdd(container, "obj", {v: "1"})).toBeFalsy();
         expect(container).toHaveProperty("obj", [{v: "1"}, {v: "hi"}]);
     });
+});
+
+interface IMutiplexBase {
+  plain: number;
+  enumerable: number[];
+  optPlain?: number;
+  optEnumerable?: number[];
+}
+
+describe("Multiplex", () => {
+  test("simple", () => {
+    const simple: IMutiplexBase = { plain: 1, enumerable: [2] };
+    expect(simple).toHaveProperty("plain", 1);
+    const multiplex: MutipleValue<IMutiplexBase> = { plain: [1], enumerable: [2] };
+    expect(multiplex).toHaveProperty("plain", [1]);
+    ensureArray(multiplex, "optPlain");
+    expect(multiplex).toHaveProperty("optPlain", []);
+  });
 });
