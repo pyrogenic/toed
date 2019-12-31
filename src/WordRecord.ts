@@ -11,8 +11,8 @@ export default class WordRecord implements Required<IWordRecord> {
   public result: Partial<IDictionaryEntry>;
   public resultTags: ResultTags<IDictionaryEntry>;
   public resultOriginal: Partial<IDictionaryEntry>;
-  public resultDiscarded: Partial<IDictionaryEntry>;
-  public resultDiscardedTags: ResultTags<IDictionaryEntry>;
+  public resultDiscarded: Required<IWordRecord>["resultDiscarded"];
+  public resultDiscardedTags: Required<IWordRecord>["resultDiscardedTags"];
   public allTags: ITags;
   public pipelineNotes: string[];
   public notes: string;

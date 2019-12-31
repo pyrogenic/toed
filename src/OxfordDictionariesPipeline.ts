@@ -1,15 +1,14 @@
 import cloneDeep from "lodash/cloneDeep";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
-import uniq from "lodash/uniq";
 import App from "./App";
 import IDictionaryEntry from "./IDictionaryEntry";
 import IWordRecord, {ITags} from "./IWordRecord";
-import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure} from "./Magic";
+import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure, ensureArray} from "./Magic";
 import map from "./map";
 import Marks from "./Marks";
-import needsMoreDefinitions from "./needsMoreDefinitions";
 import Pass from "./Pass";
+import sufficientDefinitions from "./sufficientDefinitions";
 import IHeadwordEntry from "./types/gen/IHeadwordEntry";
 import ILexicalEntry from "./types/gen/ILexicalEntry";
 import IPronunciation from "./types/gen/IPronunciation";
@@ -458,7 +457,8 @@ export default class OxfordDictionariesPipeline {
         }
         if (definitions) {
             definitions.forEach((definition) => {
-                if (needsMoreDefinitions(result, partOfSpeech, short, pass)) {
+              const haveSufficient = sufficientDefinitions(result, partOfSpeech, short, pass);
+              if (haveSufficient === false) {
                     if (!result.entry_rich) {
                         result.entry_rich = text;
                         resultTags.entry_rich = { partsOfSpeech: [partOfSpeech], grammaticalFeatures };
@@ -491,12 +491,17 @@ export default class OxfordDictionariesPipeline {
                         }
                     }
                     if (discardedExamples && discardedExamples.length > 0) {
-                        const discards = ensure(record, "resultDiscarded", Object);
-                        discards.example = uniq(compact([
-                            discards.example, ...discardedExamples.map((e) => e.text)])).join(RECORD_SEP);
+                      const discardExamples = ensureArray(ensure(record, "resultDiscarded", Object), "example");
+                      const discardExamplesTags = ensureArray(ensure(record, "resultDiscardedTags", Object), "example");
+                      const discardTags = cloneDeep(tags);
+                      arraySetAdd(discardTags, "imputed", ["extra", "example"]);
+                      discardedExamples.forEach(({ text: example }) => {
+                        discardExamples.push(example);
+                        discardExamplesTags.push(discardTags);
+                      });
                     }
                 } else {
-                    arraySetAdd(tags, "imputed", ["extra"]);
+                    arraySetAdd(tags, "imputed", ["extra", haveSufficient]);
                     discard({
                         entries: [{
                             senses: [{
