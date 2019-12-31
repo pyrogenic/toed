@@ -30,6 +30,7 @@ import "./App.css";
 import badWords from "./badWords";
 import defaultConfig from "./default.od3config.json";
 import Focus, { FocusIcons } from "./Focus";
+import Icon from "./Icon";
 import IWordRecord, { ITags } from "./IWordRecord";
 import Lookup, { CacheMode, ILookupProps } from "./Lookup";
 import {
@@ -59,7 +60,6 @@ import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
-import Icon from "./Icon";
 
 interface IStringMap { [key: string]: string[]; }
 
@@ -844,12 +844,14 @@ export default class App extends React.Component<IProps, IState> {
     const promises: Array<Promise<RetrieveEntry>> =
         languages.map((language) => this.lookup.get(apiBaseUrl, language, redirect || q));
     const res = await Promise.all(promises);
+    console.log("get: finished waiting for lookups");
     const re = res.reduce((re0, re1) => {
       re0.results = flatten(compact([re0.results, re1.results]));
       return re0;
     });
     redirect = this.derivativeOf(re.results);
     if (redirect) {
+      console.log("get: redirecting to " + redirect);
       return this.get(q, redirect);
     }
     return new Promise((resolve) => {
