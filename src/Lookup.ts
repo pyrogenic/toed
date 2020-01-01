@@ -19,6 +19,7 @@ export interface ILookupProps {
     cache: CacheMode;
     enterprise: boolean;
     online: boolean;
+    directWebdis: boolean;
     threads: number;
     loaded: number;
     apiRate: number;
@@ -41,7 +42,7 @@ export default class Lookup {
 
     public set props(props: Partial<ILookupProps>) {
         this.propsValue = props;
-        const {cache, enterprise, online} = this.effectiveProps;
+        const {directWebdis, cache, enterprise, online} = this.effectiveProps;
         const validate = (result: any) =>
           typeof result === "object" && Object.keys(result).length > 0 && !("errno" in result);
         let lookup = online ? this.callOxfordDictionaries : (url: string) => Promise.resolve({error: "offline"} as any);
@@ -52,7 +53,7 @@ export default class Lookup {
                     return compact(["memo", "od-api", ...url.split(/[/?#=]/)]);
                 },
                 validate,
-                webdis: "",
+                webdis: directWebdis ? "http://localhost:7379" : "",
             });
             lookup = this.redis.get;
         } else {
@@ -78,9 +79,11 @@ export default class Lookup {
         const threads = get(props, "threads", 2);
         const loaded = get(props, "loaded", 30);
         const apiRate = get(props, "apiRate", 200);
+        const directWebdis = get(props, "directWebdis", false);
         return {
             apiRate,
             cache,
+            directWebdis,
             enterprise,
             loaded,
             online,

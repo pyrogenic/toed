@@ -300,7 +300,8 @@ export default class App extends React.Component<IProps, IState> {
                       value={this.state.app_id || undefined}
                       style={{fontFamily: "monospace"}}
                       onChange={(e: any) => this.setState({app_id: e.target.value})}/>
-                  {this.lookupConfig({prop: "enterprise", as: "checkbox"})}
+                  {this.lookupConfig({as: "checkbox", prop: "enterprise"})}
+                  {this.lookupConfig({as: "checkbox", prop: "directWebdis"})}
                 </Form.Group>
                 <Form.Group>
                   <Form.Label>App Key</Form.Label>
