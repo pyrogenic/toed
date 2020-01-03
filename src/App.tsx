@@ -36,6 +36,7 @@ import Lookup, { CacheMode, ILookupProps } from "./Lookup";
 import {
   arraySetAdd,
   arraySetHas,
+  arraySetRemove,
   arraySetToggle,
   ensureMap,
   PropertyNamesOfType,
@@ -550,6 +551,13 @@ export default class App extends React.Component<IProps, IState> {
 
   private updateXref = (query: string, allTags: ITags) => {
     this.setState(({xref}) => {
+      Object.entries(xref).forEach(([tagType, xrefsForType]) => {
+        Object.keys(xrefsForType).forEach((tag) => {
+          // TODO: binary search
+          // TODO: not working anyway (reload [undefined] tag)
+          arraySetRemove(xrefsForType, tag, query);
+        });
+      });
       Object.entries(allTags).forEach(([tagType, tags]) =>
           tags?.forEach((tag: [string, string] | string) => {
             if (typeof tag !== "string") {
