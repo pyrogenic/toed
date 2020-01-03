@@ -25,6 +25,16 @@ export function array<T>(value: undefined | T | T[]) {
   return [value];
 }
 
+export function peek<T, TU extends T extends undefined ? undefined : never>(value: TU | T | T[]) {
+  if (value === undefined) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return value;
+}
+
 export type Comparer<T> = Parameters<T[]["sort"]>;
 
 type ElementType<T> = T extends Array<infer E> ? E : never;

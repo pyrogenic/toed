@@ -39,6 +39,7 @@ import {
   arraySetRemove,
   arraySetToggle,
   ensureMap,
+  peek,
   PropertyNamesOfType,
   titleCase,
 } from "./Magic";
@@ -553,22 +554,20 @@ export default class App extends React.Component<IProps, IState> {
     this.setState(({xref}) => {
       Object.entries(xref).forEach(([tagType, xrefsForType]) => {
         Object.keys(xrefsForType).forEach((tag) => {
-          // TODO: binary search
-          if (!arraySetHas(allTags, tagType, tag)) {
+          if (!arraySetHas(allTags, tagType, (e) => peek(e) === tag)) {
+            // TODO: binary search
             if (arraySetRemove(xrefsForType, tag, query)) {
-              console.log(`Removed ${query} from ${tagType}/${tag}`);
+              // console.log(`Removed ${query} from ${tagType}/${tag}`);
             }
           }
         });
       });
       Object.entries(allTags).forEach(([tagType, tags]) =>
           tags?.forEach((tag: [string, string] | string) => {
-            if (typeof tag !== "string") {
-              tag = tag[0];
-            }
             const tagTypeXref = ensureMap(xref, tagType as keyof ITags);
+            tag = peek(tag);
             if (arraySetAdd(tagTypeXref, tag, query, true)) {
-              console.log(`Added ${query} to ${tagType}/${tag}`);
+              // console.log(`Added ${query} to ${tagType}/${tag}`);
             }
           }));
       return {xref: {...xref}};
