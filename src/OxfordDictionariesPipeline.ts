@@ -4,7 +4,7 @@ import flatten from "lodash/flatten";
 import App from "./App";
 import IDictionaryEntry from "./IDictionaryEntry";
 import IWordRecord, {ITags} from "./IWordRecord";
-import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure, ensureArray} from "./Magic";
+import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure, ensureArray, arraySetClear} from "./Magic";
 import map from "./map";
 import Marks from "./Marks";
 import Pass from "./Pass";
@@ -86,6 +86,8 @@ export default class OxfordDictionariesPipeline {
         const resultTags = ensure(record, "resultTags", Object);
         const allTags = ensure(record, "allTags", Object);
 
+        arraySetClear(allTags, "imputed");
+        
         if (entries.length === 0) {
           arraySetAdd(allTags, "imputed", ["404"]);
         }
@@ -363,9 +365,10 @@ export default class OxfordDictionariesPipeline {
         if (resultTags.pronunciation_ipa) {
             copyTags(resultTags.pronunciation_ipa, allTags);
         }
-        if ((result.definitions?.length ?? 0) === 0) {
+        if (!result.definitions || Object.keys(result.definitions).length === 0) {
           arraySetAdd(allTags, "imputed", ["undefined"]);
         }
+        console.log({record});
         this.processed(this.query, record);
         return result;
     }

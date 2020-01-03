@@ -1,4 +1,4 @@
-import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure, ensureArray, MultipleValue} from "../Magic";
+import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure, ensureArray, MultipleValue, arraySetHas} from "../Magic";
 
 class Container {
     public req: string[] = [];
@@ -70,20 +70,34 @@ describe("Array Sets", () => {
             });
 
             it("remove", () => {
-                expect(arraySetRemove(container, prop, "x")).toBeFalsy();
-                expect(arraySetAdd(container, prop, "1")).toBeTruthy();
-                expect(arraySetAdd(container, prop, "1")).toBeFalsy();
-                expect(arraySetAdd(container, prop, "2")).toBeTruthy();
-                expect(arraySetAdd(container, prop, "2")).toBeFalsy();
-                expect(arraySetAdd(container, prop, "1")).toBeFalsy();
-                expect(container).toHaveProperty(prop, ["1", "2"]);
-                expect(arraySetRemove(container, prop, "x")).toBeFalsy();
-                expect(container).toHaveProperty(prop, ["1", "2"]);
-                expect(arraySetRemove(container, prop, "1")).toBeTruthy();
-                expect(container).toHaveProperty(prop, ["2"]);
-                expect(arraySetRemove(container, prop, "1")).toBeFalsy();
-                expect(container).toHaveProperty(prop, ["2"]);
-            });
+              expect(arraySetRemove(container, prop, "x")).toBeFalsy();
+              expect(arraySetAdd(container, prop, "1")).toBeTruthy();
+              expect(arraySetAdd(container, prop, "1")).toBeFalsy();
+              expect(arraySetAdd(container, prop, "2")).toBeTruthy();
+              expect(arraySetAdd(container, prop, "2")).toBeFalsy();
+              expect(arraySetAdd(container, prop, "1")).toBeFalsy();
+              expect(container).toHaveProperty(prop, ["1", "2"]);
+              expect(arraySetRemove(container, prop, "x")).toBeFalsy();
+              expect(container).toHaveProperty(prop, ["1", "2"]);
+              expect(arraySetRemove(container, prop, "1")).toBeTruthy();
+              expect(container).toHaveProperty(prop, ["2"]);
+              expect(arraySetRemove(container, prop, "1")).toBeFalsy();
+              expect(container).toHaveProperty(prop, ["2"]);
+          });
+
+            it("has", () => {
+            expect(arraySetHas(container, prop, "x")).toBeFalsy();
+
+            expect(arraySetAdd(container, prop, "1")).toBeTruthy();
+            expect(arraySetAdd(container, prop, "2")).toBeTruthy();
+
+            expect(arraySetHas(container, prop, "1")).toBeTruthy();
+            expect(arraySetHas(container, prop, "2")).toBeTruthy();
+            expect(arraySetHas(container, prop, "3")).toBeFalsy();
+
+            expect(arraySetHas(container, prop, (e) => e === "1")).toBeTruthy();
+            expect(arraySetHas(container, prop, "3")).toBeFalsy();
+          });
 
             describe("addAll", () => {
                 it("multiple adds", () => {
@@ -149,6 +163,8 @@ describe("Array Sets", () => {
         expect(container).toHaveProperty("obj", [{v: "1"}, {v: "hi"}]);
         expect(arraySetAdd(container, "obj", {v: "1"})).toBeFalsy();
         expect(container).toHaveProperty("obj", [{v: "1"}, {v: "hi"}]);
+        expect(arraySetHas(container, "obj", ({v}) => v[0] === "h")).toBeTruthy();
+        expect(arraySetHas(container, "obj", ({v}) => v[0] === "q")).toBeFalsy();
     });
 });
 

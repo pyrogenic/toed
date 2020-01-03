@@ -126,10 +126,13 @@ export function arraySetHas<
     TKey extends keyof ArrayPropertiesOfType<TContainer, TElement>>(
         container: ArrayPropertiesOfType<TContainer, TElement>,
         key: TKey,
-        value: TElement) {
+        value: TElement | ((element: TElement) => boolean)) {
     const list = container[key];
     if (list === undefined) {
         return false;
+    }
+    if (typeof value === "function") {
+      return list.findIndex(value.bind(null)) >= 0;
     }
     return list.includes(value);
 }

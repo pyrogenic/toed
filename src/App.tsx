@@ -554,8 +554,11 @@ export default class App extends React.Component<IProps, IState> {
       Object.entries(xref).forEach(([tagType, xrefsForType]) => {
         Object.keys(xrefsForType).forEach((tag) => {
           // TODO: binary search
-          // TODO: not working anyway (reload [undefined] tag)
-          arraySetRemove(xrefsForType, tag, query);
+          if (!arraySetHas(allTags, tagType, tag)) {
+            if (arraySetRemove(xrefsForType, tag, query)) {
+              console.log(`Removed ${query} from ${tagType}/${tag}`);
+            }
+          }
         });
       });
       Object.entries(allTags).forEach(([tagType, tags]) =>
@@ -564,9 +567,11 @@ export default class App extends React.Component<IProps, IState> {
               tag = tag[0];
             }
             const tagTypeXref = ensureMap(xref, tagType as keyof ITags);
-            arraySetAdd(tagTypeXref, tag, query, true);
+            if (arraySetAdd(tagTypeXref, tag, query, true)) {
+              console.log(`Added ${query} to ${tagType}/${tag}`);
+            }
           }));
-      return {xref};
+      return {xref: {...xref}};
     });
   }
 

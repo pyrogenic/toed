@@ -44,7 +44,7 @@ export default class Lookup {
         this.propsValue = props;
         const {directWebdis, cache, enterprise, online} = this.effectiveProps;
         const validate = (result: any) =>
-          typeof result === "object" && Object.keys(result).length > 0 && !("errno" in result);
+          typeof result === "object" && Object.keys(result).length > 0 && !("errno" in result) && result?.error !== "offline";
         let lookup = online ? this.callOxfordDictionaries : (url: string) => Promise.resolve({error: "offline"} as any);
         if (enterprise) {
             this.redis = new RedisMemo({
