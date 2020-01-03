@@ -62,6 +62,7 @@ import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
+import kebabCase from "lodash/kebabCase";
 
 interface IStringMap { [key: string]: string[]; }
 
@@ -187,6 +188,10 @@ export default class App extends React.Component<IProps, IState> {
     });
     Object.values(xref).forEach((value) => {
       Object.entries(value).forEach(([tag, words]) => {
+        if (tag !== kebabCase(tag)) {
+          delete value[tag];
+          tag = kebabCase(tag);
+        }
         value[tag] = uniq(words as string[]);
       });
     });

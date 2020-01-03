@@ -1,6 +1,7 @@
 import cloneDeep from "lodash/cloneDeep";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
+import kebabCase from "lodash/kebabCase";
 import App from "./App";
 import IDictionaryEntry from "./IDictionaryEntry";
 import IWordRecord, {ITags} from "./IWordRecord";
@@ -428,7 +429,7 @@ export default class OxfordDictionariesPipeline {
             if (pass === Pass.primary) {
                 discard({ entries: [{senses: [sense]}], lexicalCategory: { id: partOfSpeech, text: "banned" }, text: "banned"},
                     {imputed: passMap.filter(({allowed}) => allowed === Pass.banned)
-                            .map(({type, flag}) => [`banned-${type}`, flag])});
+                            .map(({type, flag}) => [`banned-${kebabCase(type)}`, flag])});
             }
             return;
         }
