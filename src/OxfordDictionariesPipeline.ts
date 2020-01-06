@@ -3,8 +3,8 @@ import compact from "lodash/compact";
 import flatten from "lodash/flatten";
 import App from "./App";
 import IDictionaryEntry from "./IDictionaryEntry";
-import IWordRecord, {ITags} from "./IWordRecord";
-import {arraySetAdd, arraySetAddAll, arraySetRemove, ensure, ensureArray} from "./Magic";
+import IWordRecord, { ITags } from "./IWordRecord";
+import { arraySetAdd, arraySetAddAll, arraySetRemove, ensure, ensureArray } from "./Magic";
 import map from "./map";
 import Marks from "./Marks";
 import Pass from "./Pass";
@@ -29,7 +29,7 @@ export interface IPipelineConfig {
 export type PartialWordRecord = Pick<IWordRecord, "result" | "resultTags" | "resultOriginal" | "resultDiscarded" | "resultDiscardedTags" | "allTags" | "pipelineNotes">;
 
 const RECORD_SEP = "///";
-export {RECORD_SEP};
+export { RECORD_SEP };
 
 function copyTags(src: ITags, dst: ITags) {
     Object.entries(src).map(([key, flags]) =>
@@ -65,11 +65,11 @@ export default class OxfordDictionariesPipeline {
     private readonly processed: App["processed"];
 
     constructor({ query, entries, allowed, getMarksFor, processed }: {
-      query: string,
-      entries: IHeadwordEntry[],
-      allowed: App["allowed"],
-      getMarksFor: App["getMarksFor"],
-      processed: App["processed"],
+        query: string,
+        entries: IHeadwordEntry[],
+        allowed: App["allowed"],
+        getMarksFor: App["getMarksFor"],
+        processed: App["processed"],
     }) {
         this.allowed = allowed;
         this.getMarksFor = getMarksFor;
@@ -87,16 +87,16 @@ export default class OxfordDictionariesPipeline {
         const allTags = ensure(record, "allTags", Object);
 
         if (entries.length === 0) {
-          arraySetAdd(allTags, "imputed", ["404"]);
+            arraySetAdd(allTags, "imputed", ["404"]);
         }
 
         const marks = this.getMarksFor(query);
         Object.values(Marks).forEach(([mark]) => {
-          if (marks.includes(mark)) {
-            arraySetAdd(allTags, "marks", mark);
-          } else {
-            arraySetRemove(allTags, "marks", mark);
-          }
+            if (marks.includes(mark)) {
+                arraySetAdd(allTags, "marks", mark);
+            } else {
+                arraySetRemove(allTags, "marks", mark);
+            }
         });
 
         const lowercaseMatchingEntryTexts = undefIfEmpty(this.allEntryTexts.filter((text) =>
@@ -199,7 +199,7 @@ export default class OxfordDictionariesPipeline {
                 arraySetAdd(entryTags, "imputed",
                     [`redirect-${redirectedFrom.lexicalCategory.id}`, `from '${internalRedirect.word}'`]);
             });
-            const {text} = lexicalEntry;
+            const { text } = lexicalEntry;
             const lexicalEntryTags = cloneDeep(entryTags);
             if (text === query.toLocaleLowerCase()) {
                 arraySetAdd(lexicalEntryTags, "imputed", ["exact"]);
@@ -230,7 +230,7 @@ export default class OxfordDictionariesPipeline {
             const { pronunciations } = entry;
             this.pullPronunciation(result, pronunciations);
             entry.lexicalEntries.forEach((lexicalEntry) => {
-                const {lexicalCategory: {id: partOfSpeech}, text} = lexicalEntry;
+                const { lexicalCategory: { id: partOfSpeech }, text } = lexicalEntry;
                 const lexicalEntryTags = imputeTags(entry, lexicalEntry);
                 let grammaticalFeatures = appendGrammaticalFeatures(lexicalEntry, undefined);
                 if (grammaticalFeatures.length > 0) {
@@ -267,7 +267,7 @@ export default class OxfordDictionariesPipeline {
                             if (disallowed.length > 0) {
                                 arraySetAdd(lentryTags, "imputed",
                                     ["banned-grammatical-features", disallowed.join(", ")]);
-                                return discard({text, lexicalCategory: lexicalEntry.lexicalCategory, entries: [entry]},
+                                return discard({ text, lexicalCategory: lexicalEntry.lexicalCategory, entries: [entry] },
                                     lentryTags);
                             }
                         }
@@ -317,7 +317,7 @@ export default class OxfordDictionariesPipeline {
                     if (rejectedLexicalEntries.includes(lexicalEntry)) {
                         return;
                     }
-                    const { lexicalCategory: { id: partOfSpeech }, entries: lexicalEntryEntries} = lexicalEntry;
+                    const { lexicalCategory: { id: partOfSpeech }, entries: lexicalEntryEntries } = lexicalEntry;
                     if (lexicalEntryEntries === undefined || lexicalEntryEntries.length === 0) { return; }
                     const lexicalEntryTags = imputeTags(entry, lexicalEntry);
                     const grammaticalFeatures = appendGrammaticalFeatures(lexicalEntry, undefined);
@@ -364,7 +364,7 @@ export default class OxfordDictionariesPipeline {
             copyTags(resultTags.pronunciation_ipa, allTags);
         }
         if ((result.definitions?.length ?? 0) === 0) {
-          arraySetAdd(allTags, "imputed", ["undefined"]);
+            arraySetAdd(allTags, "imputed", ["undefined"]);
         }
         this.processed(this.query, record);
         return result;
@@ -405,31 +405,49 @@ export default class OxfordDictionariesPipeline {
         arraySetAddAll(tags, "domains", domains);
         // arraySetAddAll(allTags, "domains", domains);
         copyTags(tags, allTags);
-        const passMap: Array<{ flag: string; allowed: Pass; type: keyof ITags }> = [];
-        let check: (...args: Parameters<App["allowed"]>) => void;
-        check = (prop, flag) => {
-            const allowed = this.allowed(prop, flag);
-            const type = prop;
-            const item = {type, flag, allowed};
-            passMap.push(item);
-        };
-        [partOfSpeech].forEach(check.bind(null, "partsOfSpeech"));
-        registers.forEach(check.bind(null, "registers"));
-        grammaticalFeatures.forEach(check.bind(null, "grammaticalFeatures"));
-        domains.forEach(check.bind(null, "domains"));
-        tags.imputed?.map(([tag]) => tag).forEach(check.bind(null, "imputed"));
-        const passes = passMap.map(({allowed}) => allowed);
-        const banned = Math.min(...passes) === 0;
-        const requiredPass = Math.max(...passes);
-        if (banned) {
-            if (pass === Pass.primary) {
-                discard({ entries: [{senses: [sense]}], lexicalCategory: { id: partOfSpeech, text: "banned" }, text: "banned"},
-                    {imputed: passMap.filter(({allowed}) => allowed === Pass.banned)
-                            .map(({type, flag}) => [`banned-${type}`, flag])});
+        const savedTags = cloneDeep(tags);
+        const resetTags = () => {
+            if (tags !== savedTags) {
+                tags = savedTags;
             }
-            return;
-        }
-        if (requiredPass !== pass) {
+        };
+        const earlyOutForTags = () => {
+            const passMap: Array<{ flag: string; allowed: Pass; type: keyof ITags; }> = [];
+            let check: (...args: Parameters<App["allowed"]>) => void;
+            check = (prop, flag) => {
+                const allowed = this.allowed(prop, flag);
+                const type = prop;
+                const item = { type, flag, allowed };
+                passMap.push(item);
+            };
+            [partOfSpeech].forEach(check.bind(null, "partsOfSpeech"));
+            registers.forEach(check.bind(null, "registers"));
+            grammaticalFeatures.forEach(check.bind(null, "grammaticalFeatures"));
+            domains.forEach(check.bind(null, "domains"));
+            tags.imputed?.map(([tag]) => tag).forEach(check.bind(null, "imputed"));
+            const passes = passMap.map(({ allowed }) => allowed);
+            const banned = Math.min(...passes) === 0;
+            const requiredPass = Math.max(...passes);
+            if (banned) {
+                if (pass === Pass.primary) {
+                    discard({
+                        entries: [{ senses: [sense] }],
+                        lexicalCategory: { id: partOfSpeech, text: "banned" },
+                        text: "banned",
+                    },
+                        {
+                            imputed: passMap.filter(({ allowed }) => allowed === Pass.banned)
+                                .map(({ type, flag }) => [`banned-${type}`, flag])
+                        });
+                }
+                return true;
+            }
+            if (requiredPass !== pass) {
+                return true;
+            }
+            return false;
+        };
+        if (earlyOutForTags()) {
             return;
         }
         const etymologies = entryEtymologies || senseEtymologies;
@@ -457,8 +475,21 @@ export default class OxfordDictionariesPipeline {
         }
         if (definitions) {
             definitions.forEach((definition) => {
-              const haveSufficient = sufficientDefinitions(result, partOfSpeech, short, pass);
-              if (haveSufficient === false) {
+                resetTags();
+                let match = definition.match(/\b(sex)/i);
+                if (match) {
+                    const word1 = match[1].toLocaleLowerCase();
+                    match = definition.match(/\b((?:wo)?man)/i);
+                    const word2 = match?.[1]?.toLocaleLowerCase();
+                    tags = cloneDeep(tags);
+                    arraySetAdd(tags, "imputed", [compact(["match", word1]).join("-")]);
+                    arraySetAdd(tags, "imputed", [compact(["match", word1, word2]).join("-")]);
+                    if (earlyOutForTags()) {
+                        return;
+                    }
+                }
+                const haveSufficient = sufficientDefinitions(result, partOfSpeech, short, pass);
+                if (haveSufficient === false) {
                     if (!result.entry_rich) {
                         result.entry_rich = text;
                         resultTags.entry_rich = { partsOfSpeech: [partOfSpeech], grammaticalFeatures };
@@ -491,25 +522,26 @@ export default class OxfordDictionariesPipeline {
                         }
                     }
                     if (discardedExamples && discardedExamples.length > 0) {
-                      const discardExamples = ensureArray(ensure(record, "resultDiscarded", Object), "example");
-                      const discardExamplesTags = ensureArray(ensure(record, "resultDiscardedTags", Object), "example");
-                      const discardTags = cloneDeep(tags);
-                      arraySetAdd(discardTags, "imputed", ["extra", "example"]);
-                      discardedExamples.forEach(({ text: example }) => {
-                        discardExamples.push(example);
-                        discardExamplesTags.push(discardTags);
-                      });
+                        const discardExamples = ensureArray(ensure(record, "resultDiscarded", Object), "example");
+                        const discardExamplesTags = ensureArray(ensure(record, "resultDiscardedTags", Object), "example");
+                        const discardTags = cloneDeep(tags);
+                        arraySetAdd(discardTags, "imputed", ["extra", "example"]);
+                        discardedExamples.forEach(({ text: example }) => {
+                            discardExamples.push(example);
+                            discardExamplesTags.push(discardTags);
+                        });
                     }
                 } else {
-                    arraySetAdd(tags, "imputed", ["extra", haveSufficient]);
+                    const discardTags = cloneDeep(tags);
+                    arraySetAdd(discardTags, "imputed", ["extra", haveSufficient]);
                     discard({
                         entries: [{
                             senses: [{
                                 definitions: [definition],
                                 examples,
                             }],
-                        }], lexicalCategory: {id: partOfSpeech, text: "extra"}, text,
-                    }, tags);
+                        }], lexicalCategory: { id: partOfSpeech, text: "extra" }, text,
+                    }, discardTags);
                 }
             });
         }
