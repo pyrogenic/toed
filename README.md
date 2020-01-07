@@ -12,3 +12,7 @@ Oxford Dictionaries TypesScript Client
 
 ## TODO
 - [x] "undefined" tag not removed when refresh finds definition
+
+## Screenshots
+
+![screenshot](https://user-images.githubusercontent.com/26445088/71867327-94683c00-30be-11ea-862d-caae630255c4.png)
