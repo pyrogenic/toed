@@ -110,21 +110,24 @@ export default class OxfordDictionariesPipeline {
         const internalRedirects = new Map<IHeadwordEntry, IHeadwordEntry>();
         entries.forEach((target) => {
             const definedBy = entries.find((headword) => {
-                if (headword === target) {
+                if (headword.id === target.id) {
                     return false;
                 }
                 return headword.lexicalEntries?.some((lexicalEntry) => {
                     return lexicalEntry.entries?.some((entry) => {
                         return entry.senses?.some((sense) => {
-                            // console.log({
-                            //     word,
-                            //     headword: headword.word,
-                            //     lexicalEntry: lexicalEntry.text,
-                            //     entry,
-                            //     sense: sense.shortDefinitions,
-                            // });
-                            return flatten(compact([sense.definitions, sense.shortDefinitions]))
-                                .some((definition) => definition.match(target.word));
+                            const defs = flatten(compact([sense.definitions, sense.shortDefinitions]));
+                            const matched = defs.some((definition) => definition.match(target.word));
+                            if (matched) {
+                                console.log({
+                                    target: target.id,
+                                    headword: headword.id,
+                                    lexicalEntry: lexicalEntry.text,
+                                    defs,
+                                    entry,
+                                });    
+                            }
+                            return matched;
                         });
                     });
                 });

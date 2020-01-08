@@ -581,7 +581,7 @@ export default class App extends React.Component<IProps, IState> {
                                      variant?: ButtonProps["variant"] }) => {
     const NavDropdownButtonGroup = this.NavDropdownButtonGroup;
     return <NavDropdownButtonGroup variant={variant} label={label} words={words}>
-      {[1, 2, 10].map((n) =>
+      {[1, 2, 10, 100].map((n) =>
           words.length >= n && <Button
               key={n}
               variant={variant}
@@ -854,14 +854,38 @@ export default class App extends React.Component<IProps, IState> {
   private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
     q = q.toLocaleLowerCase();
     const {apiBaseUrl, languages} = this.state;
-    const promises: Array<Promise<RetrieveEntry>> =
-        languages.map((language) => this.lookup.get(apiBaseUrl, language, redirect || q));
-    const res = await Promise.all(promises);
-    console.log("get: finished waiting for lookups");
-    const re = res.reduce((re0, re1) => {
-      re0.results = flatten(compact([re0.results, re1.results]));
-      return re0;
-    });
+    let promises: Array<[string, Promise<RetrieveEntry>]> = [];
+    const addLookup = (word: string) => {
+      const words = promises.map(([w]) => w);
+      if (words.includes(word)) {
+        console.log(`get: ignoring redundant request for '${word}' (${words.join(", ")})`);
+        return;
+      }
+      promises = promises.concat(languages.map((language) => [word, this.lookup.get(apiBaseUrl, language, word)]));
+      console.log({addLookup: word, words, promises});
+    };
+    const doLookups = async () => {
+      const words = promises.map(([w]) => w);
+      const ps = promises.map(([, p]) => p);
+      console.log({words, ps});
+      const promiseResults = await Promise.all(ps);
+      console.log(`get: finished waiting for lookups: ${words.join(", ")}`);
+      return promiseResults.reduce((re0, re1) => {
+        re0.results = flatten(compact([re0.results, re1.results]));
+        return re0;
+      });
+    };
+    addLookup(redirect || q);
+    let re = await doLookups();
+    const crossReferences = uniq(compact(
+      re.results?.flatMap((result) =>
+        result.lexicalEntries.flatMap((entry) =>
+          entry.entries?.flatMap((lexicalEntry) =>
+            lexicalEntry.senses?.flatMap((sense) =>
+              sense.crossReferences)) ?? []))))
+      .map((e) => e.id);
+    crossReferences.forEach(addLookup);
+    re = await doLookups();
     redirect = this.derivativeOf(re.results);
     if (redirect) {
       console.log("get: redirecting to " + redirect);
