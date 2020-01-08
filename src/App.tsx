@@ -318,18 +318,13 @@ export default class App extends React.Component<IProps, IState> {
                       style={{fontFamily: "monospace"}}
                       onChange={(e: any) => this.setState({app_key: e.target.value})}/>
                 </Form.Group>
-                <Form.Group>
-                  <Form.Label>Lookup</Form.Label>
-                  {this.lookupConfig({as: "checkbox", prop: "online"})}
-                  {this.lookupConfig({as: "select", prop: "cache", enumType: CacheMode})}
-                </Form.Group>
               </Form>
             </Container>
           </NavDropdown>
           <NavDropdown title="Perf" id="nav-perf" as={Button}>
             <Container>
               <Form>
-              <Form.Group>
+                <Form.Group>
                   <Form.Label>Lookup</Form.Label>
                   {this.lookupConfig({as: "checkbox", prop: "online"})}
                   {this.lookupConfig({as: "select", prop: "cache", enumType: CacheMode})}
@@ -482,7 +477,7 @@ export default class App extends React.Component<IProps, IState> {
                                   })) {
     const defaultValue = Lookup.effectiveProps()[(props.prop)];
     const defaultValueLabel = `Default (${defaultValue.toString()})`;
-    return <>
+    return <Form.Row>
       {props.as === "checkbox" &&
       <Form.Check
           className="mr-auto"
@@ -552,7 +547,7 @@ export default class App extends React.Component<IProps, IState> {
         {defaultValueLabel}
       </Button>
       }
-    </>;
+    </Form.Row>;
   }
 
   private updateXref = (query: string, allTags: ITags) => {
