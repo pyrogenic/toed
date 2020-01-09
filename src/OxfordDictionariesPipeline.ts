@@ -153,6 +153,13 @@ export default class OxfordDictionariesPipeline {
             const { lexicalCategory: { id: partOfSpeech } } = lexicalEntry;
             lexicalEntry.entries?.forEach((lentry) => {
                 const grammaticalFeatures = lentry.grammaticalFeatures?.map((e) => e.id);
+                lentry.etymologies?.forEach((etymology) => {
+                    const discards = ensure(record, "resultDiscarded", Object);
+                    if (arraySetAdd(discards, "etymology", etymology)) {
+                        const discardTags = ensure(record, "resultDiscardedTags", Object);
+                        ensureArray(discardTags, "etymology").push(tags);
+                    }
+                });
                 lentry.senses?.forEach((sense) => {
                     const senseTags: ITags = cloneDeep(tags);
                     arraySetAdd(senseTags, "partsOfSpeech", partOfSpeech);
@@ -172,6 +179,13 @@ export default class OxfordDictionariesPipeline {
                             copyTags(senseTags, allTags);
                         }
                     });
+                    sense.etymologies?.forEach((etymology) => {
+                        const discards = ensure(record, "resultDiscarded", Object);
+                        if (arraySetAdd(discards, "etymology", etymology)) {
+                            const discardTags = ensure(record, "resultDiscardedTags", Object);
+                            ensureArray(discardTags, "etymology").push(tags);
+                        }
+                    });
                     sense.subsenses?.forEach((subsense) => {
                         subsense.definitions?.forEach((definition) => {
                             const discards = ensure(record, "resultDiscarded", Object);
@@ -189,6 +203,13 @@ export default class OxfordDictionariesPipeline {
                                 discardTags.definitions[partOfSpeech] = discardTags.definitions[partOfSpeech] || [];
                                 discardTags.definitions[partOfSpeech].push(subsenseTags);
                                 copyTags(subsenseTags, allTags);
+                            }
+                        });
+                        sense.etymologies?.forEach((etymology) => {
+                            const discards = ensure(record, "resultDiscarded", Object);
+                            if (arraySetAdd(discards, "etymology", etymology)) {
+                                const discardTags = ensure(record, "resultDiscardedTags", Object);
+                                ensureArray(discardTags, "etymology").push(tags);
                             }
                         });
                     });
@@ -292,7 +313,7 @@ export default class OxfordDictionariesPipeline {
                             arraySetAdd(lentryTags, "imputed", ["variant", JSON.stringify(v)]);
                         }
                         // pass down etymologies so we only take them from entries with first-pass acceptable senses
-                        //this.pullPronunciation(result, resultTags, text, lentry.pronunciations, vlentryTags, {replace: true});
+                        // this.pullPronunciation(result, resultTags, text, lentry.pronunciations, vlentryTags, {replace: true});
                         if (senses) {
                             senses.forEach(this.processSense.bind(
                                 this, record, lentryTags, discard, {
@@ -403,6 +424,7 @@ export default class OxfordDictionariesPipeline {
             },
         sense: ISense) {
         const result = record.result!;
+        const lexicalCategory = { id: partOfSpeech, text: "" };
         const {
             crossReferences,
             pronunciations: sensePronunciations,
@@ -426,6 +448,7 @@ export default class OxfordDictionariesPipeline {
                 tags = savedTags;
             }
         };
+        const etymologies = entryEtymologies || senseEtymologies;
         const earlyOutForTags = () => {
             const passMap: Array<{ flag: string; allowed: Pass; type: keyof ITags; }> = [];
             let check: (...args: Parameters<App["allowed"]>) => void;
@@ -446,7 +469,11 @@ export default class OxfordDictionariesPipeline {
             if (banned) {
                 if (pass === Pass.primary) {
                     discard({
-                        entries: [{ senses: [sense] }],
+                        entries: [{
+                            etymologies,
+                            pronunciations,
+                            senses: [sense],
+                        }],
                         lexicalCategory: { id: partOfSpeech, text: "banned" },
                         text: "banned",
                     },
@@ -465,14 +492,21 @@ export default class OxfordDictionariesPipeline {
         if (earlyOutForTags()) {
             return;
         }
-        const etymologies = entryEtymologies || senseEtymologies;
-        if (!result.etymology && etymologies) {
-            const etymology = etymologies[0];
-            result.etymology = this.cleanOxfordText(etymology);
-            resultTags.etymology = tags;
-            if (result.etymology !== etymology) {
-                const originals = ensure(record, "resultOriginal", Object);
-                originals.etymology = etymology;
+        if (etymologies && etymologies.length > 0) {
+            const remainingEtymologies = [...etymologies];
+            if (!result.etymology) {
+                const etymology = remainingEtymologies.pop()!;
+                result.etymology = this.cleanOxfordText(etymology);
+                resultTags.etymology = tags;
+                if (result.etymology !== etymology) {
+                    const originals = ensure(record, "resultOriginal", Object);
+                    originals.etymology = etymology;
+                }
+            }
+            if (remainingEtymologies.length > 0) {
+                const extraTags = cloneDeep(tags);
+                arraySetAdd(extraTags, "imputed", ["extra"]);
+                discard({text, lexicalCategory, entries: [{etymologies: remainingEtymologies}]}, extraTags);
             }
         }
         if (onlySubsenses) {
@@ -560,7 +594,7 @@ export default class OxfordDictionariesPipeline {
                                 definitions: [definition],
                                 examples,
                             }],
-                        }], lexicalCategory: { id: partOfSpeech, text: "extra" }, text,
+                        }], lexicalCategory, text,
                     }, discardTags);
                 }
             });

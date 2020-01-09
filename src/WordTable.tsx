@@ -81,7 +81,7 @@ const TaggedComponent = ({ query, word, title, children, tags, TagControl, Marks
 
   function popover(id: string) {
     return tags && <Popover id={id} className="tags">
-      {title && <Popover.Title>{title}</Popover.Title>}
+      {title && <Popover.Title>{title} <span className="text-muted">{word}</span></Popover.Title>}
       <Popover.Content>
         <TagControls TagControl={TagControl} word={word} tags={tags}/>
       </Popover.Content>
@@ -143,7 +143,7 @@ function WordRow(
   const definitions = result.definitions || {};
   const partsOfSpeech = Object.keys(definitions);
   const { pipelineNotes, resultDiscarded, resultDiscardedTags } = record;
-  const notFound = !(partsOfSpeech.length || etymologies || examples);
+  const notFound = !(partsOfSpeech.length || etymologies?.length || examples?.length);
   const word = result.entry_rich || record.q;
   const moreInfo = (pipelineNotes && pipelineNotes.length > 0)
     || resultDiscarded || resultDiscardedTags;
