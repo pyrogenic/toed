@@ -182,8 +182,8 @@ function WordRow(
                 <Col className="definition">
                   <TaggedComponent
                     query={record.q}
-                    word={`${word} (${partOfSpeech})`}
-                    title="Definition"
+                    word={word}
+                    title={`Definition #${index + 1} (${partOfSpeech})`}
                     tags={resultTags.definitions?.[partOfSpeech]?.[index]}
                     TagControl={TagControl}
                     MarksControl={MarksControl}>

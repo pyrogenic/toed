@@ -398,6 +398,7 @@ export default class App extends React.Component<IProps, IState> {
 
         <DisclosureBar id="filters and tags"
         title={
+          // eslint-disable-next-line
           <>filters and tags{hiddenCount > 0 && ` — ${hiddenCount} hidden`}{Object.values(this.state.focus).some((e) => e.length > 0) && <> — <a onClickCapture={() => this.setState({focus: defaultFocus()})}>reset filters</a></>}</>
         } tooltip={
           JSON.stringify(this.state.focus)
