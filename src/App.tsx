@@ -50,15 +50,13 @@ import OpenIconicNames from "./OpenIconicNames";
 import OpTrack from "./OpTrack";
 import OxfordDictionariesPipeline,
 {
+  AnnotatedHeadwordEntry,
   IPassMap,
   IPipelineConfig,
   PartialWordRecord,
 } from "./OxfordDictionariesPipeline";
 import Pass from "./Pass";
 import PassComponent from "./PassComponent";
-import threeLetterWordsUrl from "./wwf/threeLetterWords.txt";
-import twoLetterWordsUrl from "./wwf/twoLetterWords.txt";
-import jqxzWordsUrl from "./wwf/jqxzWords.txt";
 import IEntry from "./types/gen/IEntry";
 import IHeadwordEntry from "./types/gen/IHeadwordEntry";
 import ILexicalEntry from "./types/gen/ILexicalEntry";
@@ -67,6 +65,9 @@ import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
+import jqxzWordsUrl from "./wwf/jqxzWords.txt";
+import threeLetterWordsUrl from "./wwf/threeLetterWords.txt";
+import twoLetterWordsUrl from "./wwf/twoLetterWords.txt";
 
 interface IStringMap { [key: string]: string[]; }
 
@@ -881,13 +882,17 @@ export default class App extends React.Component<IProps, IState> {
     q = q.toLocaleLowerCase();
     const {apiBaseUrl, languages} = this.state;
     let promises: Array<[string, Promise<RetrieveEntry>]> = [];
-    const addLookup = (word: string) => {
+    const addLookup = (word: string, tags: ITags) => {
       const words = promises.map(([w]) => w);
       if (words.includes(word)) {
         console.log(`get: ignoring redundant request for '${word}' (${words.join(", ")})`);
         return;
       }
-      promises = promises.concat(languages.map((language) => [word, this.lookup.get(apiBaseUrl, language, word)]));
+      promises = promises.concat(languages.map((language) =>
+        [word, this.lookup.get(apiBaseUrl, language, word).then((pre) => {
+          pre?.results?.forEach((he) => (he as AnnotatedHeadwordEntry).tags = cloneDeep(tags));
+          return pre;
+        })]));
       console.log({addLookup: word, words, promises});
     };
     const doLookups = async () => {
@@ -901,16 +906,16 @@ export default class App extends React.Component<IProps, IState> {
         return re0;
       });
     };
-    addLookup(redirect || q);
+    addLookup(redirect || q, {});
     let re = await doLookups();
     const crossReferences = uniq(compact(
       re.results?.flatMap((result) =>
         result.lexicalEntries.flatMap((entry) =>
           entry.entries?.flatMap((lexicalEntry) =>
             lexicalEntry.senses?.flatMap((sense) =>
-              sense.crossReferences)) ?? []))))
-      .map((e) => e.id);
-    crossReferences.forEach(addLookup);
+              sense.crossReferences)) ?? []))));
+    crossReferences.forEach((crossReference) => addLookup(crossReference.id,
+      { imputed: [[`xref-${kebabCase(crossReference.type)}`, crossReference.text]] }));
     re = await doLookups();
     redirect = this.derivativeOf(re.results);
     if (redirect) {
@@ -921,7 +926,7 @@ export default class App extends React.Component<IProps, IState> {
       this.setState(({records, history}) => {
         const pipeline = new OxfordDictionariesPipeline({
           allowed: this.allowed,
-          entries: re.results || [],
+          entries: re.results as AnnotatedHeadwordEntry[] || [],
           getMarksFor: this.getMarksFor,
           processed: this.processed,
           query: q,
@@ -974,6 +979,7 @@ export default class App extends React.Component<IProps, IState> {
 
   private changePass(query: string | undefined, prop: keyof IPipelineConfig, flag: string, newValue: Pass) {
     const words = this.state.xref[prop][flag];
+    console.log({changePass: words});
     this.setState((state) => {
       state.config[prop][flag] = newValue;
       return {config: {...state.config}};

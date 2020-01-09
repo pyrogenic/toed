@@ -55,9 +55,11 @@ function undefIfEmpty(value: any[] | undefined) {
     return value;
 }
 
+export type AnnotatedHeadwordEntry = IHeadwordEntry & { tags: ITags };
+
 export default class OxfordDictionariesPipeline {
     public readonly query: string;
-    public readonly entries: IHeadwordEntry[];
+    public readonly entries: AnnotatedHeadwordEntry[];
     public allEntryTexts: string[];
 
     private readonly allowed: App["allowed"];
@@ -66,7 +68,7 @@ export default class OxfordDictionariesPipeline {
 
     constructor({ query, entries, allowed, getMarksFor, processed }: {
         query: string,
-        entries: IHeadwordEntry[],
+        entries: AnnotatedHeadwordEntry[],
         allowed: App["allowed"],
         getMarksFor: App["getMarksFor"],
         processed: App["processed"],
@@ -107,7 +109,7 @@ export default class OxfordDictionariesPipeline {
             const lowerCase = text.toLocaleLowerCase();
             return lowerCase !== text && query.toLocaleLowerCase() === lowerCase;
         }));
-        const internalRedirects = new Map<IHeadwordEntry, IHeadwordEntry>();
+        const internalRedirects = new Map<AnnotatedHeadwordEntry, AnnotatedHeadwordEntry>();
         entries.forEach((target) => {
             const definedBy = entries.find((headword) => {
                 if (headword.id === target.id) {
@@ -125,7 +127,7 @@ export default class OxfordDictionariesPipeline {
                                     lexicalEntry: lexicalEntry.text,
                                     defs,
                                     entry,
-                                });    
+                                });
                             }
                             return matched;
                         });
@@ -194,9 +196,9 @@ export default class OxfordDictionariesPipeline {
             rejectedLexicalEntries.push(lexicalEntry as ILexicalEntry);
         };
 
-        function imputeTags(entry: IHeadwordEntry, lexicalEntry: ILexicalEntry) {
+        function imputeTags(entry: AnnotatedHeadwordEntry, lexicalEntry: ILexicalEntry) {
             const internalRedirect = internalRedirects.get(entry);
-            const entryTags: ITags = {};
+            const entryTags: ITags = cloneDeep(entry.tags);
             arraySetAdd(entryTags, "imputed", [entry.language]);
             internalRedirect?.lexicalEntries.forEach((redirectedFrom) => {
                 entryTags.grammaticalFeatures =
@@ -479,7 +481,7 @@ export default class OxfordDictionariesPipeline {
         if (crossReferences && crossReferences.length > 0) {
             this.pullPronunciation(result, resultTags, text, pronunciations, () => {
                 const erTags = cloneDeep(tags);
-                arraySetAdd(tags, "imputed", ["cross-reference", crossReferences.map((e) => e.id).join(', ')]);
+                arraySetAdd(tags, "imputed", ["cross-reference", crossReferences.map((e) => e.id).join(", ")]);
                 return erTags;
             });
         }
