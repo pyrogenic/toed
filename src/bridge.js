@@ -4,18 +4,6 @@ const fetch = require('node-fetch');
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = false;
 
-const hostname = '127.0.0.1';
-const port = 5000;
-
-// 'host'
-// 'connection'
-// 'sec-fetch-mode'
-// 'origin'
-// 'user-agent'
-// 'dnt'
-// 'sec-fetch-site'
-// 'referer'
-const FORWARD_HEADERS = ['access-control-request-method', 'access-control-request-headers', 'accept', 'accept-encoding', 'accept-language', 'app_id', 'app_key']
 // const EXAMPLE_HEADERS = {
 //   headers: {
 //     host: 'localhost:5000',
@@ -33,6 +21,11 @@ const FORWARD_HEADERS = ['access-control-request-method', 'access-control-reques
 //     'accept-language': 'en-US,en;q=0.9'
 //   }
 // };
+
+const hostname = '127.0.0.1';
+const port = 5000;
+
+const FORWARD_HEADERS = ['access-control-request-method', 'access-control-request-headers', 'accept', 'accept-encoding', 'accept-language', 'app_id', 'app_key']
 
 const server = http.createServer(async (req, res) => {
     if (req.method === "OPTIONS") {

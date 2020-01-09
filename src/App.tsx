@@ -3,6 +3,7 @@ import cloneDeep from "lodash/cloneDeep";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
 import isEqual from "lodash/isEqual";
+import kebabCase from "lodash/kebabCase";
 import omit from "lodash/omit";
 import sortedIndexBy from "lodash/sortedIndexBy";
 import uniq from "lodash/uniq";
@@ -18,6 +19,7 @@ import Collapse from "react-bootstrap/Collapse";
 import Container from "react-bootstrap/Container";
 import Dropdown from "react-bootstrap/Dropdown";
 import Form from "react-bootstrap/Form";
+import FormCheck from "react-bootstrap/FormCheck";
 import InputGroup from "react-bootstrap/InputGroup";
 import Nav from "react-bootstrap/Nav";
 import Navbar from "react-bootstrap/Navbar";
@@ -54,6 +56,9 @@ import OxfordDictionariesPipeline,
 } from "./OxfordDictionariesPipeline";
 import Pass from "./Pass";
 import PassComponent from "./PassComponent";
+import threeLetterWordsUrl from "./wwf/threeLetterWords.txt";
+import twoLetterWordsUrl from "./wwf/twoLetterWords.txt";
+import jqxzWordsUrl from "./wwf/jqxzWords.txt";
 import IEntry from "./types/gen/IEntry";
 import IHeadwordEntry from "./types/gen/IHeadwordEntry";
 import ILexicalEntry from "./types/gen/ILexicalEntry";
@@ -62,7 +67,6 @@ import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
-import kebabCase from "lodash/kebabCase";
 
 interface IStringMap { [key: string]: string[]; }
 
@@ -93,6 +97,8 @@ interface IState {
   lookupProps: Partial<ILookupProps>;
 
   history: string[];
+  hideCached: boolean;
+
   records: WordRecord[];
 
   re?: IRetrieveEntry;
@@ -107,7 +113,10 @@ function odApiCallsLastMinute() {
   return OpTrack.history("odapi", 60 * 1000)[0]?.length ?? 0;
 }
 
-function DisclosureBar({title, children}: React.PropsWithChildren<{title: string}>) {
+function DisclosureBar({id, title, tooltip, children}: React.PropsWithChildren<{
+  id: string,
+  title: React.ReactChild,
+  tooltip?: string}>) {
   const [open, setOpen] = React.useState(false);
   const [closing, setClosing] = React.useState(false);
   return (
@@ -115,13 +124,14 @@ function DisclosureBar({title, children}: React.PropsWithChildren<{title: string
       <div
         className="disclosure-bar"
         onClick={open ? close : setOpen.bind(null, true)}
-        aria-controls={title}
+        aria-controls={id}
         aria-expanded={open}
+        title={tooltip}
       >
         {title}
       </div>
       <Collapse in={open}>
-        <div id={title}>
+        <div id={id}>
           {(open || closing) && children}
         </div>
       </Collapse>
@@ -160,10 +170,7 @@ export default class App extends React.Component<IProps, IState> {
       partsOfSpeech: {},
       registers: {},
     };
-    const focus: TagFocus = {
-      [Focus.hide]: [],
-      [Focus.focus]: [],
-    };
+    const focus: TagFocus = defaultFocus();
     Object.keys(config).forEach((prop) => {
       const value = localStorage.getItem("oed/passes/" + prop);
       if (value) {
@@ -208,6 +215,7 @@ export default class App extends React.Component<IProps, IState> {
     });
     Marks.forEach(([key]) => config.marks[key] = config.marks[key] ?? Pass.primary);
     const history: string[] = uniq(JSON.parse(localStorage.getItem("oed/history") || "[]"));
+    const hideCached: boolean = JSON.parse(localStorage.getItem("oed/hideCached") || "false");
     const lookupProps = JSON.parse(localStorage.getItem("oed/lookupProps") ?? "{}");
     this.state = {
       apiBaseUrl: "/api/v2",
@@ -216,6 +224,7 @@ export default class App extends React.Component<IProps, IState> {
       config,
       focus,
       history,
+      hideCached,
       languages: [OxfordLanguage.americanEnglish, OxfordLanguage.britishEnglish],
       lookupProps,
       promises: [],
@@ -275,23 +284,25 @@ export default class App extends React.Component<IProps, IState> {
     } else {
       localStorage.removeItem("oed/app_key");
     }
-    const { history, lookupProps, q, re } = this.state;
+    const { history, hideCached, lookupProps, q, re } = this.state;
     if (q && re && re.results) {
       sessionStorage.setItem("oed/q", q);
     } else {
       localStorage.removeItem("oed/q");
     }
     localStorage.setItem("oed/history", JSON.stringify(history));
+    localStorage.setItem("oed/hideCached", JSON.stringify(hideCached));
     localStorage.setItem("oed/lookupProps", JSON.stringify(lookupProps));
   }
 
   public render() {
     const loaded = this.state.records.map(({q}) => q);
     const history = without(this.state.history, ...loaded).reverse();
-    const remainingBadWords = without(badWords, ...loaded, ...history);
+    const wordListExceptions = this.state.hideCached ? [...loaded, ...history] : [];
     const WordListComponent = this.WordListComponent;
     const QueueComponent = this.QueueComponent;
     const hiddenCount = this.state.records.length - this.state.visibleRecordCount;
+    const browserCache = Lookup.browserCache;
     return <>
       <Navbar bg="light" expand="lg">
         <Navbar.Toggle aria-controls="nav" as={NavbarBrand}>OD³</Navbar.Toggle>
@@ -347,8 +358,16 @@ export default class App extends React.Component<IProps, IState> {
           </NavDropdown>
           <NavDropdown title="Words" id="nav-words">
             <Container>
-              <WordListComponent label={"Bad Words"} words={remainingBadWords} variant={"outline-warning"}/>
-              <WordListComponent label={"History"} words={history}/>
+              <FormCheck label="Hide Cached" checked={this.state.hideCached} onChange={() => this.setState(({ hideCached }) => ({ hideCached: !hideCached }))} />
+              <ButtonToolbar>
+                {browserCache.localStorage.count > 0 && <Button variant="outline-primary">Local <Badge onClick={browserCache.localStorage.clear} variant="primary">{browserCache.localStorage.count}</Badge></Button>}
+                {browserCache.sessionStorage.count > 0 && <Button variant="outline-primary">Session <Badge onClick={browserCache.sessionStorage.clear} variant="primary">{browserCache.sessionStorage.count}</Badge></Button>}
+              </ButtonToolbar>
+              <BakedWordListComponent except={wordListExceptions} label={"Two-Letter"} url={twoLetterWordsUrl} WordListComponent={WordListComponent} />
+              <BakedWordListComponent except={wordListExceptions} label={"Three-Letter"} url={threeLetterWordsUrl} WordListComponent={WordListComponent} />
+              <BakedWordListComponent except={wordListExceptions} label={"JQXZ"} url={jqxzWordsUrl} WordListComponent={WordListComponent} />
+              <WordListComponent except={wordListExceptions} label={"Bad Words"} words={badWords} variant={"outline-warning"} />
+              <WordListComponent label={"History"} words={history} />
             </Container>
           </NavDropdown>
 
@@ -375,8 +394,11 @@ export default class App extends React.Component<IProps, IState> {
       </Navbar>
       <Container>
 
-        <DisclosureBar title={
-          compact(["filters and tags", hiddenCount > 0 && `${hiddenCount} hidden`]).join(" — ")
+        <DisclosureBar id="filters and tags"
+        title={
+          <>filters and tags{hiddenCount > 0 && ` — ${hiddenCount} hidden`}{Object.values(this.state.focus).some((e) => e.length > 0) && <> — <a onClickCapture={() => this.setState({focus: defaultFocus()})}>reset filters</a></>}</>
+        } tooltip={
+          JSON.stringify(this.state.focus)
         }>
           {this.renderFilters()}
         </DisclosureBar>
@@ -574,12 +596,16 @@ export default class App extends React.Component<IProps, IState> {
     });
   }
 
-  private WordListComponent = ({label, words, variant = "outline-primary"}:
+  private WordListComponent = ({label, words, except = [], variant = "outline-primary"}:
                                    { label: string,
                                      className?: string,
                                      words: string[],
+                                     except?: string[],
                                      variant?: ButtonProps["variant"] }) => {
     const NavDropdownButtonGroup = this.NavDropdownButtonGroup;
+    if (except.length > 0) {
+      words = without(words, ...except);
+    }
     return <NavDropdownButtonGroup variant={variant} label={label} words={words}>
       {[1, 2, 10, 100].map((n) =>
           words.length >= n && <Button
@@ -1055,6 +1081,13 @@ type PrefixUnion<A, B> = A & Omit<B, keyof A>;
 
 type ITagBadgeProps = PrefixUnion<{pass: Pass, flag?: string}, React.HTMLAttributes<HTMLSpanElement>>;
 
+function defaultFocus(): TagFocus {
+  return {
+    [Focus.hide]: [],
+    [Focus.focus]: [],
+  };
+}
+
 function TagBadge(props: ITagBadgeProps) {
   const {pass, flag, children} = props;
   return <Badge variant={variantForPass(pass)} {...props}>{flag}{children}</Badge>;
@@ -1184,4 +1217,12 @@ function ConfigImportBox({ currentConfig, setConfig }: {
 }
 function stringify(currentConfig: IPipelineConfig): string | (() => string) {
   return JSON.stringify(currentConfig, null, 4);
+}
+
+function BakedWordListComponent({label, url, WordListComponent, except}: {label: string, url: string, WordListComponent: App["WordListComponent"], except: string[]}) {
+  const [words, setWords] = React.useState([] as string[]);
+  React.useEffect(() => {
+    fetch(url).then((r) => r.text()).then((text) => setWords(uniq(compact(text.split("\n")))));
+  }, [url]);
+  return <WordListComponent label={label} words={words} except={except}/>;
 }

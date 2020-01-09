@@ -233,7 +233,7 @@ export default class OxfordDictionariesPipeline {
 
         entries.forEach((entry) => {
             const { pronunciations } = entry;
-            this.pullPronunciation(result, pronunciations);
+            // this.pullPronunciation(result, resultTags, text, pronunciations, tags);
             entry.lexicalEntries.forEach((lexicalEntry) => {
                 const { lexicalCategory: { id: partOfSpeech }, text } = lexicalEntry;
                 const lexicalEntryTags = imputeTags(entry, lexicalEntry);
@@ -256,7 +256,7 @@ export default class OxfordDictionariesPipeline {
                         ["banned-part-of-speech", partOfSpeech]);
                     return discard(lexicalEntry, lexicalEntryTags);
                 }
-                this.pullPronunciation(result, lexicalEntry.pronunciations);
+                this.pullPronunciation(result, resultTags, text, lexicalEntry.pronunciations, lexicalEntryTags);
                 if (lexicalEntry.entries) {
                     lexicalEntry.entries.forEach((lentry) => {
                         const lentryTags = cloneDeep(lexicalEntryTags);
@@ -276,13 +276,12 @@ export default class OxfordDictionariesPipeline {
                                     lentryTags);
                             }
                         }
-                        this.pullPronunciation(result, lentry.pronunciations);
+                        this.pullPronunciation(result, resultTags, text, lentry.pronunciations, lentryTags);
                         const baseWord = this.query;
                         const { etymologies, senses, variantForms } = lentry;
                         if (variantForms && baseWord && result.entry_rich !== baseWord
                             && variantForms.find((vf) => vf.text === baseWord)) {
-                            result.entry_rich = baseWord;
-                            resultTags.entry_rich = { partsOfSpeech: [partOfSpeech] };
+                            this.pullPronunciation(result, resultTags, text, lentry.pronunciations, lentryTags);
                         }
                         // pass down etymologies so we only take them from entries with first-pass acceptable senses
                         if (senses) {
@@ -390,9 +389,8 @@ export default class OxfordDictionariesPipeline {
             },
         sense: ISense) {
         const result = record.result!;
-        const { pronunciations, subsenses, examples, etymologies: senseEtymologies } = sense;
+        const { crossReferences, pronunciations, subsenses, examples, etymologies: senseEtymologies } = sense;
         const definitions = short ? sense.shortDefinitions : sense.definitions;
-        this.pullPronunciation(result, pronunciations);
         tags = cloneDeep(tags);
         if (short) {
             arraySetAdd(tags, "imputed", ["short"]);
@@ -478,6 +476,13 @@ export default class OxfordDictionariesPipeline {
             }
             return;
         }
+        if (crossReferences && crossReferences.length > 0) {
+            this.pullPronunciation(result, resultTags, text, pronunciations, () => {
+                const erTags = cloneDeep(tags);
+                arraySetAdd(tags, "imputed", ["cross-reference", crossReferences.map((e) => e.id).join(', ')]);
+                return erTags;
+            });
+        }
         if (definitions) {
             definitions.forEach((definition) => {
                 resetTags();
@@ -495,10 +500,7 @@ export default class OxfordDictionariesPipeline {
                 }
                 const haveSufficient = sufficientDefinitions(result, partOfSpeech, short, pass);
                 if (haveSufficient === false) {
-                    if (!result.entry_rich) {
-                        result.entry_rich = text;
-                        resultTags.entry_rich = { partsOfSpeech: [partOfSpeech], grammaticalFeatures };
-                    }
+                    this.pullPronunciation(result, resultTags, text, pronunciations, tags);
                     const cleanDefinition = this.cleanOxfordText(definition);
                     result.definitions = result.definitions || {};
                     result.definitions[partOfSpeech] = result.definitions[partOfSpeech] || [];
@@ -558,13 +560,23 @@ export default class OxfordDictionariesPipeline {
         return example;
     }
 
-    private pullPronunciation(result: Partial<IDictionaryEntry>, pronunciations?: IPronunciation[]) {
+    private pullPronunciation(
+        result: Partial<IDictionaryEntry>,
+        resultTags: Required<IWordRecord>["resultTags"],
+        word: string, pronunciations: IPronunciation[] | undefined,
+        tags: ITags | (() => ITags)) {
+        if (!result.entry_rich) {
+            result.entry_rich = word;
+            resultTags.entry_rich = (typeof tags === "function") ? (tags = tags()) : tags;
+        }
         if (pronunciations) {
             pronunciations.forEach((p) => {
                 if (!result.pronunciation_ipa && p.phoneticNotation === "IPA") {
                     result.pronunciation_ipa = p.phoneticSpelling;
+                    resultTags.pronunciation_ipa = (typeof tags === "function") ? (tags = tags()) : tags;
                     if (!result.audio_file) {
                         result.audio_file = p.audioFile;
+                        resultTags.audio_file = tags;
                     }
                 }
             });
