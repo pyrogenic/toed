@@ -51,10 +51,10 @@ import OpTrack from "./OpTrack";
 import OxfordDictionariesPipeline,
 {
   AnnotatedHeadwordEntry,
+  fillInTags,
   IPassMap,
   IPipelineConfig,
   PartialWordRecord,
-  fillInTags,
 } from "./OxfordDictionariesPipeline";
 import Pass from "./Pass";
 import PassComponent from "./PassComponent";
@@ -65,7 +65,7 @@ import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
-import WordTable from "./WordTable";
+import WordTable, { TagControls } from "./WordTable";
 import jqxzWordsUrl from "./wwf/jqxzWords.txt";
 import threeLetterWordsUrl from "./wwf/threeLetterWords.txt";
 import twoLetterWordsUrl from "./wwf/twoLetterWords.txt";
@@ -780,8 +780,9 @@ export default class App extends React.Component<IProps, IState> {
 
   private renderResponse = (entry: IHeadwordEntry, index: number) => {
     const derivativeOf = flatten(compact(entry.lexicalEntries.map((lentry) => lentry.derivativeOf)));
+    const {tags} = entry as AnnotatedHeadwordEntry;
     return <Card key={`${entry.id}-${index}`}>
-      <Card.Header>{entry.word} <Badge>{entry.type}</Badge></Card.Header>
+  <Card.Header>{entry.word} <Badge>{entry.type}</Badge> {tags && <TagControls TagControl={this.TagControl} word={entry.word} tags={tags}/>}</Card.Header>
       {derivativeOf.length > 0 && <Card.Header>{derivativeOf.map((dof) =>
         <Button onClick={() => this.setState({ q: dof.id }, this.go)}>
           {dof.text}
@@ -916,13 +917,13 @@ export default class App extends React.Component<IProps, IState> {
         entry.entries?.forEach((lexicalEntry) =>
           lexicalEntry.senses?.forEach((sense) =>
             sense.crossReferences?.forEach((crossReference) => {
-              const { id: word, type, text } = crossReference;
-              if (arraySetAdd({ crossReferences }, "crossReferences", word)) {
-                const tags: ITags = { imputed: [[`xref-${kebabCase(type)}`, text]] };
+              const { id: crossReferenceId, type } = crossReference;
+              if (arraySetAdd({ crossReferences }, "crossReferences", crossReferenceId)) {
+                const tags: ITags = { imputed: [[`xref-${kebabCase(type)}`, result.id]] };
                 fillInTags(tags, entry.lexicalCategory.id, lexicalEntry.grammaticalFeatures, sense);
                 addLookup(crossReference.id, tags);
               }
-            }
+            },
             )))));
     re = await doLookups();
     redirect = this.derivativeOf(re.results);

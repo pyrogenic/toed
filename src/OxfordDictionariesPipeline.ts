@@ -15,6 +15,7 @@ import ILexicalEntry from "./types/gen/ILexicalEntry";
 import IPronunciation from "./types/gen/IPronunciation";
 import ISense from "./types/gen/ISense";
 import IVariantForm from "./types/gen/IVariantForm";
+import uniq from "lodash/uniq";
 
 export interface IPassMap { [key: string]: Pass; }
 
@@ -224,11 +225,11 @@ export default class OxfordDictionariesPipeline {
             }
             if (lowercaseMatchingEntryTexts && text.length !== query.length) {
                 arraySetAdd(entryTags, "imputed", ["inexact",
-                    `exact matches of the query ('${lowercaseMatchingEntryTexts.join("', '")}') are present`]);
+                    `'${text}' vs '${uniq(lowercaseMatchingEntryTexts).join("', '")}'`]);
             }
             if (mixedCaseMatchingEntryTexts && text.length !== query.length) {
                 arraySetAdd(entryTags, "imputed", ["inexact-mixed-case",
-                    `mixed-case matches of the query ('${mixedCaseMatchingEntryTexts.join("', '")}') are present`]);
+                    `'${text}' vs '${uniq(mixedCaseMatchingEntryTexts).join("', '")}'`]);
             }
             if (internalRedirect) {
                 arraySetAdd(entryTags, "imputed",
