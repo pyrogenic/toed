@@ -54,6 +54,7 @@ import OxfordDictionariesPipeline,
   IPassMap,
   IPipelineConfig,
   PartialWordRecord,
+  fillInTags,
 } from "./OxfordDictionariesPipeline";
 import Pass from "./Pass";
 import PassComponent from "./PassComponent";
@@ -893,7 +894,7 @@ export default class App extends React.Component<IProps, IState> {
           pre?.results?.forEach((he) => (he as AnnotatedHeadwordEntry).tags = cloneDeep(tags));
           return pre;
         })]));
-      console.log({addLookup: word, words, promises});
+      // console.log({addLookup: word, tags, promises});
     };
     const doLookups = async () => {
       const words = promises.map(([w]) => w);
@@ -908,14 +909,20 @@ export default class App extends React.Component<IProps, IState> {
     };
     addLookup(redirect || q, {});
     let re = await doLookups();
-    const crossReferences = uniq(compact(
-      re.results?.flatMap((result) =>
-        result.lexicalEntries.flatMap((entry) =>
-          entry.entries?.flatMap((lexicalEntry) =>
-            lexicalEntry.senses?.flatMap((sense) =>
-              sense.crossReferences)) ?? []))));
-    crossReferences.forEach((crossReference) => addLookup(crossReference.id,
-      { imputed: [[`xref-${kebabCase(crossReference.type)}`, crossReference.text]] }));
+    const crossReferences: string[] = [];
+    re.results?.forEach((result) =>
+      result.lexicalEntries.forEach((entry) =>
+        entry.entries?.forEach((lexicalEntry) =>
+          lexicalEntry.senses?.forEach((sense) =>
+            sense.crossReferences?.forEach((crossReference) => {
+              const { id: word, type, text } = crossReference;
+              if (arraySetAdd({ crossReferences }, "crossReferences", word)) {
+                const tags: ITags = { imputed: [[`xref-${kebabCase(type)}`, text]] };
+                fillInTags(tags, entry.lexicalCategory.id, lexicalEntry.grammaticalFeatures, sense);
+                addLookup(crossReference.id, tags);
+              }
+            }
+            )))));
     re = await doLookups();
     redirect = this.derivativeOf(re.results);
     if (redirect) {

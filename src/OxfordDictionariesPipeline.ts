@@ -13,6 +13,7 @@ import IHeadwordEntry from "./types/gen/IHeadwordEntry";
 import ILexicalEntry from "./types/gen/ILexicalEntry";
 import IPronunciation from "./types/gen/IPronunciation";
 import ISense from "./types/gen/ISense";
+import IGrammaticalFeature from "./types/gen/IGrammaticalFeature";
 
 export interface IPassMap { [key: string]: Pass; }
 
@@ -207,30 +208,30 @@ export default class OxfordDictionariesPipeline {
                     [`redirect-${redirectedFrom.lexicalCategory.id}`, `from '${internalRedirect.word}'`]);
             });
             const { text } = lexicalEntry;
-            const lexicalEntryTags = cloneDeep(entryTags);
             if (text === query.toLocaleLowerCase()) {
-                arraySetAdd(lexicalEntryTags, "imputed", ["exact"]);
+                arraySetAdd(entryTags, "imputed", ["exact"]);
             }
             const lowerCase = text.toLocaleLowerCase();
             if (lowerCase !== text) {
-                arraySetAdd(lexicalEntryTags, "imputed", ["mixed-case"]);
+                arraySetAdd(entryTags, "imputed", ["mixed-case"]);
                 if (lowerCase === query.toLocaleLowerCase()) {
-                    arraySetAdd(lexicalEntryTags, "imputed", ["exact-mixed-case"]);
+                    arraySetAdd(entryTags, "imputed", ["exact-mixed-case"]);
                 }
             }
             if (lowercaseMatchingEntryTexts && text.length !== query.length) {
-                arraySetAdd(lexicalEntryTags, "imputed", ["inexact",
+                arraySetAdd(entryTags, "imputed", ["inexact",
                     `exact matches of the query ('${lowercaseMatchingEntryTexts.join("', '")}') are present`]);
             }
             if (mixedCaseMatchingEntryTexts && text.length !== query.length) {
-                arraySetAdd(lexicalEntryTags, "imputed", ["inexact-mixed-case",
+                arraySetAdd(entryTags, "imputed", ["inexact-mixed-case",
                     `mixed-case matches of the query ('${mixedCaseMatchingEntryTexts.join("', '")}') are present`]);
             }
             if (internalRedirect) {
-                arraySetAdd(lexicalEntryTags, "imputed",
+                arraySetAdd(entryTags, "imputed",
                     ["redirect", `'${text}' -> '${internalRedirect.word}'`]);
             }
-            return lexicalEntryTags;
+            console.log({ input: entry.tags, entryTags });
+            return entryTags;
         }
 
         entries.forEach((entry) => {
@@ -399,16 +400,7 @@ export default class OxfordDictionariesPipeline {
         }
         const resultTags = ensure(record, "resultTags", Object);
         const allTags = ensure(record, "allTags", Object);
-        arraySetAdd(tags, "partsOfSpeech", partOfSpeech);
-        // arraySetAdd(allTags, "partsOfSpeech", partOfSpeech);
-        arraySetAddAll(tags, "grammaticalFeatures", grammaticalFeatures);
-        // arraySetAddAll(allTags, "grammaticalFeatures", grammaticalFeatures);
-        const registers = tags.registers = (sense.registers || []).map((e) => e.id);
-        arraySetAddAll(tags, "registers", registers);
-        // arraySetAddAll(allTags, "registers", registers);
-        const domains = tags.domains = (sense.domains || []).map((e) => e.id);
-        arraySetAddAll(tags, "domains", domains);
-        // arraySetAddAll(allTags, "domains", domains);
+        const { registers, domains } = fillInTags(tags, partOfSpeech, grammaticalFeatures, sense);
         copyTags(tags, allTags);
         const savedTags = cloneDeep(tags);
         const resetTags = () => {
@@ -585,3 +577,21 @@ export default class OxfordDictionariesPipeline {
         }
     }
 }
+
+export function fillInTags(
+    tags: ITags,
+    partOfSpeech: string,
+    grammaticalFeatures: string[] | IGrammaticalFeature[] | undefined,
+    sense: ISense) {
+    arraySetAdd(tags, "partsOfSpeech", partOfSpeech);
+    if (grammaticalFeatures && typeof grammaticalFeatures[0] === "object") {
+        grammaticalFeatures = (grammaticalFeatures as IGrammaticalFeature[]).map((e) => e.id);
+    }
+    arraySetAddAll(tags, "grammaticalFeatures", grammaticalFeatures as string[]);
+    const registers = (sense.registers || []).map((e) => e.id);
+    arraySetAddAll(tags, "registers", registers);
+    const domains = (sense.domains || []).map((e) => e.id);
+    arraySetAddAll(tags, "domains", domains);
+    return { registers, domains };
+}
+
