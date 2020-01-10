@@ -143,40 +143,41 @@ function WordRow(
   const definitions = result.definitions || {};
   const partsOfSpeech = Object.keys(definitions);
   const { pipelineNotes, resultDiscarded, resultDiscardedTags } = record;
-  const notFound = !(partsOfSpeech.length || etymologies?.length || examples?.length);
-  const word = result.entry_rich || record.q;
+  const notFound = false;
   const moreInfo = (pipelineNotes && pipelineNotes.length > 0)
     || resultDiscarded || resultDiscardedTags;
   return <Row className={`entry ${onlyForHash ? "onlyForHash" : ""}`} id={id}>
     <MarksControl word={record.q} badges={true} />
     <Col xs={fluid ? "auto" : 1}>
-      {result.entry_rich && record.q !== result.entry_rich && <Row className="text-muted">
+      {record.q !== array(result.entry_rich)?.[0] && <Row className={notFound ? "headword not-found" : "text-muted"}>
         {record.q}
       </Row>}
-      <TaggedComponent
+      {array(result.entry_rich)?.map((entryRich, index) =>
+       <TaggedComponent
+        key={index}
         query={record.q}
-        word={word}
+        word={entryRich}
         title="Rich Entry"
-        tags={resultTags.entry_rich ?? record.allTags}
+        tags={array(resultTags.entry_rich)?.[index]}
         TagControl={TagControl}
         MarksControl={MarksControl}>
-        <Row className={result.entry_rich ? "headword" : "headword not-found"}>
-          {word.toString()}
+        <Row>
+          {entryRich}
         </Row>
-      </TaggedComponent>
-      <Maybe when={result.pronunciation_ipa && result.pronunciation_ipa.length > 0}>
+      </TaggedComponent>)}
+      {array(result.pronunciation_ipa)?.map((pronunciation, index) =>
         <TaggedComponent
+          key={index}
           query={record.q}
-          word={word}
+          word={"?"}
           title="Pronunciation"
-          tags={resultTags.pronunciation_ipa}
+          tags={array(resultTags.pronunciation_ipa)?.[index]}
           TagControl={TagControl}
           MarksControl={MarksControl}>
           <Row className="pronunciation">
-            {result.pronunciation_ipa}
+            {pronunciation}
           </Row>
-        </TaggedComponent>
-      </Maybe>
+      </TaggedComponent>)}
     </Col>
     {notFound ? <Col /> : <>
       <Col>
@@ -188,7 +189,7 @@ function WordRow(
                 <Col className="definition">
                   <TaggedComponent
                     query={record.q}
-                    word={word}
+                    word={"?"}
                     title={`Definition #${index + 1} (${partOfSpeech})`}
                     tags={resultTags.definitions?.[partOfSpeech]?.[index]}
                     TagControl={TagControl}
@@ -204,17 +205,17 @@ function WordRow(
           <Row>
             <Col xs={fluid ? "auto" : 2}>etymology</Col>
             <Col>
-              {etymologies.map((etymology, index) => <div key={index}>
+              {etymologies.map((etymology, index) =>
                 <TaggedComponent
+                  key={index}
                   query={record.q}
-                  word={word}
+                  word={"?"}
                   title="Etymology"
                   tags={array(resultTags?.etymology)?.[index]}
                   TagControl={TagControl}
                   MarksControl={MarksControl}>
                   {etymology}
-                </TaggedComponent>
-              </div>)}
+                </TaggedComponent>)}
             </Col>
           </Row>
         }
@@ -225,7 +226,7 @@ function WordRow(
               {examples.map((example, index) => <div key={index}>
                 <TaggedComponent
                   query={record.q}
-                  word={word}
+                  word={"?"}
                   title="Example"
                   tags={array(resultTags?.example)?.[index]}
                   TagControl={TagControl}
