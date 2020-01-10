@@ -155,7 +155,7 @@ export default class OxfordDictionariesPipeline {
                 internalRedirects.set(target, definedBy);
             }
         });
-        console.log({internalRedirects});
+        // console.log({internalRedirects});
         const rejectedLexicalEntries: ILexicalEntry[] = [];
         const discard = (
             lexicalEntry: Pick<ILexicalEntry, "entries" | "lexicalCategory" | "text">,
@@ -166,7 +166,8 @@ export default class OxfordDictionariesPipeline {
             lexicalEntry.entries?.forEach((lentry) => {
                 const grammaticalFeatures = lentry.grammaticalFeatures?.map((e) => e.id);
                 discardElements(record, result, "etymology", lentry.etymologies, tags);
-                this.pullPronunciation(record, result, {}, lexicalEntry.text, lentry.pronunciations, tags, {discard: true});
+                this.pullPronunciation(
+                    record, result, {}, lexicalEntry.text, lentry.pronunciations, tags, {discard: true});
                 lentry.senses?.forEach((sense) => {
                     const senseTags: ITags = cloneDeep(tags);
                     arraySetAdd(senseTags, "partsOfSpeech", partOfSpeech);
@@ -259,18 +260,19 @@ export default class OxfordDictionariesPipeline {
 
         headwordEntries.forEach((headwordEntry) => {
             const { pronunciations: headwordEntryPronunciations} = headwordEntry;
-            console.log(`Headword Entry '${headwordEntry.id}'`,
-            //  {headwordEntryPronunciations},
-            );
+            // console.log(`Headword Entry '${headwordEntry.id}'`,
+            //     { headwordEntryPronunciations },
+            // );
             headwordEntry.lexicalEntries.forEach((lexicalEntry, lexicalEntryIndex) => {
                 const {
                     lexicalCategory: { id: partOfSpeech },
                     pronunciations: lexicalEntryPronunciations,
                     text,
                 } = lexicalEntry;
-                console.log(`Headword Entry '${headwordEntry.id}' / Lexical Entry #${lexicalEntryIndex} '${lexicalEntry.text}'`,
-                    // { headwordEntryPronunciations, lexicalEntryPronunciations },
-                );
+                // tslint:disable-next-line:max-line-length
+                // console.log(`Headword Entry '${headwordEntry.id}' / Lexical Entry #${lexicalEntryIndex} '${lexicalEntry.text}'`,
+                //     { headwordEntryPronunciations, lexicalEntryPronunciations },
+                // );
                 const lexicalEntryTags = imputeTags(headwordEntry, lexicalEntry);
                 let grammaticalFeatures = appendGrammaticalFeatures(lexicalEntry, undefined);
                 if (grammaticalFeatures.length > 0) {
@@ -294,9 +296,10 @@ export default class OxfordDictionariesPipeline {
                 }
                 if (lexicalEntry.entries) {
                     lexicalEntry.entries.forEach((lentry, lentryIndex) => {
-                        console.log(`Headword Entry '${headwordEntry.id}' / Lexical Entry #${lexicalEntryIndex} '${lexicalEntry.text}' / Entry #${lentryIndex}`,
-                          // { headwordEntryPronunciations, lexicalEntryPronunciations },
-                        );    
+                        // tslint:disable-next-line:max-line-length
+                        // console.log(`Headword Entry '${headwordEntry.id}' / Lexical Entry #${lexicalEntryIndex} '${lexicalEntry.text}' / Entry #${lentryIndex}`,
+                        //     { headwordEntryPronunciations, lexicalEntryPronunciations },
+                        // );
                         const lentryTags = cloneDeep(lexicalEntryTags);
                         if (lentry.grammaticalFeatures) {
                             grammaticalFeatures = [
@@ -311,8 +314,11 @@ export default class OxfordDictionariesPipeline {
                                 const detail = disallowed.join(", ");
                                 arraySetAdd(lentryTags, "imputed",
                                     ["banned-grammatical-features", detail]);
-                                const syntheticLexicalEntry =
-                                    { text, lexicalCategory: lexicalEntry.lexicalCategory, entries: [lentry] };
+                                const syntheticLexicalEntry = {
+                                    entries: [lentry],
+                                    lexicalCategory: lexicalEntry.lexicalCategory,
+                                    text,
+                                };
                                 return discard(syntheticLexicalEntry, lentryTags, detail);
                             }
                         }
@@ -327,7 +333,6 @@ export default class OxfordDictionariesPipeline {
                         const pronunciations = flatten(compact([
                             headwordEntryPronunciations, lexicalEntryPronunciations, entryPronunciations,
                         ]));
-                        console.log(pronunciations);
                         if (senses) {
                             senses.forEach(this.processSense.bind(
                                 this, record, lentryTags, discard, {
@@ -535,8 +540,8 @@ export default class OxfordDictionariesPipeline {
                 subsenses.forEach(this.processSense.bind(this, record, tags, discard, {
                     grammaticalFeatures,
                     partOfSpeech,
-                    pronunciations,
                     pass,
+                    pronunciations,
                     short,
                     subsenses: true,
                     text,
@@ -596,7 +601,8 @@ export default class OxfordDictionariesPipeline {
                         }
                         this.pullPronunciation(record, result, resultTags, text, pronunciations, tags);
                     } else {
-                        this.pullPronunciation(record, result, resultTags, text, pronunciations, tags, { discard: true });
+                        this.pullPronunciation(
+                            record, result, resultTags, text, pronunciations, tags, { discard: true });
                     }
                     let discardedExamples = examples;
                     if (!result.example && examples && examples.length > 0) {
@@ -647,7 +653,7 @@ export default class OxfordDictionariesPipeline {
             // NOOP
         } else if (!discard && (replace || !result.entry_rich)) {
             tags = applyElement(record, result, resultTags, "entry_rich", word, tags);
-            console.warn(pronunciations);
+            // console.warn(pronunciations);
         } else {
             tags = discardElement(record, result, "entry_rich", word, tags);
         }
@@ -672,7 +678,8 @@ export default class OxfordDictionariesPipeline {
             } else {
                 tags = discardElement(record, result, "pronunciation_ipa", p.phoneticSpelling, tags);
                 if (p.audioFile !== undefined) {
-                    tags = discardElement(record, result, "audio_file", p.audioFile, tags, ["extra", "pronunciation_ipa"]);
+                    tags = discardElement(
+                        record, result, "audio_file", p.audioFile, tags, ["extra", "pronunciation_ipa"]);
                 }
             }
         });
@@ -688,7 +695,7 @@ function applyElement(
     tags: ITags | (() => ITags)) {
     const existingValue = result[prop];
     const existingProps = resultTags[prop];
-    console.log(`Applying: ${prop} = '${value}'`);
+    // console.log(`Applying: ${prop} = '${value}'`);
     result[prop] = value;
     resultTags[prop] = (typeof tags === "function") ? (tags = tags()) : tags;
     if (existingValue && (record.resultDiscarded === undefined || !arraySetHas(record.resultDiscarded, prop, value))) {
@@ -718,10 +725,10 @@ function discardElement(
         arraySetAddAll(discardTags, "imputed", additionalTags);
     }
     if (discards.some((discard, index) => discard === value && isEqual(discardsTags[index], discardTags))) {
-        console.log(`  ... skipping duplicate discard of ${prop} = '${value}'`);
+        // console.log(`  ... skipping duplicate discard of ${prop} = '${value}'`);
         return tags;
     }
-    console.log(`  ... discarding ${prop} = '${value}'`);
+    // console.log(`  ... discarding ${prop} = '${value}'`);
     discards.push(value);
     discardsTags.push(discardTags);
     return tags;

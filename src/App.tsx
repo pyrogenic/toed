@@ -30,7 +30,8 @@ import Popover from "react-bootstrap/Popover";
 import Row from "react-bootstrap/Row";
 import "./App.css";
 import badWords from "./badWords";
-import defaultConfig from "./default.od3config.json";
+import BakedWordListComponent from "./BakedWordListComponent";
+import ConfigImportBox from "./ConfigImportBox";
 import Focus, { FocusIcons } from "./Focus";
 import Icon from "./Icon";
 import IWordRecord, { ITags } from "./IWordRecord";
@@ -225,8 +226,8 @@ export default class App extends React.Component<IProps, IState> {
       app_key: localStorage.getItem("oed/app_key") || undefined,
       config,
       focus,
-      history,
       hideCached,
+      history,
       languages: [OxfordLanguage.americanEnglish, OxfordLanguage.britishEnglish],
       lookupProps,
       promises: [],
@@ -305,6 +306,11 @@ export default class App extends React.Component<IProps, IState> {
     const QueueComponent = this.QueueComponent;
     const hiddenCount = this.state.records.length - this.state.visibleRecordCount;
     const browserCache = Lookup.browserCache;
+    const hiddenChunk = hiddenCount > 0 && ` — ${hiddenCount} hidden`;
+    const resetFiltersChunk = Object.values(this.state.focus).some((e) => e.length > 0) &&
+      // eslint-disable-next-line jsx-a11y/anchor-is-valid
+      <> — <a onClickCapture={() => this.setState({ focus: defaultFocus() })}>reset filters</a></>;
+    const disclosureTitle = <>filters and tags{hiddenChunk}{resetFiltersChunk}</>;
     return <>
       <Navbar bg="light" expand="lg">
         <Navbar.Toggle aria-controls="nav" as={NavbarBrand}>OD³</Navbar.Toggle>
@@ -360,14 +366,32 @@ export default class App extends React.Component<IProps, IState> {
           </NavDropdown>
           <NavDropdown title="Words" id="nav-words">
             <Container>
-              <FormCheck label="Hide Cached" checked={this.state.hideCached} onChange={() => this.setState(({ hideCached }) => ({ hideCached: !hideCached }))} />
+              <FormCheck
+                label="Hide Cached"
+                checked={this.state.hideCached}
+                onChange={() => this.setState(({ hideCached }) => ({ hideCached: !hideCached }))}
+              />
               <ButtonToolbar>
-                {browserCache.localStorage.count > 0 && <Button variant="outline-primary">Local <Badge onClick={browserCache.localStorage.clear} variant="primary">{browserCache.localStorage.count}</Badge></Button>}
-                {browserCache.sessionStorage.count > 0 && <Button variant="outline-primary">Session <Badge onClick={browserCache.sessionStorage.clear} variant="primary">{browserCache.sessionStorage.count}</Badge></Button>}
+                {browserCache.localStorage.count > 0 &&
+                  <Button variant="outline-primary">Local <Badge onClick={browserCache.localStorage.clear} variant="primary">{browserCache.localStorage.count}</Badge></Button>}
+                {browserCache.sessionStorage.count > 0 &&
+                  <Button variant="outline-primary">Session <Badge onClick={browserCache.sessionStorage.clear} variant="primary">{browserCache.sessionStorage.count}</Badge></Button>}
               </ButtonToolbar>
-              <BakedWordListComponent except={wordListExceptions} label={"Two-Letter"} url={twoLetterWordsUrl} WordListComponent={WordListComponent} />
-              <BakedWordListComponent except={wordListExceptions} label={"Three-Letter"} url={threeLetterWordsUrl} WordListComponent={WordListComponent} />
-              <BakedWordListComponent except={wordListExceptions} label={"JQXZ"} url={jqxzWordsUrl} WordListComponent={WordListComponent} />
+              <BakedWordListComponent
+                except={wordListExceptions}
+                label={"Two-Letter"}
+                url={twoLetterWordsUrl} WordListComponent={WordListComponent}
+              />
+              <BakedWordListComponent
+                except={wordListExceptions}
+                label={"Three-Letter"}
+                url={threeLetterWordsUrl} WordListComponent={WordListComponent}
+              />
+              <BakedWordListComponent
+                except={wordListExceptions}
+                label={"JQXZ"}
+                url={jqxzWordsUrl} WordListComponent={WordListComponent}
+              />
               <WordListComponent except={wordListExceptions} label={"Bad Words"} words={badWords} variant={"outline-warning"} />
               <WordListComponent label={"History"} words={history} />
             </Container>
@@ -397,10 +421,7 @@ export default class App extends React.Component<IProps, IState> {
       <Container>
 
         <DisclosureBar id="filters and tags"
-        title={
-          // eslint-disable-next-line
-          <>filters and tags{hiddenCount > 0 && ` — ${hiddenCount} hidden`}{Object.values(this.state.focus).some((e) => e.length > 0) && <> — <a onClickCapture={() => this.setState({focus: defaultFocus()})}>reset filters</a></>}</>
-        } tooltip={
+        title={disclosureTitle} tooltip={
           JSON.stringify(this.state.focus)
         }>
           {this.renderFilters()}
@@ -901,7 +922,7 @@ export default class App extends React.Component<IProps, IState> {
     const addLookup = (word: string, tags: ITags) => {
       const words = promises.map(([w]) => w);
       if (words.includes(word)) {
-        console.log(`get: ignoring redundant request for '${word}' (${words.join(", ")})`);
+        // console.log(`get: ignoring redundant request for '${word}' (${words.join(", ")})`);
         return;
       }
       promises = promises.concat(languages.map((language) =>
@@ -912,11 +933,11 @@ export default class App extends React.Component<IProps, IState> {
       // console.log({addLookup: word, tags, promises});
     };
     const doLookups = async () => {
-      const words = promises.map(([w]) => w);
+      // const words = promises.map(([w]) => w);
       const ps = promises.map(([, p]) => p);
-      console.log({words, ps});
+      // console.log({words, ps});
       const promiseResults = await Promise.all(ps);
-      console.log(`get: finished waiting for lookups: ${words.join(", ")}`);
+      // console.log(`get: finished waiting for lookups: ${words.join(", ")}`);
       return promiseResults.reduce((re0, re1) => {
         re0.results = flatten(compact([re0.results, re1.results]));
         return re0;
@@ -941,7 +962,7 @@ export default class App extends React.Component<IProps, IState> {
     re = await doLookups();
     redirect = this.derivativeOf(re.results);
     if (redirect) {
-      console.log("get: redirecting to " + redirect);
+      // console.log("get: redirecting to " + redirect);
       return this.get(q, redirect);
     }
     return new Promise((resolve) => {
@@ -1001,7 +1022,7 @@ export default class App extends React.Component<IProps, IState> {
 
   private changePass(query: string | undefined, prop: keyof IPipelineConfig, flag: string, newValue: Pass) {
     const words = this.state.xref[prop][flag];
-    console.log({changePass: words});
+    // console.log({changePass: words});
     this.setState((state) => {
       state.config[prop][flag] = newValue;
       return {config: {...state.config}};
@@ -1173,84 +1194,4 @@ function FilterRow({
         </TagBadge>
     </Col>
   </Row>;
-}
-
-function ConfigImportBox({ currentConfig, setConfig }: {
-  currentConfig: IPipelineConfig,
-  setConfig(config: IPipelineConfig): void,
-}) {
-  const [value, setValue] = React.useState(stringify(currentConfig));
-  const [configError, setConfigError] = React.useState<{ config?: IPipelineConfig, error?: Error; }>({});
-  React.useEffect(() => {
-    try {
-      setConfigError({ config: JSON.parse(value) });
-    } catch (error) {
-      setConfigError({ error });
-    }
-  }, [value]);
-  const { config, error } = configError;
-  const inputArea = <Col>
-    <Form.Control
-      as="textarea"
-      rows={10}
-      cols={24}
-      value={value}
-      onChange={(e: React.SyntheticEvent<HTMLInputElement>) => setValue(e.currentTarget.value)} />
-  </Col>;
-  const isDefault = !error && isEqual(config, defaultConfig);
-  const isCurrent = isEqual(config, currentConfig);
-  const toolbar = <Col as={ButtonToolbar}>
-    <Button
-      as="a"
-      variant="link"
-      href={`data:application/json,${value}`}
-      download="current.od3config.json">
-      Export
-    </Button>
-    <Button
-      size="sm"
-      variant={isDefault ? "primary" : "warning"}
-      disabled={isDefault}
-      onClick={() => setValue(stringify(defaultConfig))}
-    >
-      Default
-    </Button>
-    <ButtonGroup>
-    <Button
-        size="sm"
-        variant="outline-primary"
-        disabled={isCurrent}
-        onClick={() => setValue(stringify(currentConfig))}
-      >
-        Undo
-      </Button>
-    <Button
-      size="sm"
-      disabled={!!error || isEqual(config, currentConfig)}
-      title={error ? error.message : undefined}
-      onClick={() => config && setConfig(config)}>
-      Save
-    </Button>
-    </ButtonGroup>
-  </Col>;
-
-  return <>
-    <Row className="mb-2">
-      {inputArea}
-    </Row>
-    <Row>
-      {toolbar}
-    </Row>
-  </>;
-}
-function stringify(currentConfig: IPipelineConfig): string | (() => string) {
-  return JSON.stringify(currentConfig, null, 4);
-}
-
-function BakedWordListComponent({label, url, WordListComponent, except}: {label: string, url: string, WordListComponent: App["WordListComponent"], except: string[]}) {
-  const [words, setWords] = React.useState([] as string[]);
-  React.useEffect(() => {
-    fetch(url).then((r) => r.text()).then((text) => setWords(uniq(compact(text.split("\n")))));
-  }, [url]);
-  return <WordListComponent label={label} words={words} except={except}/>;
 }
