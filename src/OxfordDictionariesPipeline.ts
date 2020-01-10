@@ -21,7 +21,6 @@ import map from "./map";
 import Marks from "./Marks";
 import Pass from "./Pass";
 import sufficientDefinitions from "./sufficientDefinitions";
-import IEntry from "./types/gen/IEntry";
 import IGrammaticalFeature from "./types/gen/IGrammaticalFeature";
 import IHeadwordEntry from "./types/gen/IHeadwordEntry";
 import ILexicalEntry from "./types/gen/ILexicalEntry";
@@ -270,7 +269,11 @@ export default class OxfordDictionariesPipeline {
         entries.forEach((headwordEntry) => {
             const { pronunciations: headwordEntryPronunciations} = headwordEntry;
             headwordEntry.lexicalEntries.forEach((lexicalEntry) => {
-                const { lexicalCategory: { id: partOfSpeech }, pronunciations: lexicalEntryPronunciations, text } = lexicalEntry;
+                const {
+                    lexicalCategory: { id: partOfSpeech },
+                    pronunciations: lexicalEntryPronunciations,
+                    text,
+                } = lexicalEntry;
                 const lexicalEntryTags = imputeTags(headwordEntry, lexicalEntry);
                 let grammaticalFeatures = appendGrammaticalFeatures(lexicalEntry, undefined);
                 if (grammaticalFeatures.length > 0) {
@@ -308,8 +311,9 @@ export default class OxfordDictionariesPipeline {
                                 const detail = disallowed.join(", ");
                                 arraySetAdd(lentryTags, "imputed",
                                     ["banned-grammatical-features", detail]);
-                                return discard({ text, lexicalCategory: lexicalEntry.lexicalCategory, entries: [headwordEntry] },
-                                    lentryTags, detail);
+                                const syntheticLexicalEntry =
+                                    { text, lexicalCategory: lexicalEntry.lexicalCategory, entries: [lentry] };
+                                return discard(syntheticLexicalEntry, lentryTags, detail);
                             }
                         }
                         const baseWord = this.query;
@@ -320,16 +324,18 @@ export default class OxfordDictionariesPipeline {
                             && (v = variantForms.find((vf) => vf.text === baseWord))) {
                             arraySetAdd(lentryTags, "imputed", ["variant", JSON.stringify(v)]);
                         }
-                        const pronunciations =  flatten(compact([headwordEntryPronunciations, lexicalEntryPronunciations, entryPronunciations]));
-                        console.log(headwordEntry.pronunciations, entryPronunciations, pronunciations);
+                        const pronunciations = flatten(compact([
+                            headwordEntryPronunciations, lexicalEntryPronunciations, entryPronunciations,
+                        ]));
+                        // console.log(headwordEntry.pronunciations, entryPronunciations, pronunciations);
                         if (senses) {
                             senses.forEach(this.processSense.bind(
                                 this, record, lentryTags, discard, {
                                 etymologies,
                                 grammaticalFeatures,
                                 partOfSpeech,
-                                pronunciations,
                                 pass: Pass.primary,
+                                pronunciations,
                                 short: false,
                                 subsenses: false,
                                 text,
@@ -337,12 +343,14 @@ export default class OxfordDictionariesPipeline {
                         } else {
                             arraySetAdd(lentryTags, "imputed", ["no-senses"]);
                             discardElements(record, result, "etymology", etymologies, lentryTags);
-                            this.pullPronunciation(record, result, resultTags, text, pronunciations, lentryTags, {discard: true});
+                            this.pullPronunciation(
+                                record, result, resultTags, text, pronunciations, lentryTags, {discard: true});
                         }
                     });
                 } else {
                     const pronunciations =  flatten(compact([headwordEntryPronunciations, lexicalEntryPronunciations]));
-                    this.pullPronunciation(record, result, resultTags, text, pronunciations, lexicalEntryTags, {discard: true});
+                    this.pullPronunciation(
+                        record, result, resultTags, text, pronunciations, lexicalEntryTags, {discard: true});
                 }
             });
         });
@@ -494,7 +502,7 @@ export default class OxfordDictionariesPipeline {
                             senses: [sense],
                         }],
                         lexicalCategory: { id: partOfSpeech, text: "banned" },
-                        text: text,
+                        text,
                     },
                         {
                             imputed: passMap.filter(({ allowed }) => allowed === Pass.banned)

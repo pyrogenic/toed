@@ -781,8 +781,11 @@ export default class App extends React.Component<IProps, IState> {
   private renderResponse = (entry: IHeadwordEntry, index: number) => {
     const derivativeOf = flatten(compact(entry.lexicalEntries.map((lentry) => lentry.derivativeOf)));
     const {tags} = entry as AnnotatedHeadwordEntry;
+    const tagControls = tags && <TagControls TagControl={this.TagControl} word={entry.word} tags={tags} />;
     return <Card key={`${entry.id}-${index}`}>
-  <Card.Header>{entry.word} <Badge>{entry.type}</Badge> {tags && <TagControls TagControl={this.TagControl} word={entry.word} tags={tags}/>}</Card.Header>
+      <Card.Header>
+        {entry.word} <Badge>{entry.type}</Badge> {tagControls}
+      </Card.Header>
       {derivativeOf.length > 0 && <Card.Header>{derivativeOf.map((dof) =>
         <Button onClick={() => this.setState({ q: dof.id }, this.go)}>
           {dof.text}
@@ -807,7 +810,7 @@ export default class App extends React.Component<IProps, IState> {
         </Col>
       </Row>
       {Object.entries(omit(entry, "entries")).map(([key, value]) => value &&
-        <Row>
+        <Row key={key}>
           <Col xs={2}>
             {key}
           </Col>
