@@ -794,23 +794,33 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private renderLexicalEntry = (entry: ILexicalEntry, index: number) => {
-    return <Row key={index}>
-      <Col xs={2}>{entry.lexicalCategory.id}</Col>
-      <Col>
+    return <div key={index}>
+      <Row>
+        <Col>Lexical Entry #{index}</Col>
+      </Row>
+      <Row>
+        <Col xs={2}>{entry.lexicalCategory.id}</Col>
+        <Col>
+          <Row>
+            {entry.entries?.map(this.renderEntry)}
+          </Row>
+        </Col>
+      </Row>
+      {Object.entries(omit(entry, "entries")).map(([key, value]) => value &&
         <Row>
-          {entry.entries && entry.entries.map(this.renderEntry)}
-        </Row>
-        <Row className="small">
-          <Col as="pre">
-            {JSON.stringify(omit(entry, "entries"), undefined, 2)}
+          <Col xs={2}>
+            {key}
           </Col>
-        </Row>
-      </Col>
-    </Row>;
+          <Col as="pre">
+            {JSON.stringify(value, undefined, 2)}
+          </Col>
+        </Row>)}
+    </div>;
   }
 
   private renderEntry = (entry: IEntry, index: number) => {
     return <Col key={index} as="pre">
+      <Badge variant="info">Entry #{index}</Badge>
       {JSON.stringify(entry, undefined, 2)}
     </Col>;
   }
