@@ -25,6 +25,7 @@ import ILexicalEntry from "./types/gen/ILexicalEntry";
 import IPronunciation from "./types/gen/IPronunciation";
 import ISense from "./types/gen/ISense";
 import IVariantForm from "./types/gen/IVariantForm";
+import without from "lodash/without";
 
 export interface IPassMap { [key: string]: Pass; }
 
@@ -330,7 +331,7 @@ export default class OxfordDictionariesPipeline {
                                 grammaticalFeatures,
                                 partOfSpeech,
                                 pronunciations: lentry.pronunciations,
-                                pass: 1,
+                                pass: Pass.primary,
                                 short: false,
                                 subsenses: false,
                                 text,
@@ -357,6 +358,11 @@ export default class OxfordDictionariesPipeline {
             { short: false, subsenses: true, pass: Pass.tertiary },
             { short: true, subsenses: false, pass: Pass.tertiary },
             { short: true, subsenses: true, pass: Pass.tertiary },
+
+            { short: false, subsenses: false, pass: Pass.tertiary, fallbackPass: Pass.secondary },
+            { short: false, subsenses: true, pass: Pass.tertiary, fallbackPass: Pass.secondary },
+            { short: true, subsenses: false, pass: Pass.tertiary, fallbackPass: Pass.secondary },
+            { short: true, subsenses: true, pass: Pass.tertiary, fallbackPass: Pass.secondary },
         ].forEach((pass) => {
             entries.forEach((entry) => {
                 entry.lexicalEntries.forEach((lexicalEntry) => {
@@ -425,11 +431,11 @@ export default class OxfordDictionariesPipeline {
             tags: ITags,
             reason?: string) => void,
         { text, partOfSpeech, grammaticalFeatures, pronunciations,
-            short, pass, subsenses: onlySubsenses, etymologies: entryEtymologies }:
+            short, pass, fallbackPass = Pass.primary, subsenses: onlySubsenses, etymologies: entryEtymologies }:
             {
                 text: string, partOfSpeech: string, grammaticalFeatures: string[],
                 pronunciations: IPronunciation[] | undefined,
-                short: boolean, pass: Pass, subsenses: boolean, etymologies?: string[],
+                short: boolean, pass: Pass, fallbackPass?: Pass, subsenses: boolean, etymologies?: string[],
             },
         sense: ISense) {
         const result = record.result!;
@@ -472,9 +478,10 @@ export default class OxfordDictionariesPipeline {
             grammaticalFeatures.forEach(check.bind(null, "grammaticalFeatures"));
             domains.forEach(check.bind(null, "domains"));
             tags.imputed?.map(([tag]) => tag).forEach(check.bind(null, "imputed"));
-            const passes = passMap.map(({ allowed }) => allowed);
+            const passes = uniq(passMap.map(({ allowed }) => allowed));
             const banned = Math.min(...passes) === 0;
             const requiredPass = Math.max(...passes);
+            const nextRequiredPass = Math.max(...without(passes, requiredPass));
             if (banned) {
                 if (pass === Pass.primary) {
                     discard({
@@ -494,6 +501,9 @@ export default class OxfordDictionariesPipeline {
                 return true;
             }
             if (requiredPass !== pass) {
+                return true;
+            }
+            if (nextRequiredPass > fallbackPass) {
                 return true;
             }
             return false;

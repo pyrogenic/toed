@@ -12,3 +12,6 @@ Oxford Dictionaries TypesScript Client
 
 ## TODO
 - [x] "undefined" tag not removed when refresh finds definition
+- [ ] missing pronunciations for cross-referenced origins
+- [x] scoring (e.g. crapper) so between two pass-3 options, one with no pass-2 tags preferred over one with a pass-2 tag
+
