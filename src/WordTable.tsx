@@ -25,6 +25,7 @@ import "./WordTable.css";
 interface IProps {
   records: IWordRecord[];
   focus: TagFocus;
+  show: number;
   getReload: App["getOnClick"];
   TagControl: TagControlFactory;
   MarksControl: MarksControlFactory;
@@ -265,7 +266,7 @@ export default class WordTable extends React.Component<IProps, IState> {
     this.state = {
       page: 0,
       records: [],
-      show: 10,
+      show: props.show ?? 10,
     };
   }
 

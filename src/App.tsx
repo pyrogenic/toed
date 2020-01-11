@@ -71,6 +71,8 @@ import jqxzWordsUrl from "./wwf/jqxzWords.txt";
 import threeLetterWordsUrl from "./wwf/threeLetterWords.txt";
 import twoLetterWordsUrl from "./wwf/twoLetterWords.txt";
 
+type Renderable = ReturnType<React.Component["render"]>;
+
 interface IStringMap { [key: string]: string[]; }
 
 type ITagCrossReference = { [K in keyof IPipelineConfig]: IStringMap };
@@ -352,7 +354,7 @@ export default class App extends React.Component<IProps, IState> {
                   <Form.Label>Limits</Form.Label>
                   {this.lookupConfig({as: "number", prop: "threads", range: [1, 10]})}
                   {this.lookupConfig({as: "number", prop: "apiRate", range: [1, 500]})}
-                  {this.lookupConfig({as: "number", prop: "loaded", range: [1, 1000]})}
+                  {this.lookupConfig({as: "number", prop: "visible", range: [1, 1000]})}
                 </Form.Group>
               </Form>
             </Container>
@@ -445,6 +447,7 @@ export default class App extends React.Component<IProps, IState> {
             <WordTable
                 records={this.state.records}
                 focus={this.state.focus}
+                show={this.lookup.effectiveProps.visible}
                 getReload={this.getOnClick}
                 onFiltered={this.onFiltered}
                 TagControl={this.TagControl}
@@ -525,77 +528,112 @@ export default class App extends React.Component<IProps, IState> {
                                     range?: [number, number],
                                   })) {
     const defaultValue = Lookup.effectiveProps()[(props.prop)];
-    const defaultValueLabel = `Default (${defaultValue.toString()})`;
-    return <Form.Row>
-      {props.as === "checkbox" &&
-      <Form.Check
+    let defaultValueLabel: Renderable;
+    switch (typeof defaultValue) {
+      case "boolean":
+        defaultValueLabel = <Icon icon={defaultValue ? OpenIconicNames.check :  OpenIconicNames.x} />;
+        break;
+      default:
+        defaultValueLabel = defaultValue.toString();
+        break;
+    }
+    const value = this.state.lookupProps[props.prop] === undefined
+      ? undefined
+      : `${this.state.lookupProps[props.prop]}`;
+    let resetButton: Renderable = value !== undefined &&
+      <Button
+        size="sm"
+        variant={defaultValue === value ? "outline-secondary" : "warning"}
+        onClick={() =>
+          this.setState(({ lookupProps }) =>
+            ({ lookupProps: { ...lookupProps, [props.prop]: undefined } }),
+            () => this.lookup.props = this.state.lookupProps)
+        }>
+        <Icon icon={OpenIconicNames["action-undo"]} /> {defaultValueLabel}
+      </Button>;
+    let row: Renderable;
+    switch (props.as) {
+      case "checkbox":
+        row = <Form.Check
           className="mr-auto"
           label={titleCase(props.prop)}
           checked={this.state.lookupProps[props.prop]}
           onChange={() =>
-              this.setState(({lookupProps}) =>
-                      ({lookupProps: {...lookupProps, [props.prop]: !lookupProps[(props.prop)]}}),
-                  () => this.lookup.props = this.state.lookupProps)
+            this.setState(({ lookupProps }) =>
+              ({ lookupProps: { ...lookupProps, [props.prop]: !lookupProps[(props.prop)] } }),
+              () => this.lookup.props = this.state.lookupProps)
           }
-      />}
-      {props.as === "select" &&
-      <>
-      <Form.Text>{titleCase(props.prop)}</Form.Text>
-      <Form.Control
-          as={"select"}
-          value={(this.state.lookupProps[props.prop] ?? defaultValueLabel).toString()}
-          onChange={(event) => {
-            const value = event.currentTarget.value;
-            this.setState(({ lookupProps }) => {
-              const realValue = value === defaultValueLabel ? undefined : value;
-              return ({
-                lookupProps: {
-                  ...lookupProps,
-                  [props.prop]: realValue,
-                },
-              });
-            },
-              () => this.lookup.props = this.state.lookupProps);
-          }}
-      >
-        <option value={defaultValueLabel}>{defaultValueLabel}</option>
-        <option>-</option>
-        {Object.keys(props.enumType).sort().map((value) =>
-            <option key={value} value={value}>{value}</option>)}
-      </Form.Control>
-        </>}
-        {props.as === "number" &&
-      <>
-        <Form.Text>{titleCase(props.prop)}</Form.Text>
-        <Form.Control
-          type={"number"}
-          min={props.range?.[0]}
-          max={props.range?.[1]}
-          placeholder={`${defaultValue}`}
-          defaultValue={this.state.lookupProps[props.prop] === undefined ? `${defaultValue}` : undefined}
-          value={this.state.lookupProps[props.prop] === undefined ? undefined : `${this.state.lookupProps[props.prop]}`}
+        />;
+        break;
+      case "select":
+        row = <>
+          <Form.Text>{titleCase(props.prop)}</Form.Text>
+          <Form.Control
+            as={"select"}
+            value={(this.state.lookupProps[props.prop] ?? defaultValueLabel).toString()}
+            onChange={(event) => {
+              const newValue = event.currentTarget.value;
+              this.setState(({ lookupProps }) => {
+                const realValue = newValue === "undefined" ? undefined : newValue;
+                return ({
+                  lookupProps: {
+                    ...lookupProps,
+                    [props.prop]: realValue,
+                  },
+                });
+              },
+                () => this.lookup.props = this.state.lookupProps);
+            }}
+          >
+            <option value={"undefined"}>{defaultValueLabel}</option>
+            <option>-</option>
+            {Object.keys(props.enumType).sort().map((optionValue) =>
+              <option key={optionValue} value={optionValue}>{optionValue}</option>)}
+          </Form.Control>
+        </>;
+        resetButton = undefined;
+        break;
+      case "number":
+        row = <>
+          <Form.Text>
+            <Row>
+              <Col>
+                {titleCase(props.prop)}
+              </Col>
+              <Col>
+                {props.range && value}
+              </Col>
+              <Col>
+                {resetButton}
+              </Col>
+            </Row>
+          </Form.Text>
+          <Form.Control
+            type={props.range ? "range" : "number"}
+            min={props.range?.[0]}
+            max={props.range?.[1]}
+            placeholder={`${defaultValue}`}
+            defaultValue={this.state.lookupProps[props.prop] === undefined ? `${defaultValue}` : undefined}
+            value={value}
             onChange={(event: any) => {
-              const value = event.currentTarget.value;
+              const newValue = event.currentTarget.value;
               this.setState(({ lookupProps }) => {
                 return ({
                   lookupProps: {
                     ...lookupProps,
-                    [props.prop]: value,
+                    [props.prop]: newValue,
                   },
                 });
               },
                 () => this.lookup.props = this.state.lookupProps);
             }} />
-        </>}
-      {props.as !== "select" && this.state.lookupProps[(props.prop)] !== undefined &&
-      <Button size="sm" variant="warning" onClick={() =>
-          this.setState(({lookupProps}) =>
-                  ({lookupProps: {...lookupProps, [props.prop]: undefined}}),
-              () => this.lookup.props = this.state.lookupProps)
-      }>
-        {defaultValueLabel}
-      </Button>
-      }
+        </>;
+        resetButton = undefined;
+        break;
+    }
+    return <Form.Row>
+      {row}
+      {resetButton}
     </Form.Row>;
   }
 
@@ -689,10 +727,6 @@ export default class App extends React.Component<IProps, IState> {
 
   private get maxThreads() {
     return this.lookup.effectiveProps.threads;
-  }
-
-  private get maxLoaded() {
-    return this.lookup.effectiveProps.loaded;
   }
 
   private get maxApiRate() {
@@ -975,7 +1009,7 @@ export default class App extends React.Component<IProps, IState> {
   private tagControl = ({prop, flag, detail, value, query}: {
     prop: keyof ITagCrossReference,
     flag: string,
-    detail?: ReturnType<React.Component["render"]>,
+    detail?: Renderable,
     value?: Pass,
     query: string | undefined,
   }) => {

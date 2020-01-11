@@ -21,7 +21,7 @@ export interface ILookupProps {
     online: boolean;
     directWebdis: boolean;
     threads: number;
-    loaded: number;
+    visible: number;
     apiRate: number;
 }
 
@@ -97,7 +97,7 @@ export default class Lookup {
         const cache = get(props, "cache", CacheMode.session);
         const online = get(props, "online", true);
         const threads = get(props, "threads", 2);
-        const loaded = get(props, "loaded", 30);
+        const visible = get(props, "visible", 10);
         const apiRate = get(props, "apiRate", 200);
         const directWebdis = get(props, "directWebdis", false);
         return {
@@ -105,9 +105,9 @@ export default class Lookup {
             cache,
             directWebdis,
             enterprise,
-            loaded,
             online,
             threads,
+            visible,
         };
     }
 
