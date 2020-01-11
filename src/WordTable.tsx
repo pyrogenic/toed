@@ -5,16 +5,17 @@ import isEqual from "lodash/isEqual";
 import range from "lodash/range";
 import slice from "lodash/slice";
 import React from "react";
-import Badge from "react-bootstrap/Badge";
 import Button, { ButtonProps } from "react-bootstrap/Button";
+import ButtonGroup from "react-bootstrap/ButtonGroup";
 import Col from "react-bootstrap/Col";
 import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Popover from "react-bootstrap/Popover";
 import Row from "react-bootstrap/Row";
-import { MarksControlFactory, TagControlFactory, TagFocus } from "./App";
+import App, { MarksControlFactory, TagControlFactory, TagFocus } from "./App";
 import Focus from "./Focus";
+import Icon from "./Icon";
 import IWordRecord, { IDiscardedWordRecord, ITags } from "./IWordRecord";
 import { array, arraySetHas } from "./Magic";
 import OpenIconicNames from "./OpenIconicNames";
@@ -24,36 +25,13 @@ import "./WordTable.css";
 interface IProps {
   records: IWordRecord[];
   focus: TagFocus;
+  getReload: App["getOnClick"];
   TagControl: TagControlFactory;
   MarksControl: MarksControlFactory;
   onFiltered(visibleRecords: IWordRecord[]): void;
 }
 
-function Maybe({ when, children }: React.PropsWithChildren<{ when: any; }>):
-  JSX.Element | null {
-  if (when === undefined || when === null || !when) {
-    return null;
-  }
-
-  if (!children) {
-    return null;
-  }
-
-  switch (typeof when) {
-    case "object":
-    case "string":
-      if ("length" in when) {
-        if (when.length === 0) {
-          return null;
-        }
-      }
-      break;
-  }
-
-  return <>{children}</>;
-}
-
-function taggedComponent({ query, word, title, children, tags, TagControl, MarksControl }:
+const TaggedComponent = ({ query, word, title, children, tags, TagControl, MarksControl }:
   React.PropsWithChildren<{
     query: string,
     word: string,
@@ -61,7 +39,7 @@ function taggedComponent({ query, word, title, children, tags, TagControl, Marks
     tags?: ITags,
     TagControl: TagControlFactory,
     MarksControl: MarksControlFactory,
-  }>) {
+  }>) => {
   if (!children) {
     return null;
   }
@@ -80,44 +58,51 @@ function taggedComponent({ query, word, title, children, tags, TagControl, Marks
   </OverlayTrigger>;
 
   function popover(id: string) {
-    const useLabels = false;
     return tags && <Popover id={id} className="tags">
-      {title && <Popover.Title>{title}</Popover.Title>}
+      {title && <Popover.Title>{title} <span className="text-muted">{word}</span></Popover.Title>}
       <Popover.Content>
-        {tags.partsOfSpeech && <span>{useLabels && "partsOfSpeech: "}
-          {tags.partsOfSpeech.map((t) =>
-            <TagControl key={t} query={word} prop="partsOfSpeech" flag={t} />)}</span>}
-
-        {tags.grammaticalFeatures && <span>{useLabels && "grammaticalFeatures: "}
-          {tags.grammaticalFeatures.map((t) =>
-            <TagControl key={t} query={word} prop="grammaticalFeatures" flag={t} />)}</span>}
-
-        {tags.domains && <span>{useLabels && "domains: "}
-          {tags.domains.map((t) =>
-            <TagControl key={t} query={word} prop="domains" flag={t} />)}</span>}
-
-        {tags.registers && <span>{useLabels && "registers: "}
-          {tags.registers.map((t) =>
-            <TagControl key={t} query={word} prop="registers" flag={t} />)}</span>}
-
-        {tags.imputed && <span>{useLabels && "imputed: "}
-          {tags.imputed.map(([t, comment]) =>
-            <TagControl key={t} query={word} prop="imputed" flag={t} detail={comment} />)}</span>}
+        <TagControls TagControl={TagControl} word={word} tags={tags}/>
       </Popover.Content>
       <Popover.Content>
         <MarksControl word={query} />
       </Popover.Content>
     </Popover>;
   }
-}
+};
 
-const TaggedComponent = taggedComponent;
+export const TagControls = (
+  { tags, useLabels, word, TagControl }:
+    { tags: ITags, word: string, useLabels?: boolean, TagControl: TagControlFactory; },
+) => {
+  return <>
+    {tags.partsOfSpeech && <span>{useLabels && "partsOfSpeech: "}
+      {tags.partsOfSpeech.map((t) =>
+        <TagControl key={t} query={word} prop="partsOfSpeech" flag={t} />)}</span>}
+
+    {tags.grammaticalFeatures && <span>{useLabels && "grammaticalFeatures: "}
+      {tags.grammaticalFeatures.map((t) =>
+        <TagControl key={t} query={word} prop="grammaticalFeatures" flag={t} />)}</span>}
+
+    {tags.domains && <span>{useLabels && "domains: "}
+      {tags.domains.map((t) =>
+        <TagControl key={t} query={word} prop="domains" flag={t} />)}</span>}
+
+    {tags.registers && <span>{useLabels && "registers: "}
+      {tags.registers.map((t) =>
+        <TagControl key={t} query={word} prop="registers" flag={t} />)}</span>}
+
+    {tags.imputed && <span>{useLabels && "imputed: "}
+      {tags.imputed.map(([t, comment]) =>
+        <TagControl key={t} query={word} prop="imputed" flag={t} detail={comment} />)}</span>}
+  </>;
+};
 
 function WordRow(
   {
     id,
     record,
     onlyForHash,
+    getReload,
     TagControl,
     MarksControl,
     fluid,
@@ -126,6 +111,7 @@ function WordRow(
       id?: string,
       record: IWordRecord | IDiscardedWordRecord,
       onlyForHash: boolean,
+      getReload: App["getOnClick"],
       TagControl: TagControlFactory,
       MarksControl: MarksControlFactory,
       fluid?: boolean,
@@ -137,40 +123,41 @@ function WordRow(
   const definitions = result.definitions || {};
   const partsOfSpeech = Object.keys(definitions);
   const { pipelineNotes, resultDiscarded, resultDiscardedTags } = record;
-  const notFound = !(partsOfSpeech.length || etymologies || examples);
-  const word = result.entry_rich || record.q;
+  const notFound = false;
   const moreInfo = (pipelineNotes && pipelineNotes.length > 0)
     || resultDiscarded || resultDiscardedTags;
   return <Row className={`entry ${onlyForHash ? "onlyForHash" : ""}`} id={id}>
     <MarksControl word={record.q} badges={true} />
     <Col xs={fluid ? "auto" : 1}>
-      {result.entry_rich && record.q !== result.entry_rich && <Row className="text-muted">
+      {record.q !== array(result.entry_rich)?.[0] && <Row className={notFound ? "headword not-found" : "text-muted"}>
         {record.q}
       </Row>}
-      <TaggedComponent
+      {array(result.entry_rich)?.map((entryRich, index) =>
+       <TaggedComponent
+        key={index}
         query={record.q}
-        word={word}
+        word={entryRich}
         title="Rich Entry"
-        tags={resultTags.entry_rich ?? record.allTags}
+        tags={array(resultTags.entry_rich)?.[index]}
         TagControl={TagControl}
         MarksControl={MarksControl}>
-        <Row className={result.entry_rich ? "headword" : "headword not-found"}>
-          {word.toString()}
+        <Row>
+          {entryRich}
         </Row>
-      </TaggedComponent>
-      <Maybe when={result.pronunciation_ipa && result.pronunciation_ipa.length > 0}>
+      </TaggedComponent>)}
+      {array(result.pronunciation_ipa)?.map((pronunciation, index) =>
         <TaggedComponent
+          key={index}
           query={record.q}
-          word={word}
+          word={"?"}
           title="Pronunciation"
-          tags={resultTags.pronunciation_ipa}
+          tags={array(resultTags.pronunciation_ipa)?.[index]}
           TagControl={TagControl}
           MarksControl={MarksControl}>
           <Row className="pronunciation">
-            {result.pronunciation_ipa}
+            {pronunciation}
           </Row>
-        </TaggedComponent>
-      </Maybe>
+      </TaggedComponent>)}
     </Col>
     {notFound ? <Col /> : <>
       <Col>
@@ -182,8 +169,8 @@ function WordRow(
                 <Col className="definition">
                   <TaggedComponent
                     query={record.q}
-                    word={`${word} (${partOfSpeech})`}
-                    title="Definition"
+                    word={"?"}
+                    title={`Definition #${index + 1} (${partOfSpeech})`}
                     tags={resultTags.definitions?.[partOfSpeech]?.[index]}
                     TagControl={TagControl}
                     MarksControl={MarksControl}>
@@ -198,17 +185,17 @@ function WordRow(
           <Row>
             <Col xs={fluid ? "auto" : 2}>etymology</Col>
             <Col>
-              {etymologies.map((etymology, index) => <div key={index}>
+              {etymologies.map((etymology, index) =>
                 <TaggedComponent
+                  key={index}
                   query={record.q}
-                  word={word}
+                  word={"?"}
                   title="Etymology"
                   tags={array(resultTags?.etymology)?.[index]}
                   TagControl={TagControl}
                   MarksControl={MarksControl}>
                   {etymology}
-                </TaggedComponent>
-              </div>)}
+                </TaggedComponent>)}
             </Col>
           </Row>
         }
@@ -219,7 +206,7 @@ function WordRow(
               {examples.map((example, index) => <div key={index}>
                 <TaggedComponent
                   query={record.q}
-                  word={word}
+                  word={"?"}
                   title="Example"
                   tags={array(resultTags?.example)?.[index]}
                   TagControl={TagControl}
@@ -231,12 +218,15 @@ function WordRow(
           </Row>}
       </Col>
     </>}
-    {(!fluid || moreInfo) && <Col xs={1}>{moreInfo &&
-      <OverlayTrigger trigger="click" overlay={popover()} rootClose={true}>
-        <div className="trigger-click">
-          <Badge variant="success">more info</Badge>
-        </div>
+    {!fluid && <Col xs={1}>
+      <ButtonGroup>
+      {moreInfo && <OverlayTrigger trigger="click" overlay={popover()} rootClose={true}>
+        {/* <Badge className="trigger-click" variant="success"
+        pill={true}><Icon icon={OpenIconicNames.ellipses}/></Badge> */}
+        <Button size="sm" variant="light"><Icon icon={OpenIconicNames.ellipses}/></Button>
       </OverlayTrigger>}
+      <Button size="sm" variant="light" onClick={getReload(record.q)}><Icon icon={OpenIconicNames.reload}/></Button>
+      </ButtonGroup>
     </Col>}
   </Row>;
 
@@ -250,6 +240,7 @@ function WordRow(
           <WordRow
             record={discardedRecord}
             onlyForHash={onlyForHash}
+            getReload={getReload}
             TagControl={TagControl}
             MarksControl={MarksControl}
             fluid={true}
@@ -456,7 +447,7 @@ export default class WordTable extends React.Component<IProps, IState> {
   }
 
   private renderVisibleRows(): React.ReactNode {
-    const { TagControl, MarksControl } = this.props;
+    const { getReload, TagControl, MarksControl } = this.props;
     const { page, records, show, onlyForHash } = this.state;
     return slice(records, page * show, page * show + show).map((record, index) =>
       <WordRow
@@ -464,6 +455,7 @@ export default class WordTable extends React.Component<IProps, IState> {
         id={"q-" + record.q}
         onlyForHash={onlyForHash === record.q}
         record={record}
+        getReload={getReload}
         TagControl={TagControl}
         MarksControl={MarksControl} />);
   }

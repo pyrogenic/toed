@@ -19,11 +19,13 @@ export interface ILookupProps {
     cache: CacheMode;
     enterprise: boolean;
     online: boolean;
+    directWebdis: boolean;
     threads: number;
     loaded: number;
     apiRate: number;
 }
 
+const STORAGE_KEY_PREFIX = "fetchJson";
 // const LookupDefaults: ILookupProps = {
 //     cache: CacheMode.session,
 //     enterprise: false,
@@ -41,9 +43,9 @@ export default class Lookup {
 
     public set props(props: Partial<ILookupProps>) {
         this.propsValue = props;
-        const {cache, enterprise, online} = this.effectiveProps;
+        const {directWebdis, cache, enterprise, online} = this.effectiveProps;
         const validate = (result: any) =>
-          typeof result === "object" && Object.keys(result).length > 0 && !("errno" in result);
+          typeof result === "object" && Object.keys(result).length > 0 && !("errno" in result) && result?.error !== "offline";
         let lookup = online ? this.callOxfordDictionaries : (url: string) => Promise.resolve({error: "offline"} as any);
         if (enterprise) {
             this.redis = new RedisMemo({
@@ -52,7 +54,7 @@ export default class Lookup {
                     return compact(["memo", "od-api", ...url.split(/[/?#=]/)]);
                 },
                 validate,
-                webdis: "",
+                webdis: directWebdis ? "http://localhost:7379" : "",
             });
             lookup = this.redis.get;
         } else {
@@ -62,7 +64,8 @@ export default class Lookup {
             this.storage = undefined;
         } else {
             this.storage = new StorageMemo(
-                cache === "local" ? localStorage : sessionStorage, "fetchJson",
+                cache === "local" ? localStorage : sessionStorage,
+                STORAGE_KEY_PREFIX,
                 lookup,
                 validate);
             lookup = this.storage.get;
@@ -70,22 +73,50 @@ export default class Lookup {
         this.lookup = lookup;
     }
 
+    public static get browserCache() {
+        const result = {
+            localStorage: { count: 0, clear: Lookup.clearBrowserCache.bind(this, localStorage) },
+            sessionStorage: { count: 0, clear: Lookup.clearBrowserCache.bind(this, sessionStorage) },
+        };
+        Object.keys(localStorage).forEach((key) => {
+            if (key.startsWith(STORAGE_KEY_PREFIX)) {
+                result.localStorage.count += 1;
+            }
+        });
+        Object.keys(sessionStorage).forEach((key) => {
+            if (key.startsWith(STORAGE_KEY_PREFIX)) {
+                result.sessionStorage.count += 1;
+            }
+        });
+        return result;
+    }
+
     public static effectiveProps(props: Partial<ILookupProps> = {}) {
-        const development = process.env.NODE_ENV === "development";
+        // const development = process.env.NODE_ENV === "development";
         const enterprise = get(props, "enterprise", (process.env.REACT_APP_ENTERPRISE as unknown as boolean) ?? false);
-        const cache = get(props, "cache", development ? CacheMode.local : CacheMode.session);
+        const cache = get(props, "cache", CacheMode.session);
         const online = get(props, "online", true);
         const threads = get(props, "threads", 2);
         const loaded = get(props, "loaded", 30);
         const apiRate = get(props, "apiRate", 200);
+        const directWebdis = get(props, "directWebdis", false);
         return {
             apiRate,
             cache,
+            directWebdis,
             enterprise,
             loaded,
             online,
             threads,
         };
+    }
+
+    public static clearBrowserCache(storage: Storage) {
+        Object.keys(storage).forEach((key) => {
+            if (key.startsWith(STORAGE_KEY_PREFIX)) {
+                storage.removeItem(key);
+            }
+        });
     }
 
     public storage?: StorageMemo<string, IRetrieveEntry>;

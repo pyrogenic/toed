@@ -25,6 +25,16 @@ export function array<T>(value: undefined | T | T[]) {
   return [value];
 }
 
+export function peek<T, TU extends T extends undefined ? undefined : never>(value: TU | T | T[]) {
+  if (value === undefined) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return value;
+}
+
 export type Comparer<T> = Parameters<T[]["sort"]>;
 
 type ElementType<T> = T extends Array<infer E> ? E : never;
@@ -126,10 +136,13 @@ export function arraySetHas<
     TKey extends keyof ArrayPropertiesOfType<TContainer, TElement>>(
         container: ArrayPropertiesOfType<TContainer, TElement>,
         key: TKey,
-        value: TElement) {
+        value: TElement | ((element: TElement) => boolean)) {
     const list = container[key];
     if (list === undefined) {
         return false;
+    }
+    if (typeof value === "function") {
+      return list.findIndex(value.bind(null)) >= 0;
     }
     return list.includes(value);
 }

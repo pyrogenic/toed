@@ -18,7 +18,7 @@ export type ResultTags<T> =
     } } &
     { [K in keyof ArrayProperties<T>]?: ITags[] };
 
-type DiscardedDictionaryEntry = MultipleValue<IDictionaryEntry, "example" | "etymology">;
+export type DiscardedDictionaryEntry = MultipleValue<IDictionaryEntry, "audio_file" | "entry_rich" | "pronunciation_ipa" | "example" | "etymology">;
 
 export default interface IWordRecord {
     q: string;

@@ -2,6 +2,13 @@ body {
     overflow-y: scroll;
 }
 
+/* prevent muted text from disappearing inside badges */
+.badge:not(.badge-light) .text-muted {
+  color: var(--light) !important;
+  opacity: 0.8;
+  font-weight: initial;
+}
+
 .disclosure {
   border-radius: 0.25rem;
   border-top-right-radius: 0;
