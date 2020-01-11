@@ -445,6 +445,7 @@ export default class App extends React.Component<IProps, IState> {
             <WordTable
                 records={this.state.records}
                 focus={this.state.focus}
+                getReload={this.getOnClick}
                 onFiltered={this.onFiltered}
                 TagControl={this.TagControl}
                 MarksControl={this.MarksControl}
@@ -937,7 +938,7 @@ export default class App extends React.Component<IProps, IState> {
             sense.crossReferences?.forEach((crossReference) => {
               const { id: crossReferenceId, type } = crossReference;
               if (arraySetAdd({ crossReferences }, "crossReferences", crossReferenceId)) {
-                const tags: ITags = { imputed: [[`xref-${kebabCase(type)}`, result.id]] };
+                const tags: ITags = { imputed: [[`xref-${kebabCase(type)}`, `${crossReferenceId} > ${result.id}`]] };
                 fillInTags(tags, entry.lexicalCategory.id, lexicalEntry.grammaticalFeatures, sense);
                 addLookup(crossReference.id, tags);
               }

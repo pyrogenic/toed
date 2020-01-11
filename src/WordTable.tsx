@@ -5,16 +5,17 @@ import isEqual from "lodash/isEqual";
 import range from "lodash/range";
 import slice from "lodash/slice";
 import React from "react";
-import Badge from "react-bootstrap/Badge";
 import Button, { ButtonProps } from "react-bootstrap/Button";
+import ButtonGroup from "react-bootstrap/ButtonGroup";
 import Col from "react-bootstrap/Col";
 import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Popover from "react-bootstrap/Popover";
 import Row from "react-bootstrap/Row";
-import { MarksControlFactory, TagControlFactory, TagFocus } from "./App";
+import App, { MarksControlFactory, TagControlFactory, TagFocus } from "./App";
 import Focus from "./Focus";
+import Icon from "./Icon";
 import IWordRecord, { IDiscardedWordRecord, ITags } from "./IWordRecord";
 import { array, arraySetHas } from "./Magic";
 import OpenIconicNames from "./OpenIconicNames";
@@ -24,6 +25,7 @@ import "./WordTable.css";
 interface IProps {
   records: IWordRecord[];
   focus: TagFocus;
+  getReload: App["getOnClick"];
   TagControl: TagControlFactory;
   MarksControl: MarksControlFactory;
   onFiltered(visibleRecords: IWordRecord[]): void;
@@ -100,6 +102,7 @@ function WordRow(
     id,
     record,
     onlyForHash,
+    getReload,
     TagControl,
     MarksControl,
     fluid,
@@ -108,6 +111,7 @@ function WordRow(
       id?: string,
       record: IWordRecord | IDiscardedWordRecord,
       onlyForHash: boolean,
+      getReload: App["getOnClick"],
       TagControl: TagControlFactory,
       MarksControl: MarksControlFactory,
       fluid?: boolean,
@@ -214,12 +218,15 @@ function WordRow(
           </Row>}
       </Col>
     </>}
-    {(!fluid || moreInfo) && <Col xs={1}>{moreInfo &&
-      <OverlayTrigger trigger="click" overlay={popover()} rootClose={true}>
-        <div className="trigger-click">
-          <Badge variant="success">more info</Badge>
-        </div>
+    {!fluid && <Col xs={1}>
+      <ButtonGroup>
+      {moreInfo && <OverlayTrigger trigger="click" overlay={popover()} rootClose={true}>
+        {/* <Badge className="trigger-click" variant="success"
+        pill={true}><Icon icon={OpenIconicNames.ellipses}/></Badge> */}
+        <Button size="sm" variant="light"><Icon icon={OpenIconicNames.ellipses}/></Button>
       </OverlayTrigger>}
+      <Button size="sm" variant="light" onClick={getReload(record.q)}><Icon icon={OpenIconicNames.reload}/></Button>
+      </ButtonGroup>
     </Col>}
   </Row>;
 
@@ -233,6 +240,7 @@ function WordRow(
           <WordRow
             record={discardedRecord}
             onlyForHash={onlyForHash}
+            getReload={getReload}
             TagControl={TagControl}
             MarksControl={MarksControl}
             fluid={true}
@@ -439,7 +447,7 @@ export default class WordTable extends React.Component<IProps, IState> {
   }
 
   private renderVisibleRows(): React.ReactNode {
-    const { TagControl, MarksControl } = this.props;
+    const { getReload, TagControl, MarksControl } = this.props;
     const { page, records, show, onlyForHash } = this.state;
     return slice(records, page * show, page * show + show).map((record, index) =>
       <WordRow
@@ -447,6 +455,7 @@ export default class WordTable extends React.Component<IProps, IState> {
         id={"q-" + record.q}
         onlyForHash={onlyForHash === record.q}
         record={record}
+        getReload={getReload}
         TagControl={TagControl}
         MarksControl={MarksControl} />);
   }
