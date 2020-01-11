@@ -255,7 +255,7 @@ export default class App extends React.Component<IProps, IState> {
         }
       });
     }
-    this.timer = setInterval(this.tick, 100);
+    this.restoreTimer();
     OpTrack.listeners.push(setImmediate.bind(null, this.updateRate));
   }
 
@@ -497,6 +497,8 @@ export default class App extends React.Component<IProps, IState> {
 
     setImmediate(this.updateXref, query, cloneDeep(allTags));
   }
+
+  private restoreTimer = (): void => { this.timer = setInterval(this.tick, 100); };
 
   private renderFilters = () => {
     return <Container>
@@ -863,6 +865,12 @@ export default class App extends React.Component<IProps, IState> {
         return null;
       }
     }
+    const timer = this.timer;
+    const restoreTimer = timer !== undefined;
+    if (timer) {
+      this.timer = undefined;
+      clearInterval(timer);
+    }
     this.setState(({queue: [item, ...queue], paused, promises, rate}) => {
       if (paused === true || item === undefined || promises.length > this.maxThreads) {
         return null;
@@ -882,7 +890,7 @@ export default class App extends React.Component<IProps, IState> {
       promise.then(...this.resolvePromise(promiseEntry));
       promises.push(promiseEntry);
       return {queue, promises, paused};
-    }, this.updateRate);
+    }, () => this.updateRate(restoreTimer));
   }
 
   private resolvePromise = (promiseEntry: IPromiseEntry) => {
@@ -1084,13 +1092,17 @@ export default class App extends React.Component<IProps, IState> {
     }, () => this.unshift([query]));
   }
 
-  private updateRate = () => {
+  private updateRate = (restoreTimer: boolean) => {
     this.setState(({rate}) => {
           const newRate = odApiCallsLastMinute();
           if (newRate === rate) {
             return null;
           }
           return {rate: newRate};
+        }, () => {
+          if (restoreTimer) {
+            this.restoreTimer();
+          }
         });
   }
 }
