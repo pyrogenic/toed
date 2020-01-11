@@ -114,7 +114,6 @@ export default class Lookup {
     public static clearBrowserCache(storage: Storage) {
         Object.keys(storage).forEach((key) => {
             if (key.startsWith(STORAGE_KEY_PREFIX)) {
-                console.log(key);
                 storage.removeItem(key);
             }
         });

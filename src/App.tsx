@@ -17,7 +17,6 @@ import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
 import Collapse from "react-bootstrap/Collapse";
 import Container from "react-bootstrap/Container";
-import Dropdown from "react-bootstrap/Dropdown";
 import Form from "react-bootstrap/Form";
 import FormCheck from "react-bootstrap/FormCheck";
 import InputGroup from "react-bootstrap/InputGroup";
@@ -47,6 +46,7 @@ import {
   titleCase,
 } from "./Magic";
 import Marks from "./Marks";
+import NavDropdownButtonGroup from "./NavDropdownButtonGroup";
 import OpenIconicNames from "./OpenIconicNames";
 import OpTrack from "./OpTrack";
 import OxfordDictionariesPipeline,
@@ -626,11 +626,10 @@ export default class App extends React.Component<IProps, IState> {
                                      words: string[],
                                      except?: string[],
                                      variant?: ButtonProps["variant"] }) => {
-    const NavDropdownButtonGroup = this.NavDropdownButtonGroup;
     if (except.length > 0) {
       words = without(words, ...except);
     }
-    return <NavDropdownButtonGroup variant={variant} label={label} words={words}>
+    return <NavDropdownButtonGroup variant={variant} label={label} words={words} getOnClick={this.getOnClick}>
       {[1, 2, 10, 100].map((n) =>
           words.length >= n && <Button
               key={n}
@@ -643,54 +642,22 @@ export default class App extends React.Component<IProps, IState> {
     </NavDropdownButtonGroup>;
   }
 
-  private NavDropdownButtonGroup = ({variant, label, className, words, children}:
-                                        React.PropsWithChildren<{
-                                          variant: ButtonProps["variant"],
-                                          label: string,
-                                          className?: string,
-                                          words: string[],
-                                        }>) => {
-    const disabled = words.length === 0;
-    const fakeButtonClassName = compact(["btn", `btn-${variant}`, disabled && "disabled"]).join(" ");
-    return <Nav>
-      <Navbar.Text className={className}>
-        <ButtonGroup>
-          <div className={fakeButtonClassName} style={{padding: 0}}>
-            <Dropdown className="d-flex justify-content-start">
-              <Dropdown.Toggle
-                  id={`nav-${label}`}
-                  className="flex-fill text-left"
-                  variant={variant}
-                  style={{border: "none"}}
-                  disabled={disabled}>
-                {label}{words.length > 0 && ` (${words.length})`}
-              </Dropdown.Toggle>
-              <Dropdown.Menu>
-                {
-                  words.map((q) =>
-                      <Dropdown.Item key={q} onClick={this.getOnClick(q)}>{q}</Dropdown.Item>,
-                  )
-                }
-              </Dropdown.Menu>
-            </Dropdown>
-          </div>
-          {children}
-        </ButtonGroup>
-      </Navbar.Text>
-    </Nav>;
-  }
-
   private QueueComponent = () => {
     const {paused, queue, rate} = this.state;
     const variant: ButtonProps["variant"] = "outline-secondary";
-    const NavDropdownButtonGroup = this.NavDropdownButtonGroup;
     const style = rate <= 0 ? undefined : {
       backgroundImage: "linear-gradient(transparent 0%, var(--warning) 0%)",
       backgroundPosition: "bottom",
       backgroundRepeat: "no-repeat",
       backgroundSize: `100% ${Math.min(Math.ceil(100 * (rate / this.maxApiRate)), 100)}%`,
     };
-    return <NavDropdownButtonGroup variant={variant} label={"Queue"} words={queue} className={"mr-3"}>
+    return <NavDropdownButtonGroup
+      variant={variant}
+      label={"Queue"}
+      words={queue}
+      getOnClick={this.getOnClick}
+      className={"mr-3"}
+    >
       {/* {promises.map(({q}) => <Button>{q}</Button>)} */}
       <Button
           variant={variant}
@@ -729,7 +696,7 @@ export default class App extends React.Component<IProps, IState> {
     return this.lookup.effectiveProps.apiRate;
   }
 
-  private getOnClick(q: string) {
+  private getOnClick = (q: string) => {
     return this.unshift.bind(this, [q], true);
   }
 
@@ -887,6 +854,15 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private tick = () => {
+    {
+      const { queue: [item], paused, promises, rate } = this.state;
+      if (paused === true || item === undefined || promises.length > this.maxThreads) {
+        return null;
+      }
+      if (rate > this.maxApiRate) {
+        return null;
+      }
+    }
     this.setState(({queue: [item, ...queue], paused, promises, rate}) => {
       if (paused === true || item === undefined || promises.length > this.maxThreads) {
         return null;
