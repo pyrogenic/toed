@@ -133,10 +133,8 @@ function WordRow(
   const [literalResult, setLiteralResult] = React.useState(undefined as IRetrieveEntry | undefined);
   const toggleShowLiteralResult = () => {
     const newValue = !showLiteralResult;
-    console.log(`showLiteralResult: ${newValue}`);
     if (newValue && literalResult === undefined) {
       get(record.q).then((value) => {
-        console.log({value});
         setLiteralResult(value);
       });
     }
