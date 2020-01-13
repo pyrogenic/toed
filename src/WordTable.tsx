@@ -485,7 +485,7 @@ export default class WordTable extends React.Component<IProps, IState> {
     const { page, records, show, onlyForHash } = this.state;
     return slice(records, page * show, page * show + show).map((record, index) =>
       <WordRow
-        key={index}
+        key={record.q}
         id={"q-" + record.q}
         onlyForHash={onlyForHash === record.q}
         record={record}
