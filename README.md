@@ -19,3 +19,22 @@ Oxford Dictionaries TypesScript Client
 - [x] "undefined" tag not removed when refresh finds definition
 - [x] missing pronunciations for cross-referenced origins
 - [x] scoring (e.g. crapper) so between two pass-3 options, one with no pass-2 tags preferred over one with a pass-2 tag
+
+## Redis Design
+
+### BiSet
+
+Suite of ops for bidirectional set membership / tagging:
+- BSADD set-key member // tag member 
+  - SADD set-key member
+  - SADD reverse:set:member set-key
+- BSREM set-key member // tag member 
+  - SREM set-key member
+  - SREM reverse:set:member set-key
+
+- BHSET hash-key member value // tag member 
+  - HSET hash-key member value
+  - HSET reverse:hash:member hash-key value
+- BHDEL hash-key member 
+  - HDEL hash-key member
+  - HDEL reverse:hash:member hash-key

@@ -4,7 +4,6 @@ import compact from "lodash/compact";
 import flatten from "lodash/flatten";
 import isEqual from "lodash/isEqual";
 import kebabCase from "lodash/kebabCase";
-import omit from "lodash/omit";
 import sortedIndexBy from "lodash/sortedIndexBy";
 import uniq from "lodash/uniq";
 import without from "lodash/without";
@@ -449,16 +448,11 @@ export default class App extends React.Component<IProps, IState> {
                 focus={this.state.focus}
                 show={this.lookup.effectiveProps.visible}
                 getReload={this.getOnClick}
+                get={this.get}
                 onFiltered={this.onFiltered}
                 TagControl={this.TagControl}
                 MarksControl={this.MarksControl}
             />
-          </Col>
-        </Row>
-
-        <Row>
-          <Col>
-            {this.state.re && this.state.re.results && this.state.re.results.map(this.renderResponse)}
           </Col>
         </Row>
       </Container>
@@ -803,56 +797,6 @@ export default class App extends React.Component<IProps, IState> {
     />;
   }
 
-  private renderResponse = (entry: IHeadwordEntry, index: number) => {
-    const derivativeOf = flatten(compact(entry.lexicalEntries.map((lentry) => lentry.derivativeOf)));
-    const {tags} = entry as AnnotatedHeadwordEntry;
-    const tagControls = tags && <TagControls TagControl={this.TagControl} word={entry.word} tags={tags} />;
-    return <Card key={`${entry.id}-${index}`}>
-      <Card.Header>
-        {entry.word} <Badge>{entry.type}</Badge> {tagControls}
-      </Card.Header>
-      {derivativeOf.length > 0 && <Card.Header>{derivativeOf.map((dof) =>
-        <Button onClick={() => this.setState({ q: dof.id }, this.go)}>
-          {dof.text}
-        </Button>)}</Card.Header>}
-      <Card.Body>
-        {entry.lexicalEntries.map(this.renderLexicalEntry)}
-      </Card.Body>
-    </Card>;
-  }
-
-  private renderLexicalEntry = (entry: ILexicalEntry, index: number) => {
-    return <div key={index}>
-      <Row>
-        <Col>Lexical Entry #{index}</Col>
-      </Row>
-      <Row>
-        <Col xs={2}>{entry.lexicalCategory.id}</Col>
-        <Col>
-          <Row>
-            {entry.entries?.map(this.renderEntry)}
-          </Row>
-        </Col>
-      </Row>
-      {Object.entries(omit(entry, "entries")).map(([key, value]) => value &&
-        <Row key={key}>
-          <Col xs={2}>
-            {key}
-          </Col>
-          <Col as="pre">
-            {JSON.stringify(value, undefined, 2)}
-          </Col>
-        </Row>)}
-    </div>;
-  }
-
-  private renderEntry = (entry: IEntry, index: number) => {
-    return <Col key={index} as="pre">
-      <Badge variant="info">Entry #{index}</Badge>
-      {JSON.stringify(entry, undefined, 2)}
-    </Col>;
-  }
-
   private derivativeOf = (results?: IHeadwordEntry[]) => {
     if (results) {
       const derivativeOf = flatten(flatten(flatten(results.map((result) =>
@@ -1002,7 +946,7 @@ export default class App extends React.Component<IProps, IState> {
         }
         arraySetAdd({history}, "history", q, "mru");
         return {re, records, history};
-      }, resolve);
+      }, resolve.bind(null, re));
     });
   }
 

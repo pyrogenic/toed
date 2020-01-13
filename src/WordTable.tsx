@@ -1,3 +1,4 @@
+import { omit } from "lodash";
 import clamp from "lodash/clamp";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
@@ -5,9 +6,12 @@ import isEqual from "lodash/isEqual";
 import range from "lodash/range";
 import slice from "lodash/slice";
 import React from "react";
+import Badge from "react-bootstrap/Badge";
 import Button, { ButtonProps } from "react-bootstrap/Button";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
+import Card from "react-bootstrap/Card";
 import Col from "react-bootstrap/Col";
+import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 import InputGroup from "react-bootstrap/InputGroup";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
@@ -19,6 +23,11 @@ import Icon from "./Icon";
 import IWordRecord, { IDiscardedWordRecord, ITags } from "./IWordRecord";
 import { array, arraySetHas } from "./Magic";
 import OpenIconicNames from "./OpenIconicNames";
+import { AnnotatedHeadwordEntry } from "./OxfordDictionariesPipeline";
+import IEntry from "./types/gen/IEntry";
+import IHeadwordEntry from "./types/gen/IHeadwordEntry";
+import ILexicalEntry from "./types/gen/ILexicalEntry";
+import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import { minDiff } from "./volumize";
 import "./WordTable.css";
 
@@ -27,6 +36,7 @@ interface IProps {
   focus: TagFocus;
   show: number;
   getReload: App["getOnClick"];
+  get: App["get"];
   TagControl: TagControlFactory;
   MarksControl: MarksControlFactory;
   onFiltered(visibleRecords: IWordRecord[]): void;
@@ -104,6 +114,7 @@ function WordRow(
     record,
     onlyForHash,
     getReload,
+    get,
     TagControl,
     MarksControl,
     fluid,
@@ -113,10 +124,24 @@ function WordRow(
       record: IWordRecord | IDiscardedWordRecord,
       onlyForHash: boolean,
       getReload: App["getOnClick"],
+      get: App["get"],
       TagControl: TagControlFactory,
       MarksControl: MarksControlFactory,
       fluid?: boolean,
     }) {
+  const [showLiteralResult, setShowLiteralResult] = React.useState(false);
+  const [literalResult, setLiteralResult] = React.useState(undefined as IRetrieveEntry | undefined);
+  const toggleShowLiteralResult = () => {
+    const newValue = !showLiteralResult;
+    console.log(`showLiteralResult: ${newValue}`);
+    if (newValue && literalResult === undefined) {
+      get(record.q).then((value) => {
+        console.log({value});
+        setLiteralResult(value);
+      });
+    }
+    setShowLiteralResult(newValue);
+  };
   const result = record.result || {};
   const resultTags = record.resultTags || {};
   const etymologies = array(result.etymology);
@@ -127,7 +152,7 @@ function WordRow(
   const notFound = false;
   const moreInfo = (pipelineNotes && pipelineNotes.length > 0)
     || resultDiscarded || resultDiscardedTags;
-  return <Row className={`entry ${onlyForHash ? "onlyForHash" : ""}`} id={id}>
+  return <><Row className={`entry ${onlyForHash ? "onlyForHash" : ""}`} id={id}>
     <MarksControl word={record.q} badges={true} />
     <Col xs={fluid ? "auto" : 1}>
       {record.q !== array(result.entry_rich)?.[0] && <Row className={notFound ? "headword not-found" : "text-muted"}>
@@ -221,15 +246,22 @@ function WordRow(
     </>}
     {!fluid && <Col xs={1}>
       <ButtonGroup>
-      {moreInfo && <OverlayTrigger trigger="click" overlay={popover()} rootClose={true}>
-        {/* <Badge className="trigger-click" variant="success"
-        pill={true}><Icon icon={OpenIconicNames.ellipses}/></Badge> */}
-        <Button size="sm" variant="light"><Icon icon={OpenIconicNames.ellipses}/></Button>
-      </OverlayTrigger>}
-      <Button size="sm" variant="light" onClick={getReload(record.q)}><Icon icon={OpenIconicNames.reload}/></Button>
+        {moreInfo && <OverlayTrigger trigger="click" overlay={popover()} rootClose={true}>
+          <Button size="sm" variant="light"><Icon icon={OpenIconicNames.info} /></Button>
+        </OverlayTrigger>}
+        <Button size="sm" variant={showLiteralResult ? "secondary" : "light"}
+          onClick={toggleShowLiteralResult}
+        ><Icon icon={OpenIconicNames.spreadsheet} /></Button>
+        <Button size="sm" variant="light" onClick={getReload(record.q)}><Icon icon={OpenIconicNames.reload} /></Button>
       </ButtonGroup>
     </Col>}
-  </Row>;
+  </Row>
+    {showLiteralResult && literalResult && <Row>
+      <Col>
+        <LiteralResultComponent entry={literalResult} TagControl={TagControl} />
+      </Col>
+    </Row>}
+  </>;
 
   function popover() {
     const { q, re } = record;
@@ -242,6 +274,7 @@ function WordRow(
             record={discardedRecord}
             onlyForHash={onlyForHash}
             getReload={getReload}
+            get={get}
             TagControl={TagControl}
             MarksControl={MarksControl}
             fluid={true}
@@ -448,7 +481,7 @@ export default class WordTable extends React.Component<IProps, IState> {
   }
 
   private renderVisibleRows(): React.ReactNode {
-    const { getReload, TagControl, MarksControl } = this.props;
+    const { getReload, get, TagControl, MarksControl } = this.props;
     const { page, records, show, onlyForHash } = this.state;
     return slice(records, page * show, page * show + show).map((record, index) =>
       <WordRow
@@ -457,7 +490,86 @@ export default class WordTable extends React.Component<IProps, IState> {
         onlyForHash={onlyForHash === record.q}
         record={record}
         getReload={getReload}
+        get={get}
         TagControl={TagControl}
-        MarksControl={MarksControl} />);
+        MarksControl={MarksControl}
+      />);
   }
+}
+
+function LiteralResultComponent(
+  { entry, TagControl }:
+    { entry: IRetrieveEntry, TagControl: TagControlFactory }) {
+      return <Container>
+        {entry.results?.map((headwordEntry) =>
+          <Row key={`${headwordEntry.language}-${headwordEntry.id}-${headwordEntry.word}`}>
+            <Col>
+              <HeadwordEntryComponent
+                entry={headwordEntry}
+                TagControl={TagControl}
+              />
+            </Col>
+          </Row>)}
+        </Container>;
+    }
+
+function HeadwordEntryComponent(
+  { entry, TagControl }:
+    { entry: IHeadwordEntry, TagControl: TagControlFactory; }) {
+
+  const { tags } = entry as AnnotatedHeadwordEntry;
+  const tagControls = tags && <TagControls TagControl={TagControl} word={entry.word} tags={tags} />;
+  return <Card>
+    <Card.Header>
+      {entry.word} <Badge>{entry.type}</Badge> {tagControls}
+    </Card.Header>
+    <Card.Body>
+      {entry.lexicalEntries.map((lexicalEntry, lexicalEntryIndex) =>
+        <LexicalEntryComponent
+          key={lexicalEntryIndex}
+          index={lexicalEntryIndex}
+          entry={lexicalEntry}
+          TagControl={TagControl}
+        />)}
+    </Card.Body>
+  </Card>;
+}
+
+function LexicalEntryComponent(
+  { entry: lexicalEntry, index, TagControl }:
+    { entry: ILexicalEntry, index: number, TagControl: TagControlFactory; }) {
+  return <>
+    <Row>
+      <Col>Lexical Entry #{index}</Col>
+    </Row>
+    <Row>
+      <Col xs={2}>{lexicalEntry.lexicalCategory.id}</Col>
+      <Col>
+        <Row>
+          {lexicalEntry.entries?.map((entry, entryIndex) =>
+            <EntryComponent
+              key={entryIndex}
+              index={entryIndex}
+              entry={entry}
+            />)}
+        </Row>
+      </Col>
+    </Row>
+    {Object.entries(omit(lexicalEntry, "entries")).map(([key, value]) => value &&
+      <Row key={key}>
+        <Col xs={2}>
+          {key}
+        </Col>
+        <Col as="pre">
+          {JSON.stringify(value, undefined, 2)}
+        </Col>
+      </Row>)}
+  </>;
+}
+
+function EntryComponent({ entry, index }: { entry: IEntry, index: number; }) {
+  return <Col as="pre">
+    <Badge variant="info">Entry #{index}</Badge>
+    {JSON.stringify(entry, undefined, 2)}
+  </Col>;
 }
