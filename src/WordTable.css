@@ -6,13 +6,13 @@
     font-size: smaller;
 } */
 
-.word-table>.row>.marks {
+.word-table .row>.marks {
     width: 0;
     direction: rtl;
     white-space: nowrap;
 }
 
-.word-table>:first-of-type(.header) {
+.word-table .header {
     font-weight: bolder;
 }
 

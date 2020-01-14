@@ -121,6 +121,7 @@ function WordRow(
     TagControl,
     MarksControl,
     fluid,
+    gwfOnly,
   }:
     {
       id?: string,
@@ -131,6 +132,7 @@ function WordRow(
       TagControl: TagControlFactory,
       MarksControl: MarksControlFactory,
       fluid?: boolean,
+      gwfOnly?: boolean,
     }) {
   const [showLiteralResult, setShowLiteralResult] = React.useState(false);
   const [showGwfResult, setShowGwfResult] = React.useState(false);
@@ -154,6 +156,7 @@ function WordRow(
     }
     setShowGwfResult(newValue);
   };
+  if (gwfOnly === true && !showGwfResult) { toggleShowGwfResult(); }
   const result = showGwfResult ? gwfResult : (record.result ?? {});
   const resultTags = record.resultTags || {};
   const etymologies = array(result?.etymology);
@@ -163,8 +166,8 @@ function WordRow(
   const { pipelineNotes, resultDiscarded, resultDiscardedTags } = record;
   const moreInfo = (pipelineNotes && pipelineNotes.length > 0)
     || resultDiscarded || resultDiscardedTags;
-  return <><Row className={`entry ${onlyForHash ? "onlyForHash" : ""}`} id={id}>
-    <MarksControl word={record.q} badges={true} />
+  return <>
+    {gwfOnly !== true && <MarksControl word={record.q} badges={true} />}
     <Col xs={fluid ? "auto" : 1}>
       {record.q !== array(result?.entry_rich)?.[0] && <Row className={result?.definitions === undefined ? "headword not-found" : "text-muted"}>
         {record.q}
@@ -196,12 +199,12 @@ function WordRow(
           </Row>
       </TaggedComponent>)}
     </Col>
-    {result === undefined ? <Col><Spinner animation="border" role="status">
+    <Col xs={fluid ? "auto" : 4}>
+      {result === undefined ? <Spinner className="m-2" animation="border" role="status">
   <span className="sr-only">Loading...</span>
-</Spinner></Col> : <>
-      <Col>
-        {partsOfSpeech.map((partOfSpeech) => <Row key={partOfSpeech}>
-          <Col xs={fluid ? "auto" : 2} className="partOfSpeech">{partOfSpeech}</Col>
+</Spinner> : <>
+          {partsOfSpeech.map((partOfSpeech) => <Row key={partOfSpeech}>
+          <Col xs={2} className="partOfSpeech">{partOfSpeech}</Col>
           <Col>
             {definitions[partOfSpeech].map((definition, index) =>
               <Row key={index}>
@@ -222,7 +225,7 @@ function WordRow(
         </Row>)}
         {etymologies &&
           <Row>
-            <Col xs={fluid ? "auto" : 2}>etymology</Col>
+            <Col xs={2}>etymology</Col>
             <Col>
               {etymologies.map((etymology, index) =>
                 <TaggedComponent
@@ -236,11 +239,10 @@ function WordRow(
                   {etymology}
                 </TaggedComponent>)}
             </Col>
-          </Row>
-        }
+          </Row>}
         {examples &&
           <Row>
-            <Col xs={fluid ? "auto" : 2}>example</Col>
+            <Col xs={2}>example</Col>
             <Col>
               {examples.map((example, index) => <div key={index}>
                 <TaggedComponent
@@ -255,9 +257,14 @@ function WordRow(
               </div>)}
             </Col>
           </Row>}
+        </>}
+        {showLiteralResult && literalResult && <Row>
+          <Col>
+            <LiteralResultComponent entry={literalResult} TagControl={TagControl} />
+          </Col>
+        </Row>}
       </Col>
-    </>}
-    {!fluid && <Col xs={1}>
+    {!fluid && !(gwfOnly === true) && <Col xs={fluid ? "auto" : 1}>
       <ButtonGroup>
         {moreInfo && <OverlayTrigger trigger="click" overlay={popover()} rootClose={true}>
           <Button size="sm" variant="light"><Icon icon={OpenIconicNames.info} /></Button>
@@ -265,18 +272,12 @@ function WordRow(
         <Button size="sm" variant={showLiteralResult ? "secondary" : "light"}
           onClick={toggleShowLiteralResult}
         ><Icon icon={OpenIconicNames.spreadsheet} /></Button>
-        <Button size="sm" variant={showGwfResult ? "secondary" : "light"}
+        {(gwfOnly === undefined) && <Button size="sm" variant={showGwfResult ? "secondary" : "light"}
           onClick={toggleShowGwfResult}
-        ><Icon icon={OpenIconicNames.cloud} /></Button>
+        ><Icon icon={OpenIconicNames.cloud} /></Button>}
         <Button size="sm" variant="light" onClick={getReload(record.q)}><Icon icon={OpenIconicNames.reload} /></Button>
       </ButtonGroup>
     </Col>}
-  </Row>
-    {showLiteralResult && literalResult && <Row>
-      <Col>
-        <LiteralResultComponent entry={literalResult} TagControl={TagControl} />
-      </Col>
-    </Row>}
   </>;
 
   function popover() {
@@ -455,12 +456,10 @@ export default class WordTable extends React.Component<IProps, IState> {
       </Row>
             <Row><Col>{this.props.records.length - visibleRecords.length} hidden</Col></Row>
       <Row className="header">
-        <Col xs={1} onClick={() => {
-          this.props.records.sort((a, b) => a.q.localeCompare(b.q));
-          this.forceUpdate();
-        }}>Word</Col>
-        <Col>Definition</Col>
-        <Col xs={1}>Notes</Col>
+        <Col xs={1}>Word</Col>
+        <Col xs={4}>Definition</Col>
+        <Col xs={2}>Notes</Col>
+        <Col xs={5}>GWF Definition</Col>
       </Row>
       {this.renderVisibleRows()}
     </div>;
@@ -499,17 +498,28 @@ export default class WordTable extends React.Component<IProps, IState> {
   private renderVisibleRows(): React.ReactNode {
     const { getReload, get, TagControl, MarksControl } = this.props;
     const { page, records, show, onlyForHash } = this.state;
-    return slice(records, page * show, page * show + show).map((record, index) =>
-      <WordRow
-        key={record.q}
-        id={"q-" + record.q}
-        onlyForHash={onlyForHash === record.q}
-        record={record}
-        getReload={getReload}
-        get={get}
-        TagControl={TagControl}
-        MarksControl={MarksControl}
-      />);
+    return slice(records, page * show, page * show + show).map((record) =>
+    // <Row className={`entry ${onlyForHash ? "onlyForHash" : ""}`} id={record.q} key={record.q}>
+      <Row className="entry" id={record.q} key={record.q}>
+        <WordRow
+          onlyForHash={onlyForHash === record.q}
+          record={record}
+          gwfOnly={false}
+          getReload={getReload}
+          get={get}
+          TagControl={TagControl}
+          MarksControl={MarksControl}
+        />
+        <WordRow
+          onlyForHash={onlyForHash === record.q}
+          record={record}
+          gwfOnly={true}
+          getReload={getReload}
+          get={get}
+          TagControl={TagControl}
+          MarksControl={MarksControl}
+        />
+      </Row>);
   }
 }
 

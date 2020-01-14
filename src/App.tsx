@@ -416,7 +416,7 @@ export default class App extends React.Component<IProps, IState> {
           </InputGroup>
         </Form>
       </Navbar>
-      <Container>
+      <Container fluid={true} style={{width: "90%"}}>
 
         <DisclosureBar id="filters and tags"
         title={disclosureTitle} tooltip={
