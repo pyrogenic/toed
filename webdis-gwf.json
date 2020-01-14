@@ -3,12 +3,12 @@
 	"redis_port": 6379,
 	"redis_auth": null,
 	"http_host": "127.0.0.1",
-	"http_port": 7379,
+	"http_port": 7380,
 	"threads": 5,
 	"pool_size": 20,
 	"daemonize": false,
 	"websockets": false,
-	"database": 2,
+	"database": 0,
 	"verbosity": 6,
-	"logfile": "log/webdis.log"
+	"logfile": "log/webdis-gwf.log"
 }

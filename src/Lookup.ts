@@ -54,7 +54,7 @@ export default class Lookup {
                     return compact(["memo", "od-api", ...url.split(/[/?#=]/)]);
                 },
                 validate,
-                webdis: directWebdis ? "http://localhost:7379" : "",
+                webdis: directWebdis ? "http://localhost:7382" : "",
             });
             lookup = this.redis.get;
         } else {

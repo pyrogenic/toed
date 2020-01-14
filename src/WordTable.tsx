@@ -17,6 +17,7 @@ import InputGroup from "react-bootstrap/InputGroup";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Popover from "react-bootstrap/Popover";
 import Row from "react-bootstrap/Row";
+import Spinner from "react-bootstrap/Spinner";
 import App, { MarksControlFactory, TagControlFactory, TagFocus } from "./App";
 import Focus from "./Focus";
 import Icon from "./Icon";
@@ -30,6 +31,8 @@ import ILexicalEntry from "./types/gen/ILexicalEntry";
 import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import { minDiff } from "./volumize";
 import "./WordTable.css";
+import IDictionaryEntry from "./IDictionaryEntry";
+import GwfGlue from "./GwfGlue";
 
 interface IProps {
   records: IWordRecord[];
@@ -130,7 +133,9 @@ function WordRow(
       fluid?: boolean,
     }) {
   const [showLiteralResult, setShowLiteralResult] = React.useState(false);
+  const [showGwfResult, setShowGwfResult] = React.useState(false);
   const [literalResult, setLiteralResult] = React.useState(undefined as IRetrieveEntry | undefined);
+  const [gwfResult, setGwfResult] = React.useState(undefined as IDictionaryEntry | undefined);
   const toggleShowLiteralResult = () => {
     const newValue = !showLiteralResult;
     if (newValue && literalResult === undefined) {
@@ -140,23 +145,31 @@ function WordRow(
     }
     setShowLiteralResult(newValue);
   };
-  const result = record.result || {};
+  const toggleShowGwfResult = () => {
+    const newValue = !showGwfResult;
+    if (newValue && literalResult === undefined) {
+      GwfGlue.get("en", record.q).then((value) => {
+        setGwfResult(value);
+      });
+    }
+    setShowGwfResult(newValue);
+  };
+  const result = showGwfResult ? gwfResult : (record.result ?? {});
   const resultTags = record.resultTags || {};
-  const etymologies = array(result.etymology);
-  const examples = array(result.example);
-  const definitions = result.definitions || {};
+  const etymologies = array(result?.etymology);
+  const examples = array(result?.example);
+  const definitions = result?.definitions || {};
   const partsOfSpeech = Object.keys(definitions);
   const { pipelineNotes, resultDiscarded, resultDiscardedTags } = record;
-  const notFound = false;
   const moreInfo = (pipelineNotes && pipelineNotes.length > 0)
     || resultDiscarded || resultDiscardedTags;
   return <><Row className={`entry ${onlyForHash ? "onlyForHash" : ""}`} id={id}>
     <MarksControl word={record.q} badges={true} />
     <Col xs={fluid ? "auto" : 1}>
-      {record.q !== array(result.entry_rich)?.[0] && <Row className={notFound ? "headword not-found" : "text-muted"}>
+      {record.q !== array(result?.entry_rich)?.[0] && <Row className={result?.definitions === undefined ? "headword not-found" : "text-muted"}>
         {record.q}
       </Row>}
-      {array(result.entry_rich)?.map((entryRich, index) =>
+      {array(result?.entry_rich)?.map((entryRich, index) =>
        <TaggedComponent
         key={index}
         query={record.q}
@@ -169,7 +182,7 @@ function WordRow(
           {entryRich}
         </Row>
       </TaggedComponent>)}
-      {array(result.pronunciation_ipa)?.map((pronunciation, index) =>
+      {array(result?.pronunciation_ipa)?.map((pronunciation, index) =>
         <TaggedComponent
           key={index}
           query={record.q}
@@ -183,7 +196,9 @@ function WordRow(
           </Row>
       </TaggedComponent>)}
     </Col>
-    {notFound ? <Col /> : <>
+    {result === undefined ? <Col><Spinner animation="border" role="status">
+  <span className="sr-only">Loading...</span>
+</Spinner></Col> : <>
       <Col>
         {partsOfSpeech.map((partOfSpeech) => <Row key={partOfSpeech}>
           <Col xs={fluid ? "auto" : 2} className="partOfSpeech">{partOfSpeech}</Col>
@@ -250,6 +265,9 @@ function WordRow(
         <Button size="sm" variant={showLiteralResult ? "secondary" : "light"}
           onClick={toggleShowLiteralResult}
         ><Icon icon={OpenIconicNames.spreadsheet} /></Button>
+        <Button size="sm" variant={showGwfResult ? "secondary" : "light"}
+          onClick={toggleShowGwfResult}
+        ><Icon icon={OpenIconicNames.cloud} /></Button>
         <Button size="sm" variant="light" onClick={getReload(record.q)}><Icon icon={OpenIconicNames.reload} /></Button>
       </ButtonGroup>
     </Col>}
