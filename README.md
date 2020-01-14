@@ -19,7 +19,8 @@ Oxford Dictionaries TypesScript Client
 - [x] "undefined" tag not removed when refresh finds definition
 - [x] missing pronunciations for cross-referenced origins
 - [x] scoring (e.g. crapper) so between two pass-3 options, one with no pass-2 tags preferred over one with a pass-2 tag
-- [ ] sense tags should _not_ cascade to subsenses (e.g. _addict_ has `narcotics` in sense but then "an enthusiastic devotee of a specified thing or activity" as a subsense)
+- [x] sense tags should _not_ cascade to subsenses (e.g. _addict_ has `narcotics` in sense but then "an enthusiastic devotee of a specified thing or activity" as a subsense)
+- [ ] shouldn't reject as inexact pluralizations (e.g. _asses_ -> _ass_)
 
 ## Redis Design
 

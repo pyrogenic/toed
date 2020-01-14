@@ -124,7 +124,37 @@ export default class OxfordDictionariesPipeline {
             const lowerCase = text.toLocaleLowerCase();
             return lowerCase !== text && query.toLocaleLowerCase() === lowerCase;
         }));
-        const internalRedirects = new Map<AnnotatedHeadwordEntry, AnnotatedHeadwordEntry>();
+        const singularForm: { [pural: string]: string[] } = {};
+        const pluralForm: { [singular: string]: string[] } = {};
+        headwordEntries.forEach((potentialSingular) => {
+            const plural = headwordEntries.find((potentialPlural) => {
+                if (potentialPlural.id === potentialSingular.id) {
+                    return false;
+                }
+                if (potentialPlural.language !== potentialSingular.language) {
+                    return false;
+                }
+                return potentialPlural.lexicalEntries?.some((lexicalEntry) => {
+                    return lexicalEntry.entries?.some((entry) => {
+                        const isPlural = entry.grammaticalFeatures?.some(({id}) => id === "plural");
+                        if (isPlural) {
+                            const crossReferencePlural = entry.senses?.some(({ crossReferences: ec }) =>
+                                ec?.some(({ type, id }) => type === "see also" && id === potentialSingular.id));
+                            if (crossReferencePlural) {
+                                console.log(lexicalEntry.text + " is a plural of " + potentialSingular.id);
+                                return true;
+                            }
+                        }
+                    });
+                });
+            });
+            if (plural) {
+                console.log(singularForm, plural.id, potentialSingular.id);
+                arraySetAdd(singularForm, plural.id, potentialSingular.id);
+                arraySetAdd(pluralForm, potentialSingular.id, plural.id);
+            }
+        });
+        const imputedXrefs = new Map<AnnotatedHeadwordEntry, AnnotatedHeadwordEntry>();
         headwordEntries.forEach((definedBy) => {
             const target = headwordEntries.find((headword) => {
                 if (headword.id === definedBy.id) {
@@ -137,26 +167,17 @@ export default class OxfordDictionariesPipeline {
                     return lexicalEntry.entries?.some((entry) => {
                         return entry.senses?.some((sense) => {
                             const defs = flatten(compact([sense.definitions, sense.shortDefinitions]));
-                            const matched = defs.filter((definition) => definition.match(new RegExp(`^\\W*${definedBy.word}\\W*$`, "i")));
-                            // if (matched.length > 0) {
-                            //     console.log({
-                            //         target: headword.id,
-                            //         definedBy: definedBy.id,
-                            //         lexicalEntry: lexicalEntry.text,
-                            //         matched,
-                            //         entry,
-                            //     });
-                            // }
-                            return matched.length > 0;
+                            const machingDefinitions = defs.filter((definition) => definition.match(new RegExp(`^\\W*${definedBy.word}\\W*$`, "i")));
+                            return machingDefinitions.length > 0;
                         });
                     });
                 });
             });
             if (target) {
-                internalRedirects.set(target, definedBy);
+                imputedXrefs.set(target, definedBy);
             }
         });
-        // console.log({internalRedirects});
+        console.log({internalRedirects: imputedXrefs});
         const rejectedLexicalEntries: ILexicalEntry[] = [];
         const discard = (
             lexicalEntry: Pick<ILexicalEntry, "entries" | "lexicalCategory" | "text">,
@@ -222,8 +243,9 @@ export default class OxfordDictionariesPipeline {
             rejectedLexicalEntries.push(lexicalEntry as ILexicalEntry);
         };
 
+        const lcQuery = query.toLocaleLowerCase();
         function imputeTags(entry: AnnotatedHeadwordEntry, lexicalEntry: ILexicalEntry) {
-            const internalRedirect = internalRedirects.get(entry);
+            const internalRedirect = imputedXrefs.get(entry);
             const entryTags: ITags = cloneDeep(entry.tags);
             arraySetAdd(entryTags, "imputed", [entry.language]);
             internalRedirect?.lexicalEntries.forEach((redirectedFrom) => {
@@ -233,13 +255,22 @@ export default class OxfordDictionariesPipeline {
                     [`redirect-${redirectedFrom.lexicalCategory.id}`, `from '${internalRedirect.word}'`]);
             });
             const { text } = lexicalEntry;
-            if (text === query.toLocaleLowerCase()) {
+            if (text === lcQuery) {
                 arraySetAdd(entryTags, "imputed", ["exact"]);
+                return entryTags;
+            }
+            if (arraySetHas(pluralForm, query, text)) {
+                arraySetAdd(entryTags, "imputed", ["exact-plural", `'${text}' is plural of '${query}'`]);
+                return entryTags;
+            }
+            if (arraySetHas(singularForm, query, text)) {
+                arraySetAdd(entryTags, "imputed", ["exact-singular", `'${text}' is singular of '${query}'`]);
+                return entryTags;
             }
             const lowerCase = text.toLocaleLowerCase();
             if (lowerCase !== text) {
                 arraySetAdd(entryTags, "imputed", ["mixed-case"]);
-                if (lowerCase === query.toLocaleLowerCase()) {
+                if (lowerCase === lcQuery) {
                     arraySetAdd(entryTags, "imputed", ["exact-mixed-case"]);
                 }
             }
@@ -479,7 +510,6 @@ export default class OxfordDictionariesPipeline {
         const { registers, domains } = fillInTags(tags, partOfSpeech, grammaticalFeatures, sense, onlySubsenses ? "subsense-of-" : undefined);
         if (onlySubsenses) {
             if (subsenses) {
-                console.log(etymologies);
                 subsenses.forEach(this.processSense.bind(this, record, tags, discard, {
                     etymologies,
                     grammaticalFeatures,

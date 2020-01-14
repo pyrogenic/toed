@@ -34,7 +34,7 @@ export function spread<T>(value: undefined | T | T[]): T[] {
     }
     return [value];
 }
-  
+
 export function peek<T, TU extends T extends undefined ? undefined : never>(value: TU | T | T[]) {
   if (value === undefined) {
     return value;
