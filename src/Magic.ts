@@ -25,6 +25,16 @@ export function array<T>(value: undefined | T | T[]) {
   return [value];
 }
 
+export function spread<T>(value: undefined | T | T[]): T[] {
+    if (value === undefined) {
+        return [];
+    }
+    if (Array.isArray(value)) {
+        return value;
+    }
+    return [value];
+}
+  
 export function peek<T, TU extends T extends undefined ? undefined : never>(value: TU | T | T[]) {
   if (value === undefined) {
     return value;

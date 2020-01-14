@@ -662,7 +662,7 @@ export default class App extends React.Component<IProps, IState> {
       words = without(words, ...except);
     }
     return <NavDropdownButtonGroup variant={variant} label={label} words={words} getOnClick={this.getOnClick}>
-      {[1, 2, 10, 100].map((n) =>
+      {[1, 5, 50, 100].map((n) =>
           words.length >= n && <Button
               key={n}
               variant={variant}
@@ -914,7 +914,7 @@ export default class App extends React.Component<IProps, IState> {
               const { id: crossReferenceId, type } = crossReference;
               if (arraySetAdd({ crossReferences }, "crossReferences", crossReferenceId)) {
                 const tags: ITags = { imputed: [[`xref-${kebabCase(type)}`, `${crossReferenceId} > ${result.id}`]] };
-                fillInTags(tags, entry.lexicalCategory.id, lexicalEntry.grammaticalFeatures, sense);
+                fillInTags(tags, entry.lexicalCategory.id, lexicalEntry.grammaticalFeatures, sense, undefined);
                 addLookup(crossReference.id, tags);
               }
             },

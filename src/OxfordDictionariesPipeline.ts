@@ -16,6 +16,7 @@ import {
     arraySetRemove,
     ensure,
     ensureArray,
+    spread,
 } from "./Magic";
 import map from "./map";
 import Marks from "./Marks";
@@ -411,6 +412,7 @@ export default class OxfordDictionariesPipeline {
                             [headwordPronounciations, lexicalEntryPronounciations, entryPronounciations],
                         ));
                         senses.forEach(this.processSense.bind(this, record, lexicalEntryTags, discard, {
+                            etymologies: lentry.etymologies,
                             grammaticalFeatures: lentryGrammaticalFeatures,
                             partOfSpeech,
                             pronunciations,
@@ -449,7 +451,7 @@ export default class OxfordDictionariesPipeline {
 
     private processSense(
         record: PartialWordRecord,
-        tags: ITags,
+        entryTags: ITags,
         discard: (
             lexicalEntry: Pick<ILexicalEntry, "entries" | "lexicalCategory" | "text">,
             tags: ITags,
@@ -459,7 +461,7 @@ export default class OxfordDictionariesPipeline {
             {
                 text: string, partOfSpeech: string, grammaticalFeatures: string[],
                 pronunciations: IPronunciation[] | undefined,
-                short: boolean, pass: Pass, fallbackPass?: Pass, subsenses: boolean, etymologies?: string[],
+                short: boolean, pass: Pass, fallbackPass?: Pass, subsenses: boolean, etymologies: string[] | undefined,
             },
         sense: ISense) {
         const result = record.result!;
@@ -472,14 +474,40 @@ export default class OxfordDictionariesPipeline {
             etymologies: senseEtymologies,
         } = sense;
         const pronunciations = [...flatten(compact([parentPronunciations, sensePronunciations]))];
-        const definitions = short ? sense.shortDefinitions : sense.definitions;
-        tags = cloneDeep(tags);
+        const etymologies = entryEtymologies ?? senseEtymologies;
+        let tags = cloneDeep(entryTags);
+        const { registers, domains } = fillInTags(tags, partOfSpeech, grammaticalFeatures, sense, onlySubsenses ? "subsense-of-" : undefined);
+        if (onlySubsenses) {
+            if (subsenses) {
+                console.log(etymologies);
+                subsenses.forEach(this.processSense.bind(this, record, tags, discard, {
+                    etymologies,
+                    grammaticalFeatures,
+                    partOfSpeech,
+                    pass,
+                    pronunciations,
+                    short,
+                    subsenses: false,
+                    text,
+                }));
+                subsenses.forEach(this.processSense.bind(this, record, tags, discard, {
+                    etymologies,
+                    grammaticalFeatures,
+                    partOfSpeech,
+                    pass,
+                    pronunciations,
+                    short,
+                    subsenses: true,
+                    text,
+                }));
+            }
+            return;
+        }
         if (short) {
             arraySetAdd(tags, "imputed", ["short"]);
         }
         const resultTags = ensure(record, "resultTags", Object);
         const allTags = ensure(record, "allTags", Object);
-        const { registers, domains } = fillInTags(tags, partOfSpeech, grammaticalFeatures, sense);
         copyTags(tags, allTags);
         const savedTags = cloneDeep(tags);
         const resetTags = () => {
@@ -487,7 +515,6 @@ export default class OxfordDictionariesPipeline {
                 tags = savedTags;
             }
         };
-        const etymologies = entryEtymologies || senseEtymologies;
         const earlyOutForTags = () => {
             const passMap: Array<{ flag: string; allowed: Pass; type: keyof ITags; }> = [];
             let check: (...args: Parameters<App["allowed"]>) => void;
@@ -535,20 +562,6 @@ export default class OxfordDictionariesPipeline {
         if (earlyOutForTags()) {
             return;
         }
-        if (onlySubsenses) {
-            if (subsenses) {
-                subsenses.forEach(this.processSense.bind(this, record, tags, discard, {
-                    grammaticalFeatures,
-                    partOfSpeech,
-                    pass,
-                    pronunciations,
-                    short,
-                    subsenses: true,
-                    text,
-                }));
-            }
-            return;
-        }
         if (crossReferences && crossReferences.length > 0) {
             this.pullPronunciation(record, result, resultTags, text, pronunciations, () => {
                 const erTags = cloneDeep(tags);
@@ -556,6 +569,7 @@ export default class OxfordDictionariesPipeline {
                 return erTags;
             });
         }
+        const definitions = short ? sense.shortDefinitions : sense.definitions;
         if (definitions) {
             definitions.forEach((definition) => {
                 resetTags();
@@ -751,15 +765,17 @@ export function fillInTags(
     tags: ITags,
     partOfSpeech: string,
     grammaticalFeatures: string[] | IGrammaticalFeature[] | undefined,
-    sense: ISense) {
+    sense: ISense,
+    prefix: string | undefined) {
     arraySetAdd(tags, "partsOfSpeech", partOfSpeech);
     if (grammaticalFeatures && typeof grammaticalFeatures[0] === "object") {
         grammaticalFeatures = (grammaticalFeatures as IGrammaticalFeature[]).map((e) => e.id);
     }
     arraySetAddAll(tags, "grammaticalFeatures", grammaticalFeatures as string[]);
-    const registers = (sense.registers || []).map((e) => e.id);
+    const getId = prefix ? ({id}: {id: string}) => `${prefix}${id}` : ({id}: {id: string}) => id;
+    const registers = spread(sense.registers).map(getId);
     arraySetAddAll(tags, "registers", registers);
-    const domains = (sense.domains || []).map((e) => e.id);
+    const domains = spread(sense.domains).map(getId);
     arraySetAddAll(tags, "domains", domains);
     return { registers, domains };
 }

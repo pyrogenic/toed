@@ -62,6 +62,11 @@
     opacity: 0.5;
 }
 
+.etymology, .example {
+    opacity: 0.8;
+    font-style: oblique;
+}
+
 .spine {
   font-size: 80%;
   line-height: 1;

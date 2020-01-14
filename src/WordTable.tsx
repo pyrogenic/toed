@@ -226,7 +226,7 @@ function WordRow(
         {etymologies &&
           <Row>
             <Col xs={2}>etymology</Col>
-            <Col>
+            <Col className="etymology">
               {etymologies.map((etymology, index) =>
                 <TaggedComponent
                   key={index}
@@ -243,18 +243,20 @@ function WordRow(
         {examples &&
           <Row>
             <Col xs={2}>example</Col>
-            <Col>
-              {examples.map((example, index) => <div key={index}>
+            <Col className="example">
+              {examples.map((example, index) =>
                 <TaggedComponent
+                  key={index}
                   query={record.q}
                   word={"?"}
                   title="Example"
                   tags={array(resultTags?.example)?.[index]}
                   TagControl={TagControl}
                   MarksControl={MarksControl}>
+                  {example.match(/^\w/) ? "“" : ""}
                   {example}
-                </TaggedComponent>
-              </div>)}
+                  {example.match(/\w$/) ? "”" : ""}
+                </TaggedComponent>)}
             </Col>
           </Row>}
         </>}
@@ -390,71 +392,71 @@ export default class WordTable extends React.Component<IProps, IState> {
     }
     const PageButton = this.pageButton;
     const currentPageSpine = this.spine(currentPage);
+    const pager = <Row>
+    <Col>
+      <InputGroup>
+        <InputGroup.Prepend>
+          <Button
+              key={"min page"}
+              variant={outlineVariant}
+            disabled={this.state.page === 0}
+            onClick={() => this.setState({ page: 0 })}
+          >
+            <span className={"flip oi oi-" + OpenIconicNames["media-step-forward"]} />
+          </Button>
+          <Button
+              key={"page - 1"}
+              variant={outlineVariant}
+            disabled={this.state.page === 0}
+            onClick={() => this.setState(({ page }) => ({ page: clamp(page - 1, 0, maxPage) }))}
+          >
+            <span className={"flip oi oi-" + OpenIconicNames["media-play"]} />
+          </Button>
+          {0 < minShownPage && <InputGroup.Text key={0}>
+            <span className={`oi oi-${OpenIconicNames.ellipses}`}/>
+          </InputGroup.Text>}
+          {minShownPage < currentPage && range(minShownPage, currentPage).map((page) =>
+            <PageButton key={page} page={page} variant={outlineVariant} />)}
+          {currentPageSpine[0] && <InputGroup.Text>{currentPageSpine[0]}</InputGroup.Text>}
+        </InputGroup.Prepend>
+        <Form.Control
+              key={currentPage + 1}
+              type="number"
+          style={{textAlign: "center"}}
+          min={1}
+          max={maxPage + 1}
+          value={(currentPage + 1).toString()}
+          onChange={({ target: { value } }: any) => this.setState({ page: clamp(Number(value) - 1, 0, maxPage) })}
+        />
+        <InputGroup.Append>
+          {currentPageSpine[1] && <InputGroup.Text>{currentPageSpine[1]}</InputGroup.Text>}
+          {currentPage < maxShownPage && range(currentPage + 1, maxShownPage).map((page) =>
+            <PageButton key={page} page={page} variant={outlineVariant} />)}
+          {maxShownPage < maxPage && <InputGroup.Text key={maxPage}>
+            <span className={`oi oi-${OpenIconicNames.ellipses}`}/>
+          </InputGroup.Text>}
+          <Button
+              key={"page + 1"}
+              variant={outlineVariant}
+            disabled={this.state.page === maxPage}
+            onClick={() => this.setState(({ page }) => ({ page: clamp(page + 1, 0, maxPage) }))}
+          >
+            <span className={"oi oi-" + OpenIconicNames["media-play"]} />
+          </Button>
+          <Button
+              key={"max page"}
+              variant={outlineVariant}
+            disabled={this.state.page === maxPage}
+            onClick={() => this.setState({ page: maxPage })}
+          >
+            <span className={"oi oi-" + OpenIconicNames["media-step-forward"]} />
+          </Button>
+        </InputGroup.Append>
+      </InputGroup>
+    </Col>
+  </Row>;
     return <div className="word-table">
-      <Row>
-        <Col>
-          <InputGroup>
-            <InputGroup.Prepend>
-              <Button
-                  key={"min page"}
-                  variant={outlineVariant}
-                disabled={this.state.page === 0}
-                onClick={() => this.setState({ page: 0 })}
-              >
-                <span className={"flip oi oi-" + OpenIconicNames["media-step-forward"]} />
-              </Button>
-              <Button
-                  key={"page - 1"}
-                  variant={outlineVariant}
-                disabled={this.state.page === 0}
-                onClick={() => this.setState(({ page }) => ({ page: clamp(page - 1, 0, maxPage) }))}
-              >
-                <span className={"flip oi oi-" + OpenIconicNames["media-play"]} />
-              </Button>
-              {0 < minShownPage && <InputGroup.Text key={0}>
-                <span className={`oi oi-${OpenIconicNames.ellipses}`}/>
-              </InputGroup.Text>}
-              {minShownPage < currentPage && range(minShownPage, currentPage).map((page) =>
-                <PageButton key={page} page={page} variant={outlineVariant} />)}
-              {currentPageSpine[0] && <InputGroup.Text>{currentPageSpine[0]}</InputGroup.Text>}
-            </InputGroup.Prepend>
-            <Form.Control
-                  key={currentPage + 1}
-                  type="number"
-              style={{textAlign: "center"}}
-              min={1}
-              max={maxPage + 1}
-              value={(currentPage + 1).toString()}
-              onChange={({ target: { value } }: any) => this.setState({ page: clamp(Number(value) - 1, 0, maxPage) })}
-            />
-            <InputGroup.Append>
-              {currentPageSpine[1] && <InputGroup.Text>{currentPageSpine[1]}</InputGroup.Text>}
-              {currentPage < maxShownPage && range(currentPage + 1, maxShownPage).map((page) =>
-                <PageButton key={page} page={page} variant={outlineVariant} />)}
-              {maxShownPage < maxPage && <InputGroup.Text key={maxPage}>
-                <span className={`oi oi-${OpenIconicNames.ellipses}`}/>
-              </InputGroup.Text>}
-              <Button
-                  key={"page + 1"}
-                  variant={outlineVariant}
-                disabled={this.state.page === maxPage}
-                onClick={() => this.setState(({ page }) => ({ page: clamp(page + 1, 0, maxPage) }))}
-              >
-                <span className={"oi oi-" + OpenIconicNames["media-play"]} />
-              </Button>
-              <Button
-                  key={"max page"}
-                  variant={outlineVariant}
-                disabled={this.state.page === maxPage}
-                onClick={() => this.setState({ page: maxPage })}
-              >
-                <span className={"oi oi-" + OpenIconicNames["media-step-forward"]} />
-              </Button>
-            </InputGroup.Append>
-          </InputGroup>
-        </Col>
-      </Row>
-            <Row><Col>{this.props.records.length - visibleRecords.length} hidden</Col></Row>
+      {pager}
       <Row className="header">
         <Col xs={1}>Word</Col>
         <Col xs={4}>Definition</Col>
@@ -462,6 +464,7 @@ export default class WordTable extends React.Component<IProps, IState> {
         <Col xs={5}>GWF Definition</Col>
       </Row>
       {this.renderVisibleRows()}
+      {pager}
     </div>;
   }
 
