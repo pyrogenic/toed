@@ -907,7 +907,14 @@ export default class App extends React.Component<IProps, IState> {
     let re = await doLookups();
     const crossReferences: string[] = [];
     re.results?.forEach((result) =>
-      result.lexicalEntries.forEach((entry) =>
+      result.lexicalEntries.forEach((entry) => {
+        if (entry.lexicalCategory.id === "other") {
+          if (arraySetAdd({ crossReferences }, "crossReferences", result.id)) {
+            const tags: ITags = { imputed: [[`xref-other`, `${q} > ${result.id}`]] };
+            fillInTags(tags, undefined, entry.grammaticalFeatures, undefined, undefined);
+            addLookup(result.id, tags);
+          }
+        }
         entry.entries?.forEach((lexicalEntry) =>
           lexicalEntry.senses?.forEach((sense) =>
             sense.crossReferences?.forEach((crossReference) => {
@@ -917,8 +924,8 @@ export default class App extends React.Component<IProps, IState> {
                 fillInTags(tags, entry.lexicalCategory.id, lexicalEntry.grammaticalFeatures, sense, undefined);
                 addLookup(crossReference.id, tags);
               }
-            },
-            )))));
+            })));
+      }));
     re = await doLookups();
     redirect = this.derivativeOf(re.results);
     if (redirect) {

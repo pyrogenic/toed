@@ -793,19 +793,21 @@ function discardElements(
 
 export function fillInTags(
     tags: ITags,
-    partOfSpeech: string,
+    partOfSpeech: string | undefined,
     grammaticalFeatures: string[] | IGrammaticalFeature[] | undefined,
-    sense: ISense,
+    sense: ISense | undefined,
     prefix: string | undefined) {
-    arraySetAdd(tags, "partsOfSpeech", partOfSpeech);
+    if (partOfSpeech !== undefined) {
+        arraySetAdd(tags, "partsOfSpeech", partOfSpeech);
+    }
     if (grammaticalFeatures && typeof grammaticalFeatures[0] === "object") {
         grammaticalFeatures = (grammaticalFeatures as IGrammaticalFeature[]).map((e) => e.id);
     }
     arraySetAddAll(tags, "grammaticalFeatures", grammaticalFeatures as string[]);
     const getId = prefix ? ({id}: {id: string}) => `${prefix}${id}` : ({id}: {id: string}) => id;
-    const registers = spread(sense.registers).map(getId);
+    const registers = spread(sense?.registers).map(getId);
     arraySetAddAll(tags, "registers", registers);
-    const domains = spread(sense.domains).map(getId);
+    const domains = spread(sense?.domains).map(getId);
     arraySetAddAll(tags, "domains", domains);
     return { registers, domains };
 }

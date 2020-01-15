@@ -20,7 +20,12 @@ Oxford Dictionaries TypesScript Client
 - [x] missing pronunciations for cross-referenced origins
 - [x] scoring (e.g. crapper) so between two pass-3 options, one with no pass-2 tags preferred over one with a pass-2 tag
 - [x] sense tags should _not_ cascade to subsenses (e.g. _addict_ has `narcotics` in sense but then "an enthusiastic devotee of a specified thing or activity" as a subsense)
-- [ ] shouldn't reject as inexact pluralizations (e.g. _asses_ -> _ass_)
+- [x] shouldn't reject as inexact pluralizations (e.g. _asses_ -> _ass_)
+- [ ] should deal with untagged plurals (e.g. _gis_ -> _gi_)
+- [ ] investigate `medicine` / `anatomy` (_abortion_, _oral_)
+- [x] "other" `lexicalCategory` (e.g. _geez_ -> _jeez_)
+- [ ] deal with multiple discouraged tags vs. single "buggered" -> "bugger"
+- [ ] checkmark should record final value and alert if tag change would change result
 
 ## Redis Design
 
