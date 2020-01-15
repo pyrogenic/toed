@@ -38,7 +38,6 @@ interface IState {
 export default class WordTable extends React.Component<IProps, IState> {
   constructor(props: Readonly<IProps>) {
     super(props);
-    // console.log("WordTable construct");
     this.state = {
       page: 0,
       records: [],
@@ -47,12 +46,10 @@ export default class WordTable extends React.Component<IProps, IState> {
   }
 
   public componentDidMount() {
-    // console.log("WordTable mount");
     this.applyFilter();
   }
 
   public componentDidUpdate(prevProps: Readonly<IProps>) {
-    // console.log("WordTable update");
     this.applyFilter(prevProps);
   }
 
@@ -105,7 +102,7 @@ export default class WordTable extends React.Component<IProps, IState> {
     const outlineVariant: ButtonProps["variant"] = "outline-secondary";
     const {records: visibleRecords, show: pageSize} = this.state;
     const count = visibleRecords.length;
-    const maxPage = Math.ceil(count / pageSize);
+    const maxPage = Math.ceil(count / pageSize) - 1;
     let [minShownPage, maxShownPage] = [0, maxPage];
     if (Math.abs(currentPage - minShownPage) < Math.abs(currentPage - maxShownPage)) {
       minShownPage = Math.max(0, currentPage - 5);
@@ -154,7 +151,7 @@ export default class WordTable extends React.Component<IProps, IState> {
         />
         <InputGroup.Append>
           {currentPageSpine[1] && <InputGroup.Text>{currentPageSpine[1]}</InputGroup.Text>}
-          {currentPage < maxShownPage && range(currentPage + 1, maxShownPage).map((page) =>
+          {currentPage < maxShownPage && range(currentPage + 1, maxShownPage + 1).map((page) =>
             <PageButton key={page} page={page} variant={outlineVariant} />)}
           {maxShownPage < maxPage && <InputGroup.Text key={maxPage}>
             <span className={`oi oi-${OpenIconicNames.ellipses}`}/>

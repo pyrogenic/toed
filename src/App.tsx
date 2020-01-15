@@ -299,7 +299,7 @@ export default class App extends React.Component<IProps, IState> {
   public render() {
     const loaded = this.state.records.map(({q}) => q);
     const history = without(this.state.history, ...loaded).reverse();
-    const wordListExceptions = this.state.hideCached ? [...loaded, ...history] : [];
+    const wordListExceptions = this.state.hideCached ? [...loaded, ...history] : loaded;
     const WordListComponent = this.WordListComponent;
     const QueueComponent = this.QueueComponent;
     const hiddenCount = this.state.records.length - this.state.visibleRecordCount;
