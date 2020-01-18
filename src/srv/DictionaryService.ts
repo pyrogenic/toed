@@ -4,13 +4,13 @@ import http from "http";
 import fetch from "node-fetch";
 
 const debug = debugFactory("DictionaryService");
+debug.enabled = true;
 
-const hostname = "127.0.0.1";
-const port = 5000;
+const port = (process.env.PORT ?? 5000) as number;
 
 const FORWARD_HEADERS = ["access-control-request-method", "access-control-request-headers", "accept", "accept-encoding", "accept-language", "app_id", "app_key"];
 
-const server = http.createServer(async (req, res) => {
+const app: http.RequestListener = async (req, res) => {
     if (req.method === "OPTIONS") {
         debug({ headers: req.headers });
         if (req.headers["access-control-request-method"]) {
@@ -95,8 +95,10 @@ const server = http.createServer(async (req, res) => {
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(error));
     }
-});
+};
 
-server.listen(port, hostname, () => {
-    debug(`Server running at http://${hostname}:${port}/`);
+const server = http.createServer(app);
+
+server.listen(port, () => {
+    debug(`Server running at ${server.address()}`);
 });
