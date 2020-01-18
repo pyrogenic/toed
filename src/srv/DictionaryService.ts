@@ -1,6 +1,9 @@
+import debugFactory from "debug";
 import fs from "fs";
 import http from "http";
 import fetch from "node-fetch";
+
+const debug = debugFactory("DictionaryService");
 
 const hostname = "127.0.0.1";
 const port = 5000;
@@ -9,7 +12,7 @@ const FORWARD_HEADERS = ["access-control-request-method", "access-control-reques
 
 const server = http.createServer(async (req, res) => {
     if (req.method === "OPTIONS") {
-        console.log({ headers: req.headers });
+        debug({ headers: req.headers });
         if (req.headers["access-control-request-method"]) {
             res.setHeader("access-control-allow-methods", req.headers["access-control-request-method"]);
         }
@@ -47,7 +50,7 @@ const server = http.createServer(async (req, res) => {
             res.end(fs.readFileSync("./src" + req.url));
             return;
         } else {
-            console.dir(req.headers);
+            debug(req.headers);
             res.statusCode = 400;
             res.statusMessage = `bad scheme: ${req.url}`;
             res.end();
@@ -59,7 +62,7 @@ const server = http.createServer(async (req, res) => {
     FORWARD_HEADERS.forEach((h) => {
         const value = req.headers[h];
         if (typeof value === "string") {
-            console.log(`Forwarding header: ${h}: ${value}`);
+            debug(`Forwarding header: ${h}: ${value}`);
             headers[h] = value;
         }
     });
@@ -78,16 +81,16 @@ const server = http.createServer(async (req, res) => {
                 });
         });
         const method = req.method;
-        console.log({ method, proxyUrl, bodyLength: body?.length ?? "none" });
+        debug({ method, proxyUrl, bodyLength: body?.length ?? "none" });
         const response = await fetch(proxyUrl, { method, headers, body });
         const contentType = response.headers?.get("content-type");
         if (contentType) { res.setHeader("Content-Type", contentType); }
         res.statusCode = response.status;
         const data = await response.text();
-        console.log({ responseLength: data ? data.length : undefined });
+        debug({ responseLength: data ? data.length : undefined });
         res.end(data);
     } catch (error) {
-        console.log({ error });
+        debug({ error });
         res.statusCode = 500;
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(error));
@@ -95,5 +98,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(port, hostname, () => {
-    console.log(`Server running at http://${hostname}:${port}/`);
+    debug(`Server running at http://${hostname}:${port}/`);
 });
