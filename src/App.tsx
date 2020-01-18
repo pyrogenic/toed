@@ -399,22 +399,20 @@ export default class App extends React.Component<IProps, IState> {
 
           <QueueComponent/>
         </Navbar.Collapse>
-        <Form inline={true} onSubmitCapture={this.go} action={"#"}>
-          <InputGroup>
-            <Form.Control
-                placeholder={"one or more terms"}
-                value={this.state.q}
-                onChange={(e: any) => this.setState({q: e.target.value ? e.target.value : undefined})}
-            />
-            <InputGroup.Append>
-              <Button
-                  type={"submit"}
-                  onClick={this.go}
-                  variant="outline-primary"
-                  disabled={!this.state.q || this.state.q.length < 2}>Look Up</Button>
-            </InputGroup.Append>
-          </InputGroup>
-        </Form>
+        <InputGroup>
+          <Form.Control
+              placeholder={"one or more terms"}
+              value={this.state.q}
+              onChange={(e: any) => this.setState({q: e.target.value ? e.target.value : undefined})}
+              onKeyUp={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && this.go()}
+          />
+          <InputGroup.Append>
+            <Button
+                onClick={this.go}
+                variant="outline-primary"
+                disabled={!this.state.q || this.state.q.length < 2}>Look Up</Button>
+          </InputGroup.Append>
+        </InputGroup>
       </Navbar>
       <Container fluid={true} style={{width: "90%"}}>
 
