@@ -31,14 +31,11 @@ Oxford Dictionaries TypesScript Client
 
 ### BiSet
 
-Suite of ops for bidirectional set membership / tagging:
-- BSADD set-key member // tag member 
-  - SADD set-key member
-  - SADD reverse:set:member set-key
-- BSREM set-key member // tag member 
-  - SREM set-key member
-  - SREM reverse:set:member set-key
+[BSADD](src/redis/BSADD.lua) / [BSREM](src/redis/BSADD.lua)
+ - [ ] proper node api
+ - [ ] proper webdis service-based api
 
+Suite of ops for bidirectional set membership / tagging:
 - BHSET hash-key member value // tag member 
   - HSET hash-key member value
   - HSET reverse:hash:member hash-key value
