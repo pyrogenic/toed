@@ -64,14 +64,33 @@ describe("BSADD", () => {
         });
     });
 
+    const itemKey = (word: string) => `dictionary:${word}:tags`;
+    const markKey = (tag: string) => `meta:tags:${tag}`;
+
     test("BSADD", async (cb) => {
-        const itemKey = (word: string) => `dictionary:${word}:tags`;
-        const markKey = (tag: string) => `meta:tags:${tag}`;
         let item = "hello";
         let mark = "heart";
         expect(await client.sismember(itemKey(item), mark)).toBeFalsy();
         expect(await client.sismember(markKey(mark), item)).toBeFalsy();
         expect(await client.eval(BSADD_LUA, 2, itemKey(item), markKey(mark), item, mark)).toEqual([1, 1]);
+        expect(await client.sismember(itemKey(item), mark)).toBeTruthy();
+        expect(await client.sismember(markKey(mark), item)).toBeTruthy();
+        expect(await client.eval(BSADD_LUA, 2, itemKey(item), markKey(mark), item, mark)).toEqual([0, 0]);
+        item = "goodbye";
+        expect(await client.eval(BSADD_LUA, 2, itemKey(item), markKey(mark), item, mark)).toEqual([1, 1]);
+        mark = "ping";
+        expect(await client.eval(BSADD_LUA, 2, itemKey(item), markKey(mark), item, mark)).toEqual([1, 1]);
+        expect((await client.smembers(itemKey("goodbye"))).sort()).toEqual(["heart", "ping"]);
+        expect((await client.smembers(markKey("ping"))).sort()).toEqual(["goodbye"]);
+        cb();
+    });
+
+    test("BSREM", async (cb) => {
+        let item = "goodbye";
+        let mark = "heart";
+        expect((await client.smembers(markKey(mark))).sort()).toEqual(["goodbye", "hello"]);
+        expect(await client.eval(BSREM_LUA, 2, itemKey(item), markKey(mark), item, mark)).toEqual([1, 1]);
+        expect((await client.smembers(markKey(mark))).sort()).toEqual(["hello"]);
         cb();
     });
 });
