@@ -6,15 +6,27 @@ local item_set = KEYS[1];
 --                   heart      <-- mark
 --             marks            <-- mark set parent
 local mark_set = KEYS[2];
+-- either 'ADD' or 'REM'
+local op = ARGV[1];
 -- e.g. 'happy', only for validation or to avoid string ops
-local item = ARGV[1];
+local item = ARGV[2];
 -- e.g. 'heart', only for validation or to avoid string ops
-local mark = ARGV[2];
+local mark = ARGV[3];
 
 if not item_set then error('missing item_set (key 1)') end
 if not mark_set then error('missing mark_set (key 2)') end
-if not item then error('missing item (arg 1)') end
-if not mark then error('missing mark (arg 2)') end
+if not op then error('missing op (arg 1)') end
+if not item then error('missing item (arg 2)') end
+if not mark then error('missing mark (arg 3)') end
+
+if op == 'ADD' then
+    op = 'SADD';
+elseif op == 'REM' then
+    op = 'SREM';
+else
+    local msg = 'unexpected value for op ('..op..') expected ADD or REM';
+    error(msg);
+end
 
 local item_verify;
 local mark_set_parent;
@@ -36,5 +48,7 @@ if mark_set_parent ~= mark_set_parent_verify or mark ~= mark_verify then
         mark, item_set, mark_set, mark_set_parent, mark));
 end
 
--- for BSASSERT
--- return redis.status_reply("OK");
+local r1 = redis.call(op, item_set, mark);
+local r2 = redis.call(op, mark_set, item);
+
+return { r1, r2 };

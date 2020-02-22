@@ -1,9 +1,7 @@
 import fs from "fs";
 import Redis from "ioredis";
 
-const BS_PREAMBLE_LUA: string = fs.readFileSync("./src/redis/BS.preamble.lua", { encoding: "UTF-8" });
-const BSADD_LUA: string = BS_PREAMBLE_LUA + fs.readFileSync("./src/redis/BSADD.lua", { encoding: "UTF-8" });
-const BSREM_LUA: string = BS_PREAMBLE_LUA + fs.readFileSync("./src/redis/BSREM.lua", { encoding: "UTF-8" });
+const BISET_LUA: string = fs.readFileSync("./src/redis/BISET.lua", { encoding: "UTF-8" });
 
 function expectError(promise: Promise<any>, matcher: string | RegExp) {
     return promise.then(() => { throw new Error("unexpectedly succeeded"); })
@@ -15,7 +13,7 @@ describe("BSADD", () => {
     beforeAll(async (cb) => await client.flushdb().then(cb.bind(null, undefined)));
 
     test("source exists", () => {
-        expect(BSADD_LUA).toBeDefined();
+        expect(BISET_LUA).toBeDefined();
     });
 
     test("set", async (cb) => {
@@ -24,37 +22,43 @@ describe("BSADD", () => {
         cb();
     });
 
-    [["BSADD", BSADD_LUA], ["BSREM", BSREM_LUA]].forEach(([name, cmd]) => {
-        test(`${name} errors`, async (cb) => {
+    ["ADD", "REM"].forEach((op) => {
+        test(`BISET ${op} errors`, async (cb) => {
             await expectError(client.eval
-                (cmd, 0),
+                (BISET_LUA, 0),
                 /\Witem_set\W/);
             await expectError(client.eval
-                (cmd, 1, "item-set"),
+                (BISET_LUA, 1, "item-set"),
                 /\Wmark_set\W/);
             await expectError(client.eval
-                (cmd, 2, "item-set", "mark-set"),
+                (BISET_LUA, 2, "item-set", "mark-set"),
+                /\Wmissing op\W/);
+            await expectError(client.eval
+                (BISET_LUA, 2, "item-set", "mark-set", op),
                 /\Witem\W/);
             await expectError(client.eval
-                (cmd, 2, "item-set", "mark-set", "a1"),
+                (BISET_LUA, 2, "item-set", "mark-set", op, "a1"),
                 /\Wmark\W/);
             await expectError(client.eval
-                (cmd, 2, "item-set", "mark-set", "a1", "a2"),
+                (BISET_LUA, 2, "item-set", "mark-set", op, "a1", "a2"),
                 /item_set.*form/);
             await expectError(client.eval
-                (cmd, 2, "dictionary:hello", "mark-set", "a1", "a2"),
+                (BISET_LUA, 2, "dictionary:hello", "mark-set", "nonsense", "a1", "a2"),
+                /\Wnonsense\W.*ADD or REM/);
+            await expectError(client.eval
+                (BISET_LUA, 2, "dictionary:hello", "mark-set", op, "a1", "a2"),
                 /item_set.*form/);
             await expectError(client.eval
-                (cmd, 2, "dictionary:hello:tags", "mark-set", "a1", "a2"),
+                (BISET_LUA, 2, "dictionary:hello:tags", "mark-set", op, "a1", "a2"),
                 /mark_set.*form/);
             await expectError(client.eval
-                (cmd, 2, "dictionary:hello:tags", "meta:tags", "a1", "a2"),
+                (BISET_LUA, 2, "dictionary:hello:tags", "meta:tags", op, "a1", "a2"),
                 /mark_set.*form/);
             await expectError(client.eval
-                (cmd, 2, "dictionary:hello:tags", "meta:tags:heart", "a1", "a2"),
+                (BISET_LUA, 2, "dictionary:hello:tags", "meta:tags:heart", op, "a1", "a2"),
                 "to add a2 to a1, dictionary:hello:tags must end in a1:tags");
             await expectError(client.eval
-                (cmd, 2, "dictionary:hello:tags", "meta:tags:heart", "hello", "a2"),
+                (BISET_LUA, 2, "dictionary:hello:tags", "meta:tags:heart", op, "hello", "a2"),
                 "to add a2 to dictionary:hello:tags, meta:tags:heart must end in tags:a2");
             cb();
         });
@@ -68,14 +72,14 @@ describe("BSADD", () => {
         let mark = "heart";
         expect(await client.sismember(itemKey(item), mark)).toBeFalsy();
         expect(await client.sismember(markKey(mark), item)).toBeFalsy();
-        expect(await client.eval(BSADD_LUA, 2, itemKey(item), markKey(mark), item, mark)).toEqual([1, 1]);
+        expect(await client.eval(BISET_LUA, 2, itemKey(item), markKey(mark), "ADD", item, mark)).toEqual([1, 1]);
         expect(await client.sismember(itemKey(item), mark)).toBeTruthy();
         expect(await client.sismember(markKey(mark), item)).toBeTruthy();
-        expect(await client.eval(BSADD_LUA, 2, itemKey(item), markKey(mark), item, mark)).toEqual([0, 0]);
+        expect(await client.eval(BISET_LUA, 2, itemKey(item), markKey(mark), "ADD", item, mark)).toEqual([0, 0]);
         item = "goodbye";
-        expect(await client.eval(BSADD_LUA, 2, itemKey(item), markKey(mark), item, mark)).toEqual([1, 1]);
+        expect(await client.eval(BISET_LUA, 2, itemKey(item), markKey(mark), "ADD", item, mark)).toEqual([1, 1]);
         mark = "ping";
-        expect(await client.eval(BSADD_LUA, 2, itemKey(item), markKey(mark), item, mark)).toEqual([1, 1]);
+        expect(await client.eval(BISET_LUA, 2, itemKey(item), markKey(mark), "ADD", item, mark)).toEqual([1, 1]);
         expect((await client.smembers(itemKey("goodbye"))).sort()).toEqual(["heart", "ping"]);
         expect((await client.smembers(markKey("ping"))).sort()).toEqual(["goodbye"]);
         cb();
@@ -85,7 +89,7 @@ describe("BSADD", () => {
         const item = "goodbye";
         const mark = "heart";
         expect((await client.smembers(markKey(mark))).sort()).toEqual(["goodbye", "hello"]);
-        expect(await client.eval(BSREM_LUA, 2, itemKey(item), markKey(mark), item, mark)).toEqual([1, 1]);
+        expect(await client.eval(BISET_LUA, 2, itemKey(item), markKey(mark), "REM", item, mark)).toEqual([1, 1]);
         expect((await client.smembers(markKey(mark))).sort()).toEqual(["hello"]);
         cb();
     });
