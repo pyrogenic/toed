@@ -8,7 +8,7 @@ function expectError(promise: Promise<any>, matcher: string | RegExp) {
         .catch((error) => expect(error.message).toMatch(matcher));
 }
 
-describe("BSADD", () => {
+describe("BISET", () => {
     const client = new Redis({ db: 5 });
     beforeAll(async (cb) => await client.flushdb().then(cb.bind(null, undefined)));
 
@@ -67,7 +67,7 @@ describe("BSADD", () => {
     const itemKey = (word: string) => `dictionary:${word}:tags`;
     const markKey = (tag: string) => `meta:tags:${tag}`;
 
-    test("BSADD", async (cb) => {
+    test("BISET ADD", async (cb) => {
         let item = "hello";
         let mark = "heart";
         expect(await client.sismember(itemKey(item), mark)).toBeFalsy();
@@ -85,7 +85,7 @@ describe("BSADD", () => {
         cb();
     });
 
-    test("BSREM", async (cb) => {
+    test("BISET REM", async (cb) => {
         const item = "goodbye";
         const mark = "heart";
         expect((await client.smembers(markKey(mark))).sort()).toEqual(["goodbye", "hello"]);
