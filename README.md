@@ -29,6 +29,8 @@ Oxford Dictionaries TypesScript Client
 
 ## Redis Design
 
+### JS Adaptor
+
 ### BiSet
 
 [BSADD](src/redis/BSADD.lua) / [BSREM](src/redis/BSADD.lua)

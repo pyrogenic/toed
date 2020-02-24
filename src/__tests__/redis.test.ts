@@ -1,5 +1,7 @@
 import fs from "fs";
 import Redis from "ioredis";
+import IORedis from "../redis/IORedis";
+import IRedis from "../redis/IRedis";
 
 const BISET_LUA: string = fs.readFileSync("./src/redis/BISET.lua", { encoding: "UTF-8" });
 
@@ -7,6 +9,44 @@ function expectError(promise: Promise<any>, matcher: string | RegExp) {
     return promise.then(() => { throw new Error("unexpectedly succeeded"); })
         .catch((error) => expect(error.message).toMatch(matcher));
 }
+
+function behavesLikeRedis(client: IRedis) {
+    beforeAll(async (cb) => await client.flushdb().then(cb.bind(null, undefined)));
+
+    test("get nothing", async (cb) => {
+        expect(await client.get("test:garbage")).toBeUndefined();
+        cb();
+    });
+
+    test("set & get", async (cb) => {
+        expect(await client.set("test:set", "anything")).toEqual(true);
+        expect(await client.get("test:set")).toEqual("anything");
+        await client.set("test:set", "anything");
+        cb();
+    });
+
+    test("set nx", async (cb) => {
+        expect(await client.set("test:set:nx", "anything")).toEqual(true);
+        expect(await client.get("test:set:nx")).toEqual("anything");
+        expect(await client.set("test:set:nx", "nothing", {exists: false})).toEqual(false);
+        expect(await client.get("test:set:nx")).toEqual("anything");
+        cb();
+    });
+
+    test("set xx", async (cb) => {
+        expect(await client.set("test:set:xx", "anything", {exists: true})).toEqual(false);
+        expect(await client.get("test:set:xx")).toBeUndefined();
+        await client.set("test:set:xx", "nothing");
+        expect(await client.set("test:set:xx", "anything", {exists: true})).toEqual(true);
+        expect(await client.get("test:set:xx")).toEqual("anything");
+        cb();
+    });
+}
+
+describe("IORedis", () => {
+    const client = new IORedis({ db: 5 });
+    behavesLikeRedis(client);
+});
 
 describe("BISET", () => {
     const client = new Redis({ db: 5 });
