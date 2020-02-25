@@ -22,7 +22,7 @@ export default class IORedis implements IRedis {
     }
 
     public async set(key: KeyType, value: ValueType, options: {
-        ttl?: number | undefined; exists?: boolean | undefined;
+        ttl?: number; exists?: boolean;
     } = {}): Promise<boolean> {
         const { ttl, exists } = options;
         const args: any[] = [];

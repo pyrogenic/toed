@@ -1,7 +1,9 @@
+import child_process, { ChildProcess } from "child_process";
 import fs from "fs";
 import Redis from "ioredis";
 import IORedis from "../redis/IORedis";
 import IRedis from "../redis/IRedis";
+import Webdis from "../redis/Webdis";
 
 const BISET_LUA: string = fs.readFileSync("./src/redis/BISET.lua", { encoding: "UTF-8" });
 
@@ -26,7 +28,7 @@ function behavesLikeRedis(client: IRedis) {
     });
 
     test("set nx", async (cb) => {
-        expect(await client.set("test:set:nx", "anything")).toEqual(true);
+        expect(await client.set("test:set:nx", "anything", )).toEqual(true);
         expect(await client.get("test:set:nx")).toEqual("anything");
         expect(await client.set("test:set:nx", "nothing", { exists: false })).toEqual(false);
         expect(await client.get("test:set:nx")).toEqual("anything");
@@ -137,18 +139,18 @@ function behavesLikeRedis(client: IRedis) {
             expect(await client.eval(BISET_LUA, {
                 keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark],
              })).toEqual([1, 1]);
-            expect((await client.smembers(itemKey("goodbye"))).sort()).toEqual(["heart", "ping"]);
-            expect((await client.smembers(markKey("ping"))).sort()).toEqual(["goodbye"]);
+            expect((await client.smembers(itemKey("goodbye")) || []).sort()).toEqual(["heart", "ping"]);
+            expect((await client.smembers(markKey("ping")) || []).sort()).toEqual(["goodbye"]);
             cb();
         });
 
         test("BISET REM", async (cb) => {
             const item = "goodbye";
             const mark = "heart";
-            expect((await client.smembers(markKey(mark))).sort()).toEqual(["goodbye", "hello"]);
+            expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["goodbye", "hello"]);
             expect(await client.eval(BISET_LUA, {
                 keys: [itemKey(item), markKey(mark)], argv: ["REM", item, mark]})).toEqual([1, 1]);
-            expect((await client.smembers(markKey(mark))).sort()).toEqual(["hello"]);
+            expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["hello"]);
             cb();
         });
     });
@@ -156,5 +158,19 @@ function behavesLikeRedis(client: IRedis) {
 
 describe("IORedis", () => {
     const client = new IORedis({ db: 5 });
+    behavesLikeRedis(client);
+});
+
+describe("Webdis", () => {
+    const client = new Webdis("http://localhost:7385");
+    // // let cp!: ChildProcess;
+    // // beforeAll((cb) => {
+    //     // cp = child_process.spawn("submodules/webdis/webdis", ["webdis-test.json"], {
+    //     //     stdio: "pipe",
+    //     // });
+    //     // client = ;
+    //     // console.log(cp.stdout?.read());
+    //     // cb();
+    // });
     behavesLikeRedis(client);
 });
