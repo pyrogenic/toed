@@ -1,4 +1,4 @@
-import IORedis from "../redis/IORedis";
+import IORedis from "../IORedis";
 import behavesLikeRedis from "./IRedis.behavior";
 
 describe("IORedis", () => {

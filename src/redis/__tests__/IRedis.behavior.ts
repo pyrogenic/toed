@@ -1,5 +1,5 @@
 import fs from "fs";
-import IRedis from "../redis/IRedis";
+import IRedis from "../IRedis";
 
 const BISET_LUA: string = fs.readFileSync("./src/redis/BISET.lua", { encoding: "UTF-8" });
 

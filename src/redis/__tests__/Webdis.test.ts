@@ -1,4 +1,4 @@
-import Webdis from "../redis/Webdis";
+import Webdis from "../Webdis";
 import behavesLikeRedis from "./IRedis.behavior";
 
 describe("Webdis", () => {
