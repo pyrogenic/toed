@@ -121,14 +121,22 @@ function behavesLikeRedis(client: IRedis) {
             let mark = "heart";
             expect(await client.sismember(itemKey(item), mark)).toBeFalsy();
             expect(await client.sismember(markKey(mark), item)).toBeFalsy();
-            expect(await client.eval(BISET_LUA, { keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark] })).toEqual([1, 1]);
+            expect(await client.eval(BISET_LUA, {
+                keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark],
+             })).toEqual([1, 1]);
             expect(await client.sismember(itemKey(item), mark)).toBeTruthy();
             expect(await client.sismember(markKey(mark), item)).toBeTruthy();
-            expect(await client.eval(BISET_LUA, { keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark] })).toEqual([0, 0]);
+            expect(await client.eval(BISET_LUA, {
+                keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark],
+             })).toEqual([0, 0]);
             item = "goodbye";
-            expect(await client.eval(BISET_LUA, { keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark] })).toEqual([1, 1]);
+            expect(await client.eval(BISET_LUA, {
+                keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark],
+             })).toEqual([1, 1]);
             mark = "ping";
-            expect(await client.eval(BISET_LUA, { keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark] })).toEqual([1, 1]);
+            expect(await client.eval(BISET_LUA, {
+                keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark],
+             })).toEqual([1, 1]);
             expect((await client.smembers(itemKey("goodbye"))).sort()).toEqual(["heart", "ping"]);
             expect((await client.smembers(markKey("ping"))).sort()).toEqual(["goodbye"]);
             cb();
@@ -138,7 +146,8 @@ function behavesLikeRedis(client: IRedis) {
             const item = "goodbye";
             const mark = "heart";
             expect((await client.smembers(markKey(mark))).sort()).toEqual(["goodbye", "hello"]);
-            expect(await client.eval(BISET_LUA, {keys: [itemKey(item), markKey(mark)], argv: ["REM", item, mark]})).toEqual([1, 1]);
+            expect(await client.eval(BISET_LUA, {
+                keys: [itemKey(item), markKey(mark)], argv: ["REM", item, mark]})).toEqual([1, 1]);
             expect((await client.smembers(markKey(mark))).sort()).toEqual(["hello"]);
             cb();
         });
