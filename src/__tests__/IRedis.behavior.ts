@@ -24,7 +24,7 @@ export default function behavesLikeRedis(client: IRedis) {
     });
 
     test("set nx", async (cb) => {
-        expect(await client.set("test:set:nx", "anything", )).toEqual(true);
+        expect(await client.set("test:set:nx", "anything" )).toEqual(true);
         expect(await client.get("test:set:nx")).toEqual("anything");
         expect(await client.set("test:set:nx", "nothing", { exists: false })).toEqual(false);
         expect(await client.get("test:set:nx")).toEqual("anything");
@@ -151,5 +151,3 @@ export default function behavesLikeRedis(client: IRedis) {
         });
     });
 }
-
-test("helper", () => expect(behavesLikeRedis).toBeDefined());
