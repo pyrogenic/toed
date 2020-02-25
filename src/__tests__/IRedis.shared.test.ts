@@ -1,9 +1,5 @@
-import child_process, { ChildProcess } from "child_process";
 import fs from "fs";
-import Redis from "ioredis";
-import IORedis from "../redis/IORedis";
 import IRedis from "../redis/IRedis";
-import Webdis from "../redis/Webdis";
 
 const BISET_LUA: string = fs.readFileSync("./src/redis/BISET.lua", { encoding: "UTF-8" });
 
@@ -12,7 +8,7 @@ function expectError(promise: Promise<any>, matcher: string | RegExp) {
         .catch((error) => expect(error.message).toMatch(matcher));
 }
 
-function behavesLikeRedis(client: IRedis) {
+export default function behavesLikeRedis(client: IRedis) {
     beforeAll(async (cb) => await client.flushdb().then(cb.bind(null, undefined)));
 
     test("get nothing", async (cb) => {
@@ -156,21 +152,4 @@ function behavesLikeRedis(client: IRedis) {
     });
 }
 
-describe("IORedis", () => {
-    const client = new IORedis({ db: 5 });
-    behavesLikeRedis(client);
-});
-
-describe("Webdis", () => {
-    const client = new Webdis("http://localhost:7385");
-    // // let cp!: ChildProcess;
-    // // beforeAll((cb) => {
-    //     // cp = child_process.spawn("submodules/webdis/webdis", ["webdis-test.json"], {
-    //     //     stdio: "pipe",
-    //     // });
-    //     // client = ;
-    //     // console.log(cp.stdout?.read());
-    //     // cb();
-    // });
-    behavesLikeRedis(client);
-});
+test("helper", () => expect(behavesLikeRedis).toBeDefined());
