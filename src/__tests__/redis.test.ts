@@ -28,16 +28,16 @@ function behavesLikeRedis(client: IRedis) {
     test("set nx", async (cb) => {
         expect(await client.set("test:set:nx", "anything")).toEqual(true);
         expect(await client.get("test:set:nx")).toEqual("anything");
-        expect(await client.set("test:set:nx", "nothing", {exists: false})).toEqual(false);
+        expect(await client.set("test:set:nx", "nothing", { exists: false })).toEqual(false);
         expect(await client.get("test:set:nx")).toEqual("anything");
         cb();
     });
 
     test("set xx", async (cb) => {
-        expect(await client.set("test:set:xx", "anything", {exists: true})).toEqual(false);
+        expect(await client.set("test:set:xx", "anything", { exists: true })).toEqual(false);
         expect(await client.get("test:set:xx")).toBeUndefined();
         await client.set("test:set:xx", "nothing");
-        expect(await client.set("test:set:xx", "anything", {exists: true})).toEqual(true);
+        expect(await client.set("test:set:xx", "anything", { exists: true })).toEqual(true);
         expect(await client.get("test:set:xx")).toEqual("anything");
         cb();
     });
@@ -46,9 +46,9 @@ function behavesLikeRedis(client: IRedis) {
         expect(await client.eval("")).toEqual(undefined);
         expect(await client.eval("return 1")).toEqual(1);
         expect(await client.eval("return {1}")).toEqual([1]);
-        expect(await client.eval("return ARGV[1]", {argv: ["hello"]})).toEqual("hello");
+        expect(await client.eval("return ARGV[1]", { argv: ["hello"] })).toEqual("hello");
         await client.set("test:eval:1", 1);
-        expect(await client.eval("return redis.call('GET', KEYS[1])", {keys: ["test:eval:1"]})).toEqual("1");
+        expect(await client.eval("return redis.call('GET', KEYS[1])", { keys: ["test:eval:1"] })).toEqual("1");
         expect(await client.eval("return redis.call(ARGV[1], KEYS[1])", {
             argv: ["GET"],
             keys: ["test:eval:1"],
@@ -59,96 +59,93 @@ function behavesLikeRedis(client: IRedis) {
         })).toEqual(2);
         cb();
     });
+
+    describe("BISET", () => {
+        test("source exists", () => {
+            expect(BISET_LUA).toBeDefined();
+        });
+
+        test("set", async (cb) => {
+            await client.set("test:set", "anything");
+            expect(await client.get("test:set")).toEqual("anything");
+            cb();
+        });
+
+        ["ADD", "REM"].forEach((op) => {
+            test(`BISET ${op} errors`, async (cb) => {
+                await expectError(client.eval
+                    (BISET_LUA),
+                    /\Witem_set\W/);
+                await expectError(client.eval
+                    (BISET_LUA, { keys: ["item-set"] }),
+                    /\Wmark_set\W/);
+                await expectError(client.eval
+                    (BISET_LUA, { keys: ["item-set", "mark-set"] }),
+                    /\Wmissing op\W/);
+                await expectError(client.eval
+                    (BISET_LUA, { keys: ["item-set", "mark-set"], argv: [op] }),
+                    /\Witem\W/);
+                await expectError(client.eval
+                    (BISET_LUA, { keys: ["item-set", "mark-set"], argv: [op, "a1"] }),
+                    /\Wmark\W/);
+                await expectError(client.eval
+                    (BISET_LUA, { keys: ["item-set", "mark-set"], argv: [op, "a1", "a2"] }),
+                    /item_set.*form/);
+                await expectError(client.eval
+                    (BISET_LUA, { keys: ["dictionary:hello", "mark-set"], argv: ["nonsense", "a1", "a2"] }),
+                    /\Wnonsense\W.*ADD or REM/);
+                await expectError(client.eval
+                    (BISET_LUA, { keys: ["dictionary:hello", "mark-set"], argv: [op, "a1", "a2"] }),
+                    /item_set.*form/);
+                await expectError(client.eval
+                    (BISET_LUA, { keys: ["dictionary:hello:tags", "mark-set"], argv: [op, "a1", "a2"] }),
+                    /mark_set.*form/);
+                await expectError(client.eval
+                    (BISET_LUA, { keys: ["dictionary:hello:tags", "meta:tags"], argv: [op, "a1", "a2"] }),
+                    /mark_set.*form/);
+                await expectError(client.eval
+                    (BISET_LUA, { keys: ["dictionary:hello:tags", "meta:tags:heart"], argv: [op, "a1", "a2"] }),
+                    "to add a2 to a1, dictionary:hello:tags must end in a1:tags");
+                await expectError(client.eval
+                    (BISET_LUA, { keys: ["dictionary:hello:tags", "meta:tags:heart"], argv: [op, "hello", "a2"] }),
+                    "to add a2 to dictionary:hello:tags, meta:tags:heart must end in tags:a2");
+                cb();
+            });
+        });
+
+        const itemKey = (word: string) => `dictionary:${word}:tags`;
+        const markKey = (tag: string) => `meta:tags:${tag}`;
+
+        test("BISET ADD", async (cb) => {
+            let item = "hello";
+            let mark = "heart";
+            expect(await client.sismember(itemKey(item), mark)).toBeFalsy();
+            expect(await client.sismember(markKey(mark), item)).toBeFalsy();
+            expect(await client.eval(BISET_LUA, { keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark] })).toEqual([1, 1]);
+            expect(await client.sismember(itemKey(item), mark)).toBeTruthy();
+            expect(await client.sismember(markKey(mark), item)).toBeTruthy();
+            expect(await client.eval(BISET_LUA, { keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark] })).toEqual([0, 0]);
+            item = "goodbye";
+            expect(await client.eval(BISET_LUA, { keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark] })).toEqual([1, 1]);
+            mark = "ping";
+            expect(await client.eval(BISET_LUA, { keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark] })).toEqual([1, 1]);
+            expect((await client.smembers(itemKey("goodbye"))).sort()).toEqual(["heart", "ping"]);
+            expect((await client.smembers(markKey("ping"))).sort()).toEqual(["goodbye"]);
+            cb();
+        });
+
+        test("BISET REM", async (cb) => {
+            const item = "goodbye";
+            const mark = "heart";
+            expect((await client.smembers(markKey(mark))).sort()).toEqual(["goodbye", "hello"]);
+            expect(await client.eval(BISET_LUA, {keys: [itemKey(item), markKey(mark)], argv: ["REM", item, mark]})).toEqual([1, 1]);
+            expect((await client.smembers(markKey(mark))).sort()).toEqual(["hello"]);
+            cb();
+        });
+    });
 }
 
 describe("IORedis", () => {
     const client = new IORedis({ db: 5 });
     behavesLikeRedis(client);
-});
-
-describe("BISET", () => {
-    const client = new Redis({ db: 5 });
-    beforeAll(async (cb) => await client.flushdb().then(cb.bind(null, undefined)));
-
-    test("source exists", () => {
-        expect(BISET_LUA).toBeDefined();
-    });
-
-    test("set", async (cb) => {
-        await client.set("test:set", "anything");
-        expect(await client.get("test:set")).toEqual("anything");
-        cb();
-    });
-
-    ["ADD", "REM"].forEach((op) => {
-        test(`BISET ${op} errors`, async (cb) => {
-            await expectError(client.eval
-                (BISET_LUA, 0),
-                /\Witem_set\W/);
-            await expectError(client.eval
-                (BISET_LUA, 1, "item-set"),
-                /\Wmark_set\W/);
-            await expectError(client.eval
-                (BISET_LUA, 2, "item-set", "mark-set"),
-                /\Wmissing op\W/);
-            await expectError(client.eval
-                (BISET_LUA, 2, "item-set", "mark-set", op),
-                /\Witem\W/);
-            await expectError(client.eval
-                (BISET_LUA, 2, "item-set", "mark-set", op, "a1"),
-                /\Wmark\W/);
-            await expectError(client.eval
-                (BISET_LUA, 2, "item-set", "mark-set", op, "a1", "a2"),
-                /item_set.*form/);
-            await expectError(client.eval
-                (BISET_LUA, 2, "dictionary:hello", "mark-set", "nonsense", "a1", "a2"),
-                /\Wnonsense\W.*ADD or REM/);
-            await expectError(client.eval
-                (BISET_LUA, 2, "dictionary:hello", "mark-set", op, "a1", "a2"),
-                /item_set.*form/);
-            await expectError(client.eval
-                (BISET_LUA, 2, "dictionary:hello:tags", "mark-set", op, "a1", "a2"),
-                /mark_set.*form/);
-            await expectError(client.eval
-                (BISET_LUA, 2, "dictionary:hello:tags", "meta:tags", op, "a1", "a2"),
-                /mark_set.*form/);
-            await expectError(client.eval
-                (BISET_LUA, 2, "dictionary:hello:tags", "meta:tags:heart", op, "a1", "a2"),
-                "to add a2 to a1, dictionary:hello:tags must end in a1:tags");
-            await expectError(client.eval
-                (BISET_LUA, 2, "dictionary:hello:tags", "meta:tags:heart", op, "hello", "a2"),
-                "to add a2 to dictionary:hello:tags, meta:tags:heart must end in tags:a2");
-            cb();
-        });
-    });
-
-    const itemKey = (word: string) => `dictionary:${word}:tags`;
-    const markKey = (tag: string) => `meta:tags:${tag}`;
-
-    test("BISET ADD", async (cb) => {
-        let item = "hello";
-        let mark = "heart";
-        expect(await client.sismember(itemKey(item), mark)).toBeFalsy();
-        expect(await client.sismember(markKey(mark), item)).toBeFalsy();
-        expect(await client.eval(BISET_LUA, 2, itemKey(item), markKey(mark), "ADD", item, mark)).toEqual([1, 1]);
-        expect(await client.sismember(itemKey(item), mark)).toBeTruthy();
-        expect(await client.sismember(markKey(mark), item)).toBeTruthy();
-        expect(await client.eval(BISET_LUA, 2, itemKey(item), markKey(mark), "ADD", item, mark)).toEqual([0, 0]);
-        item = "goodbye";
-        expect(await client.eval(BISET_LUA, 2, itemKey(item), markKey(mark), "ADD", item, mark)).toEqual([1, 1]);
-        mark = "ping";
-        expect(await client.eval(BISET_LUA, 2, itemKey(item), markKey(mark), "ADD", item, mark)).toEqual([1, 1]);
-        expect((await client.smembers(itemKey("goodbye"))).sort()).toEqual(["heart", "ping"]);
-        expect((await client.smembers(markKey("ping"))).sort()).toEqual(["goodbye"]);
-        cb();
-    });
-
-    test("BISET REM", async (cb) => {
-        const item = "goodbye";
-        const mark = "heart";
-        expect((await client.smembers(markKey(mark))).sort()).toEqual(["goodbye", "hello"]);
-        expect(await client.eval(BISET_LUA, 2, itemKey(item), markKey(mark), "REM", item, mark)).toEqual([1, 1]);
-        expect((await client.smembers(markKey(mark))).sort()).toEqual(["hello"]);
-        cb();
-    });
 });

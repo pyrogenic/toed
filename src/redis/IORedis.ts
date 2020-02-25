@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import IRedis, {KeyType, ValueType} from "./IRedis";
+import IRedis, { KeyType, ValueType } from "./IRedis";
 
 export default class IORedis implements IRedis {
     private redis: Redis.Redis;
@@ -22,8 +22,9 @@ export default class IORedis implements IRedis {
     }
 
     public async set(key: KeyType, value: ValueType, options: {
-        ttl?: number | undefined; exists?: boolean | undefined; } = {}): Promise<boolean> {
-        const {ttl, exists} = options;
+        ttl?: number | undefined; exists?: boolean | undefined;
+    } = {}): Promise<boolean> {
+        const { ttl, exists } = options;
         const args: any[] = [];
         if (ttl !== undefined) {
             args.push("EX", ttl);
@@ -35,10 +36,20 @@ export default class IORedis implements IRedis {
         return result === "OK";
     }
 
+    public async sismember(key: KeyType, value: ValueType): Promise<boolean> {
+        const result = await this.redis.sismember(key, value as unknown as string);
+        return result === 1;
+    }
+
+    public async smembers(key: KeyType): Promise<ValueType[] | undefined> {
+        const result = await this.redis.smembers(key);
+        return result;
+    }
+
     public async eval(lua: string, args?: { keys?: string[]; argv?: ValueType[]; }) {
         const keys = args?.keys || [];
         const argv = args?.argv || [];
-        const result = await this.redis.eval(lua, keys.length, ...keys, ...argv)
+        const result = await this.redis.eval(lua, keys.length, ...keys, ...argv);
         return result === null ? undefined : result;
     }
 }

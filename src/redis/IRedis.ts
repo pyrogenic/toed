@@ -8,6 +8,7 @@ export default interface IRedis {
         ttl?: number,
         exists?: boolean,
     }): Promise<boolean>;
+    sismember(key: KeyType, value: ValueType): Promise<boolean>;
     eval(lua: string, args?: {
         keys?: KeyType[],
         argv?: ValueType[],
