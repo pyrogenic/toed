@@ -8,4 +8,8 @@ export default interface IRedis {
         ttl?: number,
         exists?: boolean,
     }): Promise<boolean>;
+    eval(lua: string, args?: {
+        keys?: KeyType[],
+        argv?: ValueType[],
+    }): Promise<undefined | ValueType | ValueType[]>;
 }

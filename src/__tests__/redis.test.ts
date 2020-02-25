@@ -41,6 +41,24 @@ function behavesLikeRedis(client: IRedis) {
         expect(await client.get("test:set:xx")).toEqual("anything");
         cb();
     });
+
+    test("eval", async (cb) => {
+        expect(await client.eval("")).toEqual(undefined);
+        expect(await client.eval("return 1")).toEqual(1);
+        expect(await client.eval("return {1}")).toEqual([1]);
+        expect(await client.eval("return ARGV[1]", {argv: ["hello"]})).toEqual("hello");
+        await client.set("test:eval:1", 1);
+        expect(await client.eval("return redis.call('GET', KEYS[1])", {keys: ["test:eval:1"]})).toEqual("1");
+        expect(await client.eval("return redis.call(ARGV[1], KEYS[1])", {
+            argv: ["GET"],
+            keys: ["test:eval:1"],
+        })).toEqual("1");
+        expect(await client.eval("return redis.call(ARGV[1], KEYS[1])", {
+            argv: ["INCR"],
+            keys: ["test:eval:1"],
+        })).toEqual(2);
+        cb();
+    });
 }
 
 describe("IORedis", () => {

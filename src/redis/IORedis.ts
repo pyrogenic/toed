@@ -34,4 +34,11 @@ export default class IORedis implements IRedis {
         const result = await this.redis.set(key, value, ...args);
         return result === "OK";
     }
+
+    public async eval(lua: string, args?: { keys?: string[]; argv?: ValueType[]; }) {
+        const keys = args?.keys || [];
+        const argv = args?.argv || [];
+        const result = await this.redis.eval(lua, keys.length, ...keys, ...argv)
+        return result === null ? undefined : result;
+    }
 }
