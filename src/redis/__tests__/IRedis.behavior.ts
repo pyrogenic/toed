@@ -24,7 +24,7 @@ export default function behavesLikeRedis(client: IRedis) {
     });
 
     test("set nx", async (cb) => {
-        expect(await client.set("test:set:nx", "anything" )).toEqual(true);
+        expect(await client.set("test:set:nx", "anything")).toEqual(true);
         expect(await client.get("test:set:nx")).toEqual("anything");
         expect(await client.set("test:set:nx", "nothing", { exists: false })).toEqual(false);
         expect(await client.get("test:set:nx")).toEqual("anything");
@@ -120,21 +120,25 @@ export default function behavesLikeRedis(client: IRedis) {
             expect(await client.sismember(itemKey(item), mark)).toBeFalsy();
             expect(await client.sismember(markKey(mark), item)).toBeFalsy();
             expect(await client.eval(BISET_LUA, {
-                keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark],
-             })).toEqual([1, 1]);
+                argv: ["ADD", item, mark],
+                keys: [itemKey(item), markKey(mark)],
+            })).toEqual([1, 1]);
             expect(await client.sismember(itemKey(item), mark)).toBeTruthy();
             expect(await client.sismember(markKey(mark), item)).toBeTruthy();
             expect(await client.eval(BISET_LUA, {
-                keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark],
-             })).toEqual([0, 0]);
+                argv: ["ADD", item, mark],
+                keys: [itemKey(item), markKey(mark)],
+            })).toEqual([0, 0]);
             item = "goodbye";
             expect(await client.eval(BISET_LUA, {
-                keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark],
-             })).toEqual([1, 1]);
+                argv: ["ADD", item, mark],
+                keys: [itemKey(item), markKey(mark)],
+            })).toEqual([1, 1]);
             mark = "ping";
             expect(await client.eval(BISET_LUA, {
-                keys: [itemKey(item), markKey(mark)], argv: ["ADD", item, mark],
-             })).toEqual([1, 1]);
+                argv: ["ADD", item, mark],
+                keys: [itemKey(item), markKey(mark)],
+            })).toEqual([1, 1]);
             expect((await client.smembers(itemKey("goodbye")) || []).sort()).toEqual(["heart", "ping"]);
             expect((await client.smembers(markKey("ping")) || []).sort()).toEqual(["goodbye"]);
             cb();
@@ -145,7 +149,9 @@ export default function behavesLikeRedis(client: IRedis) {
             const mark = "heart";
             expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["goodbye", "hello"]);
             expect(await client.eval(BISET_LUA, {
-                keys: [itemKey(item), markKey(mark)], argv: ["REM", item, mark]})).toEqual([1, 1]);
+                argv: ["REM", item, mark],
+                keys: [itemKey(item), markKey(mark)],
+            })).toEqual([1, 1]);
             expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["hello"]);
             cb();
         });

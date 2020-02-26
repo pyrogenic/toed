@@ -40,7 +40,7 @@ export default class Webdis implements IRedis {
         const [success] = setResult || [false];
         return success;
     }
-    
+
     public async sismember(key: string, value: ValueType): Promise<boolean> {
         const result = await fetch(this.url("SISMEMBER", key, value));
         const { SISMEMBER: success } = await result.json();
