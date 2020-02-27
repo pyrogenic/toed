@@ -192,30 +192,34 @@ export default function behavesLikeRedis(client: IRedis) {
 
         test("BISET define", async (cb) => {
             const biset = Redis.define(client, BISET_LUA);
-            function bisetAdd(item: string, mark: string) {
-                return biset({
+            const bisetAdd = async (item: string, mark: string) => {
+                const result = await biset({
                     argv: ["ADD", item, mark],
                     keys: [itemKey(item), markKey(mark)],
                 });
+                const [r0, r1] = Array.isArray(result) ? result : [0, 0];
+                return r0 === 1 || r1 === 1;
             }
-            function bisetRemove(item: string, mark: string) {
-                return biset({
+            const bisetRemove = async (item: string, mark: string) => {
+                const result = await biset({
                     argv: ["REM", item, mark],
                     keys: [itemKey(item), markKey(mark)],
                 });
+                const [r0, r1] = Array.isArray(result) ? result : [0, 0];
+                return r0 === 1 || r1 === 1;
             }
             let item = "hello";
             let mark = "heart";
             expect(await client.sismember(itemKey(item), mark)).toBeFalsy();
             expect(await client.sismember(markKey(mark), item)).toBeFalsy();
-            expect(await bisetAdd(item, mark)).toEqual([1, 1]);
+            expect(await bisetAdd(item, mark)).toEqual(true);
             expect(await client.sismember(itemKey(item), mark)).toBeTruthy();
             expect(await client.sismember(markKey(mark), item)).toBeTruthy();
-            expect(await bisetAdd(item, mark)).toEqual([0, 0]);
+            expect(await bisetAdd(item, mark)).toEqual(false);
             item = "goodbye";
-            expect(await bisetAdd(item, mark)).toEqual([1, 1]);
+            expect(await bisetAdd(item, mark)).toEqual(true);
             mark = "ping";
-            expect(await bisetAdd(item, mark)).toEqual([1, 1]);
+            expect(await bisetAdd(item, mark)).toEqual(true);
             expect((await client.smembers(itemKey("goodbye")) || []).sort()).toEqual(["heart", "ping"]);
             expect((await client.smembers(markKey("ping")) || []).sort()).toEqual(["goodbye"]);
 
@@ -224,7 +228,7 @@ export default function behavesLikeRedis(client: IRedis) {
             item = "goodbye";
             mark = "heart";
             expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["goodbye", "hello"]);
-            expect(await bisetRemove(item, mark)).toEqual([1, 1]);
+            expect(await bisetRemove(item, mark)).toEqual(true);
             expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["hello"]);
             cb();
         });
