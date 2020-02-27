@@ -230,6 +230,7 @@ export default function behavesLikeRedis(client: IRedis) {
             expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["goodbye", "hello"]);
             expect(await bisetRemove(item, mark)).toEqual(true);
             expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["hello"]);
+            expect(await bisetRemove(item, mark)).toEqual(false);
             cb();
         });
     });
