@@ -77,7 +77,7 @@ export default class Webdis implements IRedis {
         const argv = args?.argv || [];
         const result = await fetch(this.url(op, luaOrSha, keys.length, ...keys, ...argv));
         const json = await result.json();
-        const { EVAL: evalResult } = json;
+        const { [op]: evalResult } = json;
         if (Array.isArray(evalResult)) {
             if (evalResult.length === 2 && evalResult[0] === false && evalResult[1].match(/^ERR /)) {
                 throw new Error(evalResult[1]);
