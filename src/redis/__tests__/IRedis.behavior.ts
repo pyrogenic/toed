@@ -192,42 +192,39 @@ export default function behavesLikeRedis(client: IRedis) {
 
         test("BISET define", async (cb) => {
             const biset = Redis.define(client, BISET_LUA);
+            function bisetAdd(item: string, mark: string) {
+                return biset({
+                    argv: ["ADD", item, mark],
+                    keys: [itemKey(item), markKey(mark)],
+                });
+            }
+            function bisetRemove(item: string, mark: string) {
+                return biset({
+                    argv: ["REM", item, mark],
+                    keys: [itemKey(item), markKey(mark)],
+                });
+            }
             let item = "hello";
             let mark = "heart";
             expect(await client.sismember(itemKey(item), mark)).toBeFalsy();
             expect(await client.sismember(markKey(mark), item)).toBeFalsy();
-            expect(await biset({
-                argv: ["ADD", item, mark],
-                keys: [itemKey(item), markKey(mark)],
-            })).toEqual([1, 1]);
+            expect(await bisetAdd(item, mark)).toEqual([1, 1]);
             expect(await client.sismember(itemKey(item), mark)).toBeTruthy();
             expect(await client.sismember(markKey(mark), item)).toBeTruthy();
-            expect(await biset({
-                argv: ["ADD", item, mark],
-                keys: [itemKey(item), markKey(mark)],
-            })).toEqual([0, 0]);
+            expect(await bisetAdd(item, mark)).toEqual([0, 0]);
             item = "goodbye";
-            expect(await biset({
-                argv: ["ADD", item, mark],
-                keys: [itemKey(item), markKey(mark)],
-            })).toEqual([1, 1]);
+            expect(await bisetAdd(item, mark)).toEqual([1, 1]);
             mark = "ping";
-            expect(await biset({
-                argv: ["ADD", item, mark],
-                keys: [itemKey(item), markKey(mark)],
-            })).toEqual([1, 1]);
+            expect(await bisetAdd(item, mark)).toEqual([1, 1]);
             expect((await client.smembers(itemKey("goodbye")) || []).sort()).toEqual(["heart", "ping"]);
             expect((await client.smembers(markKey("ping")) || []).sort()).toEqual(["goodbye"]);
 
             // BISET REM
-            
+
             item = "goodbye";
             mark = "heart";
             expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["goodbye", "hello"]);
-            expect(await biset({
-                argv: ["REM", item, mark],
-                keys: [itemKey(item), markKey(mark)],
-            })).toEqual([1, 1]);
+            expect(await bisetRemove(item, mark)).toEqual([1, 1]);
             expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["hello"]);
             cb();
         });
