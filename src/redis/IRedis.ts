@@ -1,6 +1,11 @@
 export type ValueType = string | number;
 export type KeyType = string;
 
+export interface IEvalArgs {
+    keys?: KeyType[],
+    argv?: ValueType[],
+}
+
 export default interface IRedis {
     flushdb(): Promise<boolean>;
     get(key: KeyType): Promise<string | undefined>;
@@ -10,13 +15,7 @@ export default interface IRedis {
     }): Promise<boolean>;
     sismember(key: KeyType, value: ValueType): Promise<boolean>;
     smembers(key: KeyType): Promise<ValueType[] | undefined>;
-    eval(lua: string, args?: {
-        keys?: KeyType[],
-        argv?: ValueType[],
-    }): Promise<undefined | ValueType | ValueType[]>;
-    evalsha(sha: string, args?: {
-        keys?: KeyType[],
-        argv?: ValueType[],
-    }): Promise<undefined | ValueType | ValueType[]>;
+    eval(lua: string, args?: IEvalArgs): Promise<undefined | ValueType | ValueType[]>;
+    evalsha(sha: string, args?: IEvalArgs): Promise<undefined | ValueType | ValueType[]>;
     loadScript(lua: string): Promise<string>;
 }

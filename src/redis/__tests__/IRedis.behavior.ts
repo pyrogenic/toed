@@ -1,5 +1,6 @@
 import fs from "fs";
 import IRedis from "../IRedis";
+import Redis from "../Redis";
 
 const BISET_LUA: string = fs.readFileSync("./src/redis/BISET.lua", { encoding: "UTF-8" });
 
@@ -9,7 +10,7 @@ function expectError(promise: Promise<any>, matcher: string | RegExp) {
 }
 
 export default function behavesLikeRedis(client: IRedis) {
-    beforeAll(async (cb) => await client.flushdb().then(cb.bind(null, undefined)));
+    beforeEach(async (cb) => await client.flushdb().then(cb.bind(null, undefined)));
 
     test("get nothing", async (cb) => {
         expect(await client.get("test:garbage")).toBeUndefined();
@@ -148,7 +149,7 @@ export default function behavesLikeRedis(client: IRedis) {
         const itemKey = (word: string) => `dictionary:${word}:tags`;
         const markKey = (tag: string) => `meta:tags:${tag}`;
 
-        test("BISET ADD", async (cb) => {
+        test("BISET", async (cb) => {
             let item = "hello";
             let mark = "heart";
             expect(await client.sismember(itemKey(item), mark)).toBeFalsy();
@@ -175,14 +176,55 @@ export default function behavesLikeRedis(client: IRedis) {
             })).toEqual([1, 1]);
             expect((await client.smembers(itemKey("goodbye")) || []).sort()).toEqual(["heart", "ping"]);
             expect((await client.smembers(markKey("ping")) || []).sort()).toEqual(["goodbye"]);
-            // cb();
-        // });
 
-        // test("BISET REM", async (cb) => {
+            // BISET REM
+
             item = "goodbye";
             mark = "heart";
             expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["goodbye", "hello"]);
             expect(await client.eval(BISET_LUA, {
+                argv: ["REM", item, mark],
+                keys: [itemKey(item), markKey(mark)],
+            })).toEqual([1, 1]);
+            expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["hello"]);
+            cb();
+        });
+
+        test("BISET define", async (cb) => {
+            const biset = Redis.define(client, BISET_LUA);
+            let item = "hello";
+            let mark = "heart";
+            expect(await client.sismember(itemKey(item), mark)).toBeFalsy();
+            expect(await client.sismember(markKey(mark), item)).toBeFalsy();
+            expect(await biset({
+                argv: ["ADD", item, mark],
+                keys: [itemKey(item), markKey(mark)],
+            })).toEqual([1, 1]);
+            expect(await client.sismember(itemKey(item), mark)).toBeTruthy();
+            expect(await client.sismember(markKey(mark), item)).toBeTruthy();
+            expect(await biset({
+                argv: ["ADD", item, mark],
+                keys: [itemKey(item), markKey(mark)],
+            })).toEqual([0, 0]);
+            item = "goodbye";
+            expect(await biset({
+                argv: ["ADD", item, mark],
+                keys: [itemKey(item), markKey(mark)],
+            })).toEqual([1, 1]);
+            mark = "ping";
+            expect(await biset({
+                argv: ["ADD", item, mark],
+                keys: [itemKey(item), markKey(mark)],
+            })).toEqual([1, 1]);
+            expect((await client.smembers(itemKey("goodbye")) || []).sort()).toEqual(["heart", "ping"]);
+            expect((await client.smembers(markKey("ping")) || []).sort()).toEqual(["goodbye"]);
+
+            // BISET REM
+            
+            item = "goodbye";
+            mark = "heart";
+            expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["goodbye", "hello"]);
+            expect(await biset({
                 argv: ["REM", item, mark],
                 keys: [itemKey(item), markKey(mark)],
             })).toEqual([1, 1]);
