@@ -68,36 +68,27 @@ export default function behavesLikeRedis(client: IRedis) {
     });
 
     test("evalsha", async (cb) => {
-        // expect(await client.eval("")).toEqual(undefined);
         let sha = await client.loadScript("-- empty script");
         expect(await client.evalsha(sha)).toEqual(undefined);
-        console.log(sha);
-        // expect(await client.eval("return 1")).
         sha = await client.loadScript("return 1");
-        console.log(sha);
         expect(await client.evalsha(sha)).toEqual(1);
-
-        // // expect(await client.eval("return {1}")).
-        // sha = await client.loadScript("return {1}");
-        // expect(await client.evalsha(sha)).toEqual([1]);
-
-        // // expect(await client.eval("return ARGV[1]", { argv: ["hello"] })).
-        // sha = await client.loadScript("return ARGV[1]");
-        // expect(await client.evalsha(sha, { argv: ["hello"] })).toEqual("hello");
-
-        // await client.set("test:eval:1", 1);
-        // // expect(await client.eval("return redis.call('GET', KEYS[1])", { keys: ["test:eval:1"] })).
-        // sha = await client.loadScript("return redis.call('GET', KEYS[1])");
-        // expect(await client.evalsha(sha, { keys: ["test:eval:1"] })).toEqual("1");
-
-        // expect(await client.eval("return redis.call(ARGV[1], KEYS[1])", {
-        //     argv: ["GET"],
-        //     keys: ["test:eval:1"],
-        // })).toEqual("1");
-        // expect(await client.eval("return redis.call(ARGV[1], KEYS[1])", {
-        //     argv: ["INCR"],
-        //     keys: ["test:eval:1"],
-        // })).toEqual(2);
+        sha = await client.loadScript("return {1}");
+        expect(await client.evalsha(sha)).toEqual([1]);
+        sha = await client.loadScript("return ARGV[1]");
+        expect(await client.evalsha(sha, { argv: ["hello"] })).toEqual("hello");
+        await client.set("test:eval:1", 1);
+        sha = await client.loadScript("return redis.call('GET', KEYS[1])");
+        expect(await client.evalsha(sha, { keys: ["test:eval:1"] })).toEqual("1");
+        sha = await client.loadScript("return redis.call(ARGV[1], KEYS[1])");
+        expect(await client.evalsha(sha, {
+            argv: ["GET"],
+            keys: ["test:eval:1"],
+        })).toEqual("1");
+        sha = await client.loadScript("return redis.call(ARGV[1], KEYS[1])");
+        expect(await client.evalsha(sha, {
+            argv: ["INCR"],
+            keys: ["test:eval:1"],
+        })).toEqual(2);
         cb();
     });
 
