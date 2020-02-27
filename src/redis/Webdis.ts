@@ -13,7 +13,8 @@ export default class Webdis implements IRedis {
 
     public async flushdb(): Promise<boolean> {
         const result = await fetch(this.url("FLUSHDB"));
-        const { ok: success } = await result.json();
+        const json = await result.json();
+        const { FLUSHDB: [success] } = json;
         return success;
     }
 
@@ -54,10 +55,27 @@ export default class Webdis implements IRedis {
     }
 
     public async eval(lua: string, args?: { keys?: string[]; argv?: ValueType[]; }) {
+        lua = encodeURIComponent(lua); // TODO: we probably need to do this for all args
+        return this.evalInternal("EVAL", lua, args);
+    }
+
+    public async evalsha(sha: string, args?: { keys?: string[]; argv?: ValueType[]; }) {
+        return this.evalInternal("EVALSHA", sha, args);
+    }
+
+    public async loadScript(lua: string) {
+        lua = encodeURIComponent(lua); // TODO: we probably need to do this for all args
+        const result = await fetch(this.url("SCRIPT", "LOAD", lua));
+        const json = await result.json();
+        const { SCRIPT: sha } = json;
+        return sha;
+    }
+
+    private async evalInternal(
+        op: "EVAL" | "EVALSHA", luaOrSha: string, args?: { keys?: string[]; argv?: ValueType[]; }) {
         const keys = args?.keys || [];
         const argv = args?.argv || [];
-        lua = encodeURIComponent(lua);
-        const result = await fetch(this.url("EVAL", lua, keys.length, ...keys, ...argv));
+        const result = await fetch(this.url(op, luaOrSha, keys.length, ...keys, ...argv));
         const json = await result.json();
         const { EVAL: evalResult } = json;
         if (Array.isArray(evalResult)) {

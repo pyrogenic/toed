@@ -14,4 +14,9 @@ export default interface IRedis {
         keys?: KeyType[],
         argv?: ValueType[],
     }): Promise<undefined | ValueType | ValueType[]>;
+    evalsha(sha: string, args?: {
+        keys?: KeyType[],
+        argv?: ValueType[],
+    }): Promise<undefined | ValueType | ValueType[]>;
+    loadScript(lua: string): Promise<string>;
 }

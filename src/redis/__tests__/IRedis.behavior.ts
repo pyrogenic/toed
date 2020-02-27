@@ -23,6 +23,14 @@ export default function behavesLikeRedis(client: IRedis) {
         cb();
     });
 
+    test("flushdb", async (cb) => {
+        await client.set("test:flushdb", "a");
+        expect(await client.get("test:flushdb")).toEqual("a");
+        expect(await client.flushdb()).toBeTruthy();
+        expect(await client.get("test:flushdb")).toBeUndefined();
+        cb();
+    });
+
     test("set nx", async (cb) => {
         expect(await client.set("test:set:nx", "anything")).toEqual(true);
         expect(await client.get("test:set:nx")).toEqual("anything");
@@ -32,6 +40,7 @@ export default function behavesLikeRedis(client: IRedis) {
     });
 
     test("set xx", async (cb) => {
+        expect(await client.get("test:set:xx")).toBeUndefined();
         expect(await client.set("test:set:xx", "anything", { exists: true })).toEqual(false);
         expect(await client.get("test:set:xx")).toBeUndefined();
         await client.set("test:set:xx", "nothing");
@@ -41,7 +50,7 @@ export default function behavesLikeRedis(client: IRedis) {
     });
 
     test("eval", async (cb) => {
-        expect(await client.eval("")).toEqual(undefined);
+        expect(await client.eval("--empty script")).toEqual(undefined);
         expect(await client.eval("return 1")).toEqual(1);
         expect(await client.eval("return {1}")).toEqual([1]);
         expect(await client.eval("return ARGV[1]", { argv: ["hello"] })).toEqual("hello");
@@ -55,6 +64,38 @@ export default function behavesLikeRedis(client: IRedis) {
             argv: ["INCR"],
             keys: ["test:eval:1"],
         })).toEqual(2);
+        cb();
+    });
+
+    xtest("evalsha", async (cb) => {
+        // expect(await client.eval("")).toEqual(undefined);
+        let sha = await client.loadScript("-- empty script");
+        expect(await client.evalsha(sha)).toEqual(undefined);
+        // expect(await client.eval("return 1")).
+        sha = await client.loadScript("return 1");
+        expect(await client.evalsha(sha)).toEqual(1);
+
+        // expect(await client.eval("return {1}")).
+        sha = await client.loadScript("return {1}");
+        expect(await client.evalsha(sha)).toEqual([1]);
+
+        // expect(await client.eval("return ARGV[1]", { argv: ["hello"] })).
+        sha = await client.loadScript("return ARGV[1]");
+        expect(await client.evalsha(sha, { argv: ["hello"] })).toEqual("hello");
+
+        await client.set("test:eval:1", 1);
+        // expect(await client.eval("return redis.call('GET', KEYS[1])", { keys: ["test:eval:1"] })).
+        sha = await client.loadScript("return redis.call('GET', KEYS[1])");
+        expect(await client.evalsha(sha, { keys: ["test:eval:1"] })).toEqual("1");
+
+        // expect(await client.eval("return redis.call(ARGV[1], KEYS[1])", {
+        //     argv: ["GET"],
+        //     keys: ["test:eval:1"],
+        // })).toEqual("1");
+        // expect(await client.eval("return redis.call(ARGV[1], KEYS[1])", {
+        //     argv: ["INCR"],
+        //     keys: ["test:eval:1"],
+        // })).toEqual(2);
         cb();
     });
 
@@ -141,12 +182,12 @@ export default function behavesLikeRedis(client: IRedis) {
             })).toEqual([1, 1]);
             expect((await client.smembers(itemKey("goodbye")) || []).sort()).toEqual(["heart", "ping"]);
             expect((await client.smembers(markKey("ping")) || []).sort()).toEqual(["goodbye"]);
-            cb();
-        });
+            // cb();
+        // });
 
-        test("BISET REM", async (cb) => {
-            const item = "goodbye";
-            const mark = "heart";
+        // test("BISET REM", async (cb) => {
+            item = "goodbye";
+            mark = "heart";
             expect((await client.smembers(markKey(mark)) || []).sort()).toEqual(["goodbye", "hello"]);
             expect(await client.eval(BISET_LUA, {
                 argv: ["REM", item, mark],

@@ -52,4 +52,15 @@ export default class IORedis implements IRedis {
         const result = await this.redis.eval(lua, keys.length, ...keys, ...argv);
         return result === null ? undefined : result;
     }
+
+    public async evalsha(sha: string, args?: { keys?: string[]; argv?: ValueType[]; }) {
+        const keys = args?.keys || [];
+        const argv = args?.argv || [];
+        const result = await this.redis.evalsha(sha, keys.length.toString(), ...keys, ...argv);
+        return result === null ? undefined : result;
+    }
+
+    public async loadScript(lua: string) {
+        return this.redis.script("LOAD", lua);
+    }
 }
