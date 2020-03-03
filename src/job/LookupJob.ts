@@ -18,7 +18,6 @@ export async function enequeLookup(language: OxfordLanguage, word: string) {
             title: `${word} (${language})`,
             word,
         }).save((error: any) => {
-            console.log({ jobId: job.id, error });
             if (error) {
                 reject(error);
             } else {
@@ -41,6 +40,7 @@ function start(props: Partial<ILookupProps> & { apiBaseUrl: string; }) {
     kue.app.listen(3005);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const argv = yargs
     .command("add <word>", "add a word to the queue", (a) => (
         a
@@ -54,10 +54,9 @@ const argv = yargs
             })
     ),
         ({ word, language }) => {
-            console.log({ add: { word, language } });
             enequeLookup(language as OxfordLanguage, word!).then(() => process.exit());
         })
-    .command("kue", "run the queue", {
+    .command("kue", "run the queue (also starts the web front end)", {
         apiBaseUrl: {
             alias: "url",
             default: "https://od-api.oxforddictionaries.com/api/v2",
@@ -67,4 +66,4 @@ const argv = yargs
     .alias("help", "h")
     .argv;
 
-console.log(argv);
+// console.log(argv);
