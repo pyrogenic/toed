@@ -6,7 +6,7 @@ export default class Redis {
         const result = async (args?: IEvalArgs) => {
             const sha = await definer;
             return client.evalsha(sha, args);
-        }
+        };
         return result;
     }
 }
