@@ -1,8 +1,37 @@
+import assert from "assert";
 import kue, { DoneCallback, Job } from "kue";
+import pickBy from "lodash/pickBy";
+import { alias, deserialize, primitive, serializable } from "serializr";
 import yargs from "yargs";
 import { ILookupProps } from "../Lookup";
-// import Lookup, { ILookupProps } from "../Lookup";
 import OxfordLanguage from "../types/OxfordLanguage";
+
+class LookupEnv {
+    @serializable(alias("OD_URL", primitive()))
+    public url!: string;
+    @serializable(alias("OD_API_URL", primitive()))
+    public apiUrl!: string;
+    @serializable(alias("OD_APP_ID", primitive()))
+    public appId!: string;
+    @serializable(alias("OD_APP_KEY", primitive()))
+    public appKey!: string;
+    @serializable(alias("OD_APP_ENTERPRISE", primitive()))
+    public appEnterprise!: boolean;
+}
+
+const LOOKUP_ENV_KEYS: Array<keyof LookupEnv> = [
+    "url",
+    "apiUrl",
+    "appId",
+    "appKey",
+    "appEnterprise",
+];
+
+const ENV = deserialize(LookupEnv, process.env);
+
+console.log(ENV);
+
+LOOKUP_ENV_KEYS.forEach((key) => assert.notStrictEqual(ENV[key], undefined, `Missing environment variable '${key}'`));
 
 const queue = kue.createQueue();
 const JOB_NAME = "lookup";
@@ -33,7 +62,7 @@ function start(props: Partial<ILookupProps> & { apiBaseUrl: string; }) {
     queue.process(JOB_NAME, (job: ILookupJob, done: DoneCallback) => {
         // lookup.get(apiBaseUrl, language, job.word!).then((result: ) => {
         // });
-        const { data: {word, language} } = job;
+        const { data: { word, language } } = job;
         job.log(`processing ${word} in ${language}`);
         done(undefined, "test-result");
     });
@@ -62,6 +91,10 @@ const argv = yargs
             default: "https://od-api.oxforddictionaries.com/api/v2",
         },
     }, start)
+    .command("env", "display the environment setup", {}, () => {
+        console.info(ENV);
+        process.exit();
+    })
     .help()
     .alias("help", "h")
     .argv;
