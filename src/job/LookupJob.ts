@@ -1,6 +1,5 @@
 import assert from "assert";
 import kue, { DoneCallback, Job } from "kue";
-import pickBy from "lodash/pickBy";
 import { alias, deserialize, primitive, serializable } from "serializr";
 import yargs from "yargs";
 import { ILookupProps } from "../Lookup";
@@ -28,8 +27,6 @@ const LOOKUP_ENV_KEYS: Array<keyof LookupEnv> = [
 ];
 
 const ENV = deserialize(LookupEnv, process.env);
-
-console.log(ENV);
 
 LOOKUP_ENV_KEYS.forEach((key) => assert.notStrictEqual(ENV[key], undefined, `Missing environment variable '${key}'`));
 
@@ -92,11 +89,10 @@ const argv = yargs
         },
     }, start)
     .command("env", "display the environment setup", {}, () => {
+        // tslint:disable-next-line:no-console
         console.info(ENV);
         process.exit();
     })
     .help()
     .alias("help", "h")
     .argv;
-
-// console.log(argv);
