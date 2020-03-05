@@ -2,8 +2,11 @@ import assert from "assert";
 import kue, { DoneCallback, Job } from "kue";
 import { alias, deserialize, primitive, serializable } from "serializr";
 import yargs from "yargs";
+import {config as configEnvironment} from "dotenv";
 import { ILookupProps } from "../Lookup";
 import OxfordLanguage from "../types/OxfordLanguage";
+
+configEnvironment();
 
 class LookupEnv {
     @serializable(alias("OD_URL", primitive()))
