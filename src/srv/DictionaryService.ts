@@ -82,5 +82,7 @@ class DictionaryService {
 const server = http.createServer(new DictionaryService().express);
 
 server.listen(port, () => {
-    debug(`Server running at ${server.address()}`);
+    const info = server.address();
+    const {address, family} = info || {} as any;
+    debug(`Server running at ${address}:${port} (${family})`);
 });

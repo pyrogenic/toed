@@ -23,9 +23,11 @@
   },
   "scripts": {
     "pre-bridge": "gulp build-srv",
-    "bridge-srv": "node srv/srv/DictionaryService.js",
+    "bridge-srv": "forever --watch --watchDirectory srv --killSignal SIGTERM --spinSleepTime 1000 --minUptime 10000 srv/srv/DictionaryService.js",
     "bridge": "npm-run-all --sequential pre-bridge bridge-srv",
     "pre-webdis": "mkdir -p log && > log/webdis-cache.log && > log/webdis-gwf.log",
+    "kue": "forever --watch --watchDirectory srv --killSignal SIGTERM --spinSleepTime 1000 --minUptime 10000 srv/job/LookupJob.js kue",
+    "watch": "gulp watch",
     "webdis-cache-srv": "submodules/webdis/webdis webdis-cache.json",
     "webdis-gwf-srv": "submodules/webdis/webdis webdis-gwf.json",
     "webdis-test-srv": "submodules/webdis/webdis webdis-test.json",

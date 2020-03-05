@@ -10,19 +10,21 @@ const JSON_FILES = ['src/**/*.json'];
 // pull in the project TypeScript config
 const tsProject = gulpTypescript.createProject('tsconfig.srv.json');
 
-gulp.task('build-srv', () => {
+const buildSrv =  () => {
   const tsResult = tsProject.src()
     .pipe(tsProject());
   return tsResult.js.pipe(gulp.dest(OUT_DIR));
-});
+};
+gulp.task('build-srv', buildSrv);
 
-gulp.task('build-json', () => {
+const buildJson = () => {
   return gulp.src(JSON_FILES)
     .pipe(gulp.dest(OUT_DIR));
-});
+};
+gulp.task('build-json', buildJson);
 
-gulp.task('watch-ts', () => gulp.watch('src/**/*.ts', ['build-srv']));
-gulp.task('watch-json', () => gulp.watch(JSON_FILES, ['build-json']));
+gulp.task('watch-ts', () => gulp.watch('src/**/*.ts', buildSrv));
+gulp.task('watch-json', () => gulp.watch(JSON_FILES, buildJson));
 
 gulp.task('watch', gulp.parallel([
   'watch-ts',
