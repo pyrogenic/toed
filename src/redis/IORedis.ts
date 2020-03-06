@@ -13,6 +13,11 @@ export default class IORedis implements IRedis {
         return result === "OK";
     }
 
+    public async exists(key: KeyType): Promise<boolean> {
+        const result = await this.redis.exists(key);
+        return result === 1;
+    }
+
     public async get(key: KeyType): Promise<string | undefined> {
         const result = await this.redis.get(key);
         if (result === null) {

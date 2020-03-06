@@ -18,6 +18,12 @@ export default class Webdis implements IRedis {
         return success;
     }
 
+    public async exists(key: string): Promise<boolean> {
+        const result = await fetch(this.url("EXISTS", key));
+        const { EXISTS: value } = await result.json();
+        return value === 1;
+    }
+
     public async get(key: string): Promise<string | undefined> {
         const result = await fetch(this.url("GET", key));
         const { GET: value } = await result.json();
@@ -36,7 +42,20 @@ export default class Webdis implements IRedis {
         if (exists !== undefined) {
             args.push(exists ? "XX" : "NX");
         }
-        const result = await fetch(this.url("SET", key, value, ...args));
+        let promise: Promise<Response>;
+        value = value.toString();
+        if (value.indexOf("/") >= 0) {
+            promise = fetch(this.url("SET", key, ...args), {
+                body: value,
+                headers: {
+                    "Content-Type": "text/plain",
+                },
+                method: "PUT",
+            });
+        } else {
+            promise = fetch(this.url("SET", key, value, ...args));
+        }
+        const result = await promise;
         const { SET: setResult } = await result.json();
         const [success] = setResult || [false];
         return success;

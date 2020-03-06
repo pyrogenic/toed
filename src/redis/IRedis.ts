@@ -8,6 +8,7 @@ export interface IEvalArgs {
 
 export default interface IRedis {
     flushdb(): Promise<boolean>;
+    exists(key: string): Promise<boolean>;
     get(key: KeyType): Promise<string | undefined>;
     set(key: KeyType, value: ValueType, options?: {
         ttl?: number,

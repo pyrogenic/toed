@@ -12,6 +12,11 @@ function expectError(promise: Promise<any>, matcher: string | RegExp) {
 export default function behavesLikeRedis(client: IRedis) {
     beforeEach(async (cb) => await client.flushdb().then(cb.bind(null, undefined)));
 
+    test("exists nothing", async (cb) => {
+        expect(await client.exists("test:garbage")).toStrictEqual(false);
+        cb();
+    });
+
     test("get nothing", async (cb) => {
         expect(await client.get("test:garbage")).toBeUndefined();
         cb();
@@ -19,7 +24,17 @@ export default function behavesLikeRedis(client: IRedis) {
 
     test("set & get", async (cb) => {
         expect(await client.set("test:set", "anything")).toEqual(true);
+        expect(await client.exists("test:set")).toStrictEqual(true);
         expect(await client.get("test:set")).toEqual("anything");
+        await client.set("test:set", "anything");
+        cb();
+    });
+
+    test("set & get evil", async (cb) => {
+        const value = "[anything with / slashes \\ back {}]";
+        expect(await client.set("test:set", value)).toEqual(true);
+        expect(await client.exists("test:set")).toStrictEqual(true);
+        expect(await client.get("test:set")).toEqual(value);
         await client.set("test:set", "anything");
         cb();
     });
