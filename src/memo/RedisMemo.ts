@@ -1,4 +1,5 @@
 import IMemoOptions from "./IMemoOptions";
+import IRedis from "../redis/IRedis";
 
 export interface IOptions {
     cache?: boolean;
@@ -6,7 +7,7 @@ export interface IOptions {
 }
 
 interface IRedisMemoProps<TProps, TResult> {
-    webdis: string;
+    redis: IRedis;
     /**
      * scheme to turn props into a redis key name
      */
@@ -16,13 +17,13 @@ interface IRedisMemoProps<TProps, TResult> {
 }
 
 export default class RedisMemo<TProps, TResult> {
-    public readonly webdis: string;
+    public readonly redis: IRedis;
     public readonly name: (props: TProps) => string[];
     public readonly factory: (props: TProps) => Promise<TResult>;
     public readonly validate?: (result: TResult) => boolean;
 
-    constructor({ webdis, name, factory, validate }: IRedisMemoProps<TProps, TResult>) {
-        this.webdis = webdis;
+    constructor({ redis, name, factory, validate }: IRedisMemoProps<TProps, TResult>) {
+        this.redis = redis;
         this.name = name;
         this.factory = factory;
         this.validate = validate;
@@ -33,9 +34,8 @@ export default class RedisMemo<TProps, TResult> {
         if (bypass === undefined) { bypass = false; }
         const key = this.key(props);
         if (!bypass) {
-            const url = `${this.webdis}/GET/${key}.txt`;
-            const { cachedValue, success } = await this.go(url);
-            if (success) {
+            const cachedValue = await this.redis.get(key);
+            if (cachedValue !== undefined) {
                 const parse = JSON.parse(cachedValue) as TResult;
                 const valid = this.validate?.(parse) ?? "no validate func";
                 if (valid) {
@@ -57,37 +57,31 @@ export default class RedisMemo<TProps, TResult> {
     public cache = async (props: TProps, value: TResult, key?: string) => {
         key = key ?? this.key(props);
         const stringValue = JSON.stringify(value);
-        await fetch(`${this.webdis}/SET/${key}`, {
-            body: stringValue,
-            headers: {
-                "Content-Type": "text/plain",
-            },
-            method: "PUT",
-        });
+        await this.redis.set(key, stringValue);
     }
 
     public has = async (props: TProps) => {
         const key = this.key(props);
-        const {EXISTS: exists} = await (await fetch(`${this.webdis}/EXISTS/${key}`)).json();
-        return exists === 1;
+        return this.redis.exists(key);
+
     }
 
     private key(props: TProps) {
         return this.name(props).map(encodeURIComponent.bind(null)).join(":");
     }
 
-    private go(url: string): Promise<{ success: boolean, cachedValue: string; }> {
-        const catchError = (error: Error) => {
-            return { cachedValue: error.message, success: false };
-        };
-        return fetch(url).then(
-            (response) => {
-                const { ok: success } = response;
-                return response.text()
-                    .then(
-                        (cachedValue: string) => ({ cachedValue, success }),
-                        catchError);
-            },
-            catchError);
-    }
+    // private go(url: string): Promise<{ success: boolean, cachedValue: string; }> {
+    //     const catchError = (error: Error) => {
+    //         return { cachedValue: error.message, success: false };
+    //     };
+    //     return fetch(url).then(
+    //         (response) => {
+    //             const { ok: success } = response;
+    //             return response.text()
+    //                 .then(
+    //                     (cachedValue: string) => ({ cachedValue, success }),
+    //                     catchError);
+    //         },
+    //         catchError);
+    // }
 }

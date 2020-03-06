@@ -8,6 +8,8 @@ import OpTrack from "./OpTrack";
 import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
+import IRedis from "./redis/IRedis";
+import Webdis from "./redis/Webdis";
 
 export enum CacheMode {
     "none" = "none",
@@ -19,7 +21,7 @@ export interface ILookupProps {
     cache: CacheMode;
     enterprise: boolean;
     online: boolean;
-    directWebdis: boolean;
+    redis: IRedis;
     threads: number;
     visible: number;
     apiRate: number;
@@ -43,7 +45,7 @@ export default class Lookup {
 
     public set props(props: Partial<ILookupProps>) {
         this.propsValue = props;
-        const {directWebdis, cache, enterprise, online} = this.effectiveProps;
+        const {redis, cache, enterprise, online} = this.effectiveProps;
         const validate = (result: any) =>
           typeof result === "object" && Object.keys(result).length > 0 && !("errno" in result) && result?.error !== "offline";
         let lookup = online ? this.callOxfordDictionaries : (url: string) => Promise.resolve({error: "offline"} as any);
@@ -53,8 +55,8 @@ export default class Lookup {
                 name(url) {
                     return compact(["memo", "od-api", ...url.split(/[/?#=]/)]);
                 },
+                redis,
                 validate,
-                webdis: directWebdis ? "http://localhost:7382" : "",
             });
             lookup = this.redis.get;
         } else {
@@ -99,13 +101,13 @@ export default class Lookup {
         const threads = get(props, "threads", 2);
         const visible = get(props, "visible", 10);
         const apiRate = get(props, "apiRate", 200);
-        const directWebdis = get(props, "directWebdis", false);
+        const redis = get(props, "redis", new Webdis("http://localhost:7382"));
         return {
             apiRate,
             cache,
-            directWebdis,
             enterprise,
             online,
+            redis,
             threads,
             visible,
         };

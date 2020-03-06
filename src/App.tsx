@@ -32,6 +32,7 @@ import ConfigImportBox from "./ConfigImportBox";
 import Focus, { FocusIcons } from "./Focus";
 import Icon from "./Icon";
 import IWordRecord, { ITags } from "./IWordRecord";
+import LookupCoordinator from "./job/LookupCoordinator";
 import Lookup, { CacheMode, ILookupProps } from "./Lookup";
 import {
   arraySetAdd,
@@ -50,22 +51,20 @@ import OpTrack from "./OpTrack";
 import OxfordDictionariesPipeline,
 {
   AnnotatedHeadwordEntry,
-  fillInTags,
   IPassMap,
   IPipelineConfig,
   PartialWordRecord,
 } from "./OxfordDictionariesPipeline";
 import Pass from "./Pass";
 import PassComponent from "./PassComponent";
-import IHeadwordEntry from "./types/gen/IHeadwordEntry";
 import IRetrieveEntry from "./types/gen/IRetrieveEntry";
-import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
 import WordTable from "./WordTable";
 import jqxzWordsUrl from "./wwf/jqxzWords.txt";
 import threeLetterWordsUrl from "./wwf/threeLetterWords.txt";
 import twoLetterWordsUrl from "./wwf/twoLetterWords.txt";
+import Webdis from "./redis/Webdis";
 
 type Renderable = ReturnType<React.Component["render"]>;
 
@@ -152,6 +151,7 @@ export default class App extends React.Component<IProps, IState> {
   private static ruleIndex: Map<string, CSSStyleRule> = new Map();
   private timer?: NodeJS.Timeout;
   private readonly lookup: Lookup;
+  private readonly redis = new Webdis("http://localhost:7382");
 
   constructor(props: Readonly<IProps>) {
     super(props);
@@ -325,7 +325,7 @@ export default class App extends React.Component<IProps, IState> {
                       style={{fontFamily: "monospace"}}
                       onChange={(e: any) => this.setState({app_id: e.target.value})}/>
                   {this.lookupConfig({as: "checkbox", prop: "enterprise"})}
-                  {this.lookupConfig({as: "checkbox", prop: "directWebdis"})}
+                  {/* this.lookupConfig({as: "checkbox", prop: "directWebdis"}) */}
                 </Form.Group>
                 <Form.Group>
                   <Form.Label>App Key</Form.Label>
@@ -730,12 +730,6 @@ export default class App extends React.Component<IProps, IState> {
 
   private unpauseOnce = () => this.setState({paused: 1});
 
-  private toggleFocus = (tag: string) => {
-    (App.highlightedTag === tag ? this.onExitBadge : this.onEnterBadge)(tag);
-    // // tslint:disable-next-line:no-console
-    // console.log("highlightedTag", App.high);
-    // this.forceUpdate();
-  }
 
   private onEnterBadge = (tag: string) => {
     if (App.stylesheet) {
@@ -790,16 +784,6 @@ export default class App extends React.Component<IProps, IState> {
         TagControl={this.TagControl}
         showAll={showAll}
     />;
-  }
-
-  private derivativeOf = (results?: IHeadwordEntry[]) => {
-    if (results) {
-      const derivativeOf = flatten(flatten(flatten(results.map((result) =>
-        compact(result.lexicalEntries.map((entry) => entry.derivativeOf)))))).map((re) => re.id);
-      if (derivativeOf.length === 1) {
-        return derivativeOf[0];
-      }
-    }
   }
 
   private enqueue = (words: Array<string | undefined>) => {
@@ -874,62 +858,11 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
-    q = q.toLocaleLowerCase();
-    const {apiBaseUrl, languages} = this.state;
-    let promises: Array<[string, Promise<RetrieveEntry>]> = [];
-    const addLookup = (word: string, tags: ITags) => {
-      const words = promises.map(([w]) => w);
-      if (words.includes(word)) {
-        // console.log(`get: ignoring redundant request for '${word}' (${words.join(", ")})`);
-        return;
-      }
-      promises = promises.concat(languages.map((language) =>
-        [word, this.lookup.get(apiBaseUrl, language, word).then((pre) => {
-          pre?.results?.forEach((he) => (he as AnnotatedHeadwordEntry).tags = cloneDeep(tags));
-          return pre;
-        })]));
-      // console.log({addLookup: word, tags, promises});
-    };
-    const doLookups = async () => {
-      // const words = promises.map(([w]) => w);
-      const ps = promises.map(([, p]) => p);
-      // console.log({words, ps});
-      const promiseResults = await Promise.all(ps);
-      // console.log(`get: finished waiting for lookups: ${words.join(", ")}`);
-      return promiseResults.reduce((re0, re1) => {
-        re0.results = flatten(compact([re0.results, re1.results]));
-        return re0;
-      });
-    };
-    addLookup(redirect || q, {});
-    let re = await doLookups();
-    const crossReferences: string[] = [];
-    re.results?.forEach((result) =>
-      result.lexicalEntries.forEach((entry) => {
-        if (entry.lexicalCategory.id === "other") {
-          if (arraySetAdd({ crossReferences }, "crossReferences", result.id)) {
-            const tags: ITags = { imputed: [[`xref-other`, `${q} > ${result.id}`]] };
-            fillInTags(tags, undefined, entry.grammaticalFeatures, undefined, undefined);
-            addLookup(result.id, tags);
-          }
-        }
-        entry.entries?.forEach((lexicalEntry) =>
-          lexicalEntry.senses?.forEach((sense) =>
-            sense.crossReferences?.forEach((crossReference) => {
-              const { id: crossReferenceId, type } = crossReference;
-              if (arraySetAdd({ crossReferences }, "crossReferences", crossReferenceId)) {
-                const tags: ITags = { imputed: [[`xref-${kebabCase(type)}`, `${crossReferenceId} > ${result.id}`]] };
-                fillInTags(tags, entry.lexicalCategory.id, lexicalEntry.grammaticalFeatures, sense, undefined);
-                addLookup(crossReference.id, tags);
-              }
-            })));
-      }));
-    re = await doLookups();
-    redirect = this.derivativeOf(re.results);
-    if (redirect) {
-      // console.log("get: redirecting to " + redirect);
-      return this.get(q, redirect);
-    }
+    const re = await new LookupCoordinator({
+      apiUrl: this.state.apiBaseUrl,
+      enterprise: this.state.lookupProps.enterprise!,
+      redis: this.redis,
+    }).getWord(q, [OxfordLanguage.americanEnglish, OxfordLanguage.britishEnglish], redirect);
     return new Promise((resolve) => {
       this.setState(({records, history}) => {
         const pipeline = new OxfordDictionariesPipeline({
@@ -1121,7 +1054,6 @@ function FilterRow({
                      prop,
                      focus,
                      config,
-                     xref,
                      TagControl,
                      showAll = false,
                    }:

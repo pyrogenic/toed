@@ -1,10 +1,11 @@
 import assert from "assert";
+import { config as configEnvironment } from "dotenv";
 import kue, { DoneCallback, Job } from "kue";
 import { alias, deserialize, primitive, serializable } from "serializr";
 import yargs from "yargs";
-import {config as configEnvironment} from "dotenv";
-import { ILookupProps } from "../Lookup";
+import IORedis from "../redis/IORedis";
 import OxfordLanguage from "../types/OxfordLanguage";
+import LookupCoordinator from "./LookupCoordinator";
 
 configEnvironment();
 
@@ -18,7 +19,7 @@ class LookupEnv {
     @serializable(alias("OD_APP_KEY", primitive()))
     public appKey!: string;
     @serializable(alias("OD_APP_ENTERPRISE", primitive()))
-    public appEnterprise!: boolean;
+    public enterprise!: boolean;
 }
 
 const LOOKUP_ENV_KEYS: Array<keyof LookupEnv> = [
@@ -26,7 +27,7 @@ const LOOKUP_ENV_KEYS: Array<keyof LookupEnv> = [
     "apiUrl",
     "appId",
     "appKey",
-    "appEnterprise",
+    "enterprise",
 ];
 
 const ENV = deserialize(LookupEnv, process.env);
@@ -56,7 +57,9 @@ export async function enequeLookup(language: OxfordLanguage, word: string) {
     });
 }
 
-function start(props: Partial<ILookupProps> & { apiBaseUrl: string; }) {
+const harness = new LookupCoordinator({redis: new IORedis({db: 2}), ...ENV});
+
+function start() {
     // const {apiBaseUrl, language} = props;
     // const lookup = new Lookup(props);
     queue.process(JOB_NAME, (job: ILookupJob, done: DoneCallback) => {
@@ -64,7 +67,10 @@ function start(props: Partial<ILookupProps> & { apiBaseUrl: string; }) {
         // });
         const { data: { word, language } } = job;
         job.log(`processing ${word} in ${language}`);
-        done(undefined, "test-result");
+        harness.getWord(word, [language]).then(() => done(undefined, "test-result")).catch((error) => {
+            console.log("error processing", error);
+            done(error);
+        });
     });
     kue.app.listen(3005);
 }
@@ -99,3 +105,4 @@ const argv = yargs
     .help()
     .alias("help", "h")
     .argv;
+    
