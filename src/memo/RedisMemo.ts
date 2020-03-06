@@ -1,5 +1,5 @@
-import IMemoOptions from "./IMemoOptions";
 import IRedis from "../redis/IRedis";
+import IMemoOptions from "./IMemoOptions";
 
 export interface IOptions {
     cache?: boolean;

@@ -1,6 +1,7 @@
 import assert from "assert";
 import { config as configEnvironment } from "dotenv";
 import kue, { DoneCallback, Job } from "kue";
+import nodeFetch from "node-fetch";
 import { alias, deserialize, primitive, serializable } from "serializr";
 import yargs from "yargs";
 import IORedis from "../redis/IORedis";
@@ -57,20 +58,22 @@ export async function enequeLookup(language: OxfordLanguage, word: string) {
     });
 }
 
-const harness = new LookupCoordinator({redis: new IORedis({db: 2}), ...ENV});
+const coercedFetch = nodeFetch as unknown as typeof fetch;
+const harness = new LookupCoordinator({ redis: new IORedis({ db: 2 }), fetch: coercedFetch, ...ENV });
 
 function start() {
-    // const {apiBaseUrl, language} = props;
-    // const lookup = new Lookup(props);
     queue.process(JOB_NAME, (job: ILookupJob, done: DoneCallback) => {
-        // lookup.get(apiBaseUrl, language, job.word!).then((result: ) => {
-        // });
         const { data: { word, language } } = job;
         job.log(`processing ${word} in ${language}`);
-        harness.getWord(word, [language]).then(() => done(undefined, "test-result")).catch((error) => {
-            console.log("error processing", error);
-            done(error);
-        });
+        harness.getWord(word, [language])
+            .then((result) => {
+                job.log(`processed ${word} in ${language}`);
+                job.log(result);
+                done(undefined, result);})
+            .catch((error) => {
+                job.error(error);
+                done(error);
+            });
     });
     kue.app.listen(3005);
 }
@@ -105,4 +108,3 @@ const argv = yargs
     .help()
     .alias("help", "h")
     .argv;
-    

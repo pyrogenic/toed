@@ -5,11 +5,18 @@ import IMemoOptions from "./memo/IMemoOptions";
 import RedisMemo from "./memo/RedisMemo";
 import StorageMemo from "./memo/StorageMemo";
 import OpTrack from "./OpTrack";
+import IRedis from "./redis/IRedis";
+import Webdis from "./redis/Webdis";
 import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import RetrieveEntry from "./types/gen/RetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
-import IRedis from "./redis/IRedis";
-import Webdis from "./redis/Webdis";
+
+let DEFAULT_FETCH: typeof fetch | undefined;
+try {
+    DEFAULT_FETCH = fetch;
+} catch {
+    // noop
+}
 
 export enum CacheMode {
     "none" = "none",
@@ -19,12 +26,16 @@ export enum CacheMode {
 
 export interface ILookupProps {
     cache: CacheMode;
+    apiUrl: string;
+    appId: string;
+    appKey: string;
     enterprise: boolean;
     online: boolean;
     redis: IRedis;
     threads: number;
     visible: number;
     apiRate: number;
+    fetch: typeof fetch;
 }
 
 const STORAGE_KEY_PREFIX = "fetchJson";
@@ -95,6 +106,10 @@ export default class Lookup {
 
     public static effectiveProps(props: Partial<ILookupProps> = {}) {
         // const development = process.env.NODE_ENV === "development";
+        const appId = get(props, "appId", "<appId>");
+        const apiUrl = get(props, "apiUrl", "<apiUrl>");
+        const appKey = get(props, "appKey", "<appKey>");
+        const fetchValue = get(props, "fetch", DEFAULT_FETCH!);
         const enterprise = get(props, "enterprise", (process.env.REACT_APP_ENTERPRISE as unknown as boolean) ?? false);
         const cache = get(props, "cache", CacheMode.session);
         const online = get(props, "online", true);
@@ -104,8 +119,12 @@ export default class Lookup {
         const redis = get(props, "redis", new Webdis("http://localhost:7382"));
         return {
             apiRate,
+            apiUrl,
+            appId,
+            appKey,
             cache,
             enterprise,
+            fetch: fetchValue,
             online,
             redis,
             threads,
@@ -132,10 +151,8 @@ export default class Lookup {
     }
 
     public readonly callOxfordDictionaries = async (url: string): Promise<IRetrieveEntry> => {
-        // tslint:disable: variable-name
-        const app_id = localStorage.getItem("oed/app_id");
-        const app_key = localStorage.getItem("oed/app_key");
-        // tslint:enable: variable-name
+        // tslint:disable-next-line:variable-name
+        const {appId: app_id, appKey: app_key, fetch} = this.effectiveProps;
         if (!app_id || !app_key) {
             throw new Error("missing app id or key");
         }
@@ -151,9 +168,8 @@ export default class Lookup {
         return json;
     }
 
-    public readonly get = async (
-        apiBaseUrl: string, language: OxfordLanguage, q: string, options?: IMemoOptions) => {
-        const url = `${apiBaseUrl}/words/${language}?q=${q}`;
+    public readonly get = async (language: OxfordLanguage, q: string, options?: IMemoOptions) => {
+        const url = `${this.effectiveProps.apiUrl}/words/${language}?q=${q}`;
         const json = await this.lookup(url, options);
         return deserialize(RetrieveEntry, json);
     }

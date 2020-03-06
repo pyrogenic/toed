@@ -2,8 +2,8 @@ export type ValueType = string | number;
 export type KeyType = string;
 
 export interface IEvalArgs {
-    keys?: KeyType[],
-    argv?: ValueType[],
+    keys?: KeyType[];
+    argv?: ValueType[];
 }
 
 export default interface IRedis {

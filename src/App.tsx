@@ -57,6 +57,7 @@ import OxfordDictionariesPipeline,
 } from "./OxfordDictionariesPipeline";
 import Pass from "./Pass";
 import PassComponent from "./PassComponent";
+import Webdis from "./redis/Webdis";
 import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 import OxfordLanguage from "./types/OxfordLanguage";
 import WordRecord from "./WordRecord";
@@ -64,7 +65,6 @@ import WordTable from "./WordTable";
 import jqxzWordsUrl from "./wwf/jqxzWords.txt";
 import threeLetterWordsUrl from "./wwf/threeLetterWords.txt";
 import twoLetterWordsUrl from "./wwf/twoLetterWords.txt";
-import Webdis from "./redis/Webdis";
 
 type Renderable = ReturnType<React.Component["render"]>;
 
@@ -730,7 +730,6 @@ export default class App extends React.Component<IProps, IState> {
 
   private unpauseOnce = () => this.setState({paused: 1});
 
-
   private onEnterBadge = (tag: string) => {
     if (App.stylesheet) {
       if (App.highlightedTag === tag) {
@@ -859,10 +858,9 @@ export default class App extends React.Component<IProps, IState> {
 
   private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
     const re = await new LookupCoordinator({
-      apiUrl: this.state.apiBaseUrl,
-      enterprise: this.state.lookupProps.enterprise!,
       redis: this.redis,
-    }).getWord(q, [OxfordLanguage.americanEnglish, OxfordLanguage.britishEnglish], redirect);
+      ...this.state.lookupProps,
+    } as ILookupProps).getWord(q, [OxfordLanguage.americanEnglish, OxfordLanguage.britishEnglish], redirect);
     return new Promise((resolve) => {
       this.setState(({records, history}) => {
         const pipeline = new OxfordDictionariesPipeline({

@@ -1,37 +1,30 @@
 import { cloneDeep, compact, flatten, kebabCase } from "lodash";
 import { ITags } from "../IWordRecord";
-import Lookup, { CacheMode } from "../Lookup";
+import Lookup, { CacheMode, ILookupProps } from "../Lookup";
 import { arraySetAdd } from "../Magic";
 import { AnnotatedHeadwordEntry, fillInTags } from "../OxfordDictionariesPipeline";
-import IRedis from "../redis/IRedis";
 import IHeadwordEntry from "../types/gen/IHeadwordEntry";
 import IRetrieveEntry from "../types/gen/IRetrieveEntry";
 import RetrieveEntry from "../types/gen/RetrieveEntry";
 import OxfordLanguage from "../types/OxfordLanguage";
 
 export default class LookupCoordinator {
-    private apiUrl: string;
     private lookup: Lookup;
 
-    constructor({ apiUrl, enterprise, redis }: {
-        apiUrl: string,
-        enterprise: boolean,
-        redis: IRedis,
-    }) {
-        this.apiUrl = apiUrl;
-        this.lookup = new Lookup({cache: CacheMode.none, enterprise, redis});
+    constructor(props: Partial<ILookupProps>) {
+        this.lookup = new Lookup({cache: CacheMode.none, ...props});
     }
+
     public getWord = async (q: string, languages: OxfordLanguage[], redirect?: string): Promise<IRetrieveEntry> => {
         q = q.toLocaleLowerCase();
         let promises: Array<[string, Promise<RetrieveEntry>]> = [];
-        const {apiUrl: apiBaseUrl} = this;
         const addLookup = (word: string, tags: ITags) => {
             const words = promises.map(([w]) => w);
             if (words.includes(word)) {
                 return;
             }
             promises = promises.concat(languages.map((language) =>
-                [word, this.lookup.get(apiBaseUrl, language, word).then((pre) => {
+                [word, this.lookup.get(language, word).then((pre) => {
                     pre?.results?.forEach((he) => (he as AnnotatedHeadwordEntry).tags = cloneDeep(tags));
                     return pre;
                 })]));
@@ -65,7 +58,8 @@ export default class LookupCoordinator {
                             const { id: crossReferenceId, type } = crossReference;
                             if (arraySetAdd({ crossReferences }, "crossReferences", crossReferenceId)) {
                                 const tags: ITags = { imputed: [[`xref-${kebabCase(type)}`, `${crossReferenceId} > ${result.id}`]] };
-                                fillInTags(tags, entry.lexicalCategory.id, lexicalEntry.grammaticalFeatures, sense, undefined);
+                                fillInTags(
+                                    tags, entry.lexicalCategory.id, lexicalEntry.grammaticalFeatures, sense, undefined);
                                 addLookup(crossReference.id, tags);
                             }
                         })));

@@ -207,22 +207,22 @@ export default function behavesLikeRedis(client: IRedis) {
 
         test("BISET define", async (cb) => {
             const biset = Redis.define(client, BISET_LUA);
-            const bisetAdd = async (item: string, mark: string) => {
+            const bisetAdd = async (item1: string, mark1: string) => {
                 const result = await biset({
-                    argv: ["ADD", item, mark],
-                    keys: [itemKey(item), markKey(mark)],
+                    argv: ["ADD", item1, mark1],
+                    keys: [itemKey(item1), markKey(mark1)],
                 });
                 const [r0, r1] = Array.isArray(result) ? result : [0, 0];
                 return r0 === 1 || r1 === 1;
-            }
-            const bisetRemove = async (item: string, mark: string) => {
+            };
+            const bisetRemove = async (item1: string, mark1: string) => {
                 const result = await biset({
-                    argv: ["REM", item, mark],
-                    keys: [itemKey(item), markKey(mark)],
+                    argv: ["REM", item1, mark1],
+                    keys: [itemKey(item1), markKey(mark1)],
                 });
                 const [r0, r1] = Array.isArray(result) ? result : [0, 0];
                 return r0 === 1 || r1 === 1;
-            }
+            };
             let item = "hello";
             let mark = "heart";
             expect(await client.sismember(itemKey(item), mark)).toBeFalsy();
