@@ -68,8 +68,9 @@ function start() {
         harness.getWord(word, [language])
             .then((result) => {
                 job.log(`processed ${word} in ${language}`);
-                job.log(result);
-                done(undefined, result);})
+                job.log(JSON.stringify(result));
+                done(undefined, result);
+            })
             .catch((error) => {
                 job.error(error);
                 done(error);

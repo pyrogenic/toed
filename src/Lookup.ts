@@ -107,7 +107,7 @@ export default class Lookup {
     public static effectiveProps(props: Partial<ILookupProps> = {}) {
         // const development = process.env.NODE_ENV === "development";
         const appId = get(props, "appId", "<appId>");
-        const apiUrl = get(props, "apiUrl", "<apiUrl>");
+        const apiUrl = get(props, "apiUrl", "/api/v2");
         const appKey = get(props, "appKey", "<appKey>");
         const fetchValue = get(props, "fetch", DEFAULT_FETCH!);
         const enterprise = get(props, "enterprise", (process.env.REACT_APP_ENTERPRISE as unknown as boolean) ?? false);
