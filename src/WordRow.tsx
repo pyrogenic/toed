@@ -20,6 +20,7 @@ import IRetrieveEntry from "./types/gen/IRetrieveEntry";
 export default function WordRow(
     {
         id,
+        gwf,
         record,
         onlyForHash,
         getReload,
@@ -31,6 +32,7 @@ export default function WordRow(
     }:
         {
             id?: string,
+            gwf: boolean,
             record: IWordRecord | IDiscardedWordRecord,
             onlyForHash: boolean,
             getReload: App["getOnClick"],
@@ -74,7 +76,7 @@ export default function WordRow(
         || resultDiscarded || resultDiscardedTags;
     return <>
         {gwfOnly !== true && <MarksControl word={record.q} badges={true} />}
-        <Col xs={fluid ? "auto" : 1}>
+        <Col xs={fluid ? "auto" : gwf ? 1 : 2}>
             {record.q !== array(result?.entry_rich)?.[0] && <Row className={result?.definitions === undefined ? "headword not-found" : "text-muted"}>
                 {record.q}
             </Row>}
@@ -105,7 +107,7 @@ export default function WordRow(
                     </Row>
                 </TaggedComponent>)}
         </Col>
-        <Col xs={fluid ? "auto" : 4}>
+        <Col xs={fluid ? "auto" : gwf ? 4 : 8}>
             {result === undefined ? <Spinner className="m-2" animation="border" role="status">
                 <span className="sr-only">Loading...</span>
             </Spinner> : <>
@@ -172,7 +174,7 @@ export default function WordRow(
                 </Col>
             </Row>}
         </Col>
-        {!fluid && !(gwfOnly === true) && <Col xs={fluid ? "auto" : 1}>
+        {!fluid && !(gwfOnly === true) && <Col xs={fluid ? "auto" : gwf ? 1 : 2}>
             <ButtonGroup>
                 {moreInfo && <OverlayTrigger trigger="click" overlay={popover()} rootClose={true}>
                     <Button size="sm" variant="light">
@@ -211,6 +213,7 @@ export default function WordRow(
                         TagControl={TagControl}
                         MarksControl={MarksControl}
                         fluid={true}
+                        gwf={false}
                     />
                 </div>
             </Popover.Content>

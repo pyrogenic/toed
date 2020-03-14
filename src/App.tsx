@@ -87,6 +87,7 @@ interface IState {
   apiBaseUrl: string;
   app_id?: string;
   app_key?: string;
+  gwf: boolean;
 
   languages: OxfordLanguage[];
   q: string;
@@ -217,6 +218,7 @@ export default class App extends React.Component<IProps, IState> {
     Marks.forEach(([key]) => config.marks[key] = config.marks[key] ?? Pass.primary);
     const history: string[] = uniq(JSON.parse(localStorage.getItem("oed/history") || "[]"));
     const hideCached: boolean = JSON.parse(localStorage.getItem("oed/hideCached") || "false");
+    const gwf: boolean = JSON.parse(localStorage.getItem("oed/gwf") || "false");
     const lookupProps = JSON.parse(localStorage.getItem("oed/lookupProps") ?? "{}");
     this.state = {
       apiBaseUrl: "/api/v2",
@@ -224,6 +226,7 @@ export default class App extends React.Component<IProps, IState> {
       app_key: localStorage.getItem("oed/app_key") || undefined,
       config,
       focus,
+      gwf,
       hideCached,
       history,
       languages: [OxfordLanguage.americanEnglish, OxfordLanguage.britishEnglish],
@@ -331,6 +334,12 @@ export default class App extends React.Component<IProps, IState> {
                       style={{fontFamily: "monospace"}}
                       onChange={(e: any) => this.setState({app_id: e.target.value})}/>
                   {this.lookupConfig({as: "checkbox", prop: "enterprise"})}
+                  <Form.Check
+          className="mr-auto"
+          label="GWF"
+          checked={this.state.gwf}
+          onChange={() => this.setState(({gwf}) => ({gwf: !gwf}))}
+        />
                   {/* this.lookupConfig({as: "checkbox", prop: "directWebdis"}) */}
                 </Form.Group>
                 <Form.Group>
@@ -447,6 +456,7 @@ export default class App extends React.Component<IProps, IState> {
             <WordTable
                 records={this.state.records}
                 focus={this.state.focus}
+                gwf={this.state.gwf}
                 show={this.lookup.effectiveProps.visible}
                 getReload={this.getOnClick}
                 get={this.get}

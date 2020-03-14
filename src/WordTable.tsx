@@ -21,6 +21,7 @@ interface IProps {
   records: IWordRecord[];
   focus: TagFocus;
   show: number;
+  gwf: boolean;
   getReload: App["getOnClick"];
   get: App["get"];
   TagControl: TagControlFactory;
@@ -96,11 +97,11 @@ export default class WordTable extends React.Component<IProps, IState> {
   }
 
   public render() {
-    const currentPage = this.state.page;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const variant: ButtonProps["variant"] = "secondary";
     const outlineVariant: ButtonProps["variant"] = "outline-secondary";
-    const {records: visibleRecords, show: pageSize} = this.state;
+    const {gwf} = this.props;
+    const {page: currentPage, records: visibleRecords, show: pageSize} = this.state;
     const count = visibleRecords.length;
     const maxPage = Math.ceil(count / pageSize) - 1;
     let [minShownPage, maxShownPage] = [0, maxPage];
@@ -179,10 +180,16 @@ export default class WordTable extends React.Component<IProps, IState> {
     return <div className="word-table">
       {pager}
       <Row className="header">
+        {gwf ? <>
         <Col xs={1}>Word</Col>
         <Col xs={4}>Definition</Col>
         <Col xs={2}>Notes</Col>
         <Col xs={5}>GWF Definition</Col>
+        </> : <>
+        <Col xs={2}>Word</Col>
+        <Col xs={8}>Definition</Col>
+        <Col xs={2}>Notes</Col>
+        </>}
       </Row>
       {this.renderVisibleRows()}
       {pager}
@@ -220,7 +227,7 @@ export default class WordTable extends React.Component<IProps, IState> {
   }
 
   private renderVisibleRows(): React.ReactNode {
-    const { getReload, get, TagControl, MarksControl } = this.props;
+    const { getReload, get, gwf, TagControl, MarksControl } = this.props;
     const { page, records, show, onlyForHash } = this.state;
     return slice(records, page * show, page * show + show).map((record) =>
     // <Row className={`entry ${onlyForHash ? "onlyForHash" : ""}`} id={record.q} key={record.q}>
@@ -228,21 +235,23 @@ export default class WordTable extends React.Component<IProps, IState> {
         <WordRow
           onlyForHash={onlyForHash === record.q}
           record={record}
+          gwf={gwf}
           gwfOnly={false}
           getReload={getReload}
           get={get}
           TagControl={TagControl}
           MarksControl={MarksControl}
         />
-        <WordRow
+        {gwf && <WordRow
           onlyForHash={onlyForHash === record.q}
           record={record}
+          gwf={true}
           gwfOnly={true}
           getReload={getReload}
           get={get}
           TagControl={TagControl}
           MarksControl={MarksControl}
-        />
+        />}
       </Row>);
   }
 }
