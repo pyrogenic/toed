@@ -33,7 +33,7 @@ import Focus, { FocusIcons } from "./Focus";
 import Icon from "./Icon";
 import IWordRecord, { ITags } from "./IWordRecord";
 import LookupCoordinator from "./job/LookupCoordinator";
-import Lookup, { CacheMode, ILookupProps } from "./Lookup";
+import Lookup, { CacheMode, ILookupProps, PartialLookupProps } from "./Lookup";
 import {
   arraySetAdd,
   arraySetHas,
@@ -94,7 +94,7 @@ interface IState {
   rate: number;
   paused?: boolean | number;
   promises: IPromiseEntry[];
-  lookupProps: Partial<ILookupProps>;
+  lookupProps: PartialLookupProps;
 
   history: string[];
   hideCached: boolean;
@@ -236,6 +236,12 @@ export default class App extends React.Component<IProps, IState> {
       visibleRecordCount: 0,
       xref,
     };
+    Object.assign(this.state.lookupProps, {
+      ...lookupProps,
+      apiUrl: this.state.apiBaseUrl,
+      appId: this.state.app_id,
+      appKey: this.state.app_key,
+    });
     this.lookup = new Lookup(lookupProps);
   }
 
@@ -516,14 +522,14 @@ export default class App extends React.Component<IProps, IState> {
                                     prop: PropertyNamesOfType<ILookupProps, number>,
                                     range?: [number, number],
                                   })) {
-    const defaultValue = Lookup.effectiveProps()[(props.prop)];
+    const defaultValue = Lookup.defaultProps[props.prop];
     let defaultValueLabel: Renderable;
     switch (typeof defaultValue) {
       case "boolean":
         defaultValueLabel = <Icon icon={defaultValue ? OpenIconicNames.check :  OpenIconicNames.x} />;
         break;
       default:
-        defaultValueLabel = defaultValue.toString();
+        defaultValueLabel = defaultValue?.toString();
         break;
     }
     const value = this.state.lookupProps[props.prop] === undefined
@@ -559,7 +565,7 @@ export default class App extends React.Component<IProps, IState> {
           <Form.Text>{titleCase(props.prop)}</Form.Text>
           <Form.Control
             as={"select"}
-            value={(this.state.lookupProps[props.prop] ?? defaultValueLabel).toString()}
+            value={(this.state.lookupProps[props.prop] ?? defaultValueLabel ?? "undefined").toString()}
             onChange={(event) => {
               const newValue = event.currentTarget.value;
               this.setState(({ lookupProps }) => {

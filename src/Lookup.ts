@@ -38,6 +38,8 @@ export interface ILookupProps {
     fetch: typeof fetch;
 }
 
+export type PartialLookupProps = Partial<ILookupProps> & Pick<ILookupProps, "apiUrl" | "appId" | "appKey">;
+
 const STORAGE_KEY_PREFIX = "fetchJson";
 // const LookupDefaults: ILookupProps = {
 //     cache: CacheMode.session,
@@ -54,7 +56,7 @@ export default class Lookup {
 
     public get props() { return this.propsValue; }
 
-    public set props(props: Partial<ILookupProps>) {
+    public set props(props: PartialLookupProps) {
         this.propsValue = props;
         const {redis, cache, enterprise, online} = this.effectiveProps;
         const validate = (result: any) =>
@@ -104,11 +106,12 @@ export default class Lookup {
         return result;
     }
 
-    public static effectiveProps(props: Partial<ILookupProps> = {}) {
-        // const development = process.env.NODE_ENV === "development";
-        const appId = get(props, "appId", "<appId>");
-        const apiUrl = get(props, "apiUrl", "/api/v2");
-        const appKey = get(props, "appKey", "<appKey>");
+    public static get defaultProps(): Partial<ILookupProps> {
+        return this.effectiveProps({} as any);
+    }
+
+    public static effectiveProps(props: PartialLookupProps): ILookupProps {
+        const {apiUrl, appId, appKey} = props || {};
         const fetchValue = get(props, "fetch", DEFAULT_FETCH!);
         const enterprise = get(props, "enterprise", (process.env.REACT_APP_ENTERPRISE as unknown as boolean) ?? false);
         const cache = get(props, "cache", CacheMode.session);
@@ -117,7 +120,7 @@ export default class Lookup {
         const visible = get(props, "visible", 10);
         const apiRate = get(props, "apiRate", 200);
         const redis = get(props, "redis", new Webdis("http://localhost:7382"));
-        return {
+        const result = {
             apiRate,
             apiUrl,
             appId,
@@ -130,6 +133,8 @@ export default class Lookup {
             threads,
             visible,
         };
+        console.log({props, result});
+        return result;
     }
 
     public static clearBrowserCache(storage: Storage) {
@@ -143,10 +148,10 @@ export default class Lookup {
     public storage?: StorageMemo<string, IRetrieveEntry>;
     public redis?: RedisMemo<string, IRetrieveEntry>;
 
-    private propsValue: Partial<ILookupProps> = {};
+    private propsValue!: PartialLookupProps;
     private lookup!: RedisMemo<string, IRetrieveEntry>["get"];
 
-    constructor(props: Partial<ILookupProps>) {
+    constructor(props: PartialLookupProps) {
         this.props = props;
     }
 
@@ -169,7 +174,9 @@ export default class Lookup {
     }
 
     public readonly get = async (language: OxfordLanguage, q: string, options?: IMemoOptions) => {
-        const url = `${this.effectiveProps.apiUrl}/words/${language}?q=${q}`;
+        const {apiUrl} = this.effectiveProps;
+        console.warn(apiUrl);
+        const url = `${apiUrl}/words/${language}?q=${q}`;
         const json = await this.lookup(url, options);
         return deserialize(RetrieveEntry, json);
     }

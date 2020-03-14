@@ -1,6 +1,6 @@
 import { cloneDeep, compact, flatten, kebabCase } from "lodash";
 import { ITags } from "../IWordRecord";
-import Lookup, { CacheMode, ILookupProps } from "../Lookup";
+import Lookup, { CacheMode, PartialLookupProps } from "../Lookup";
 import { arraySetAdd } from "../Magic";
 import { AnnotatedHeadwordEntry, fillInTags } from "../OxfordDictionariesPipeline";
 import IHeadwordEntry from "../types/gen/IHeadwordEntry";
@@ -11,7 +11,7 @@ import OxfordLanguage from "../types/OxfordLanguage";
 export default class LookupCoordinator {
     private lookup: Lookup;
 
-    constructor(props: Partial<ILookupProps>) {
+    constructor(props: PartialLookupProps) {
         this.lookup = new Lookup({cache: CacheMode.none, ...props});
     }
 
