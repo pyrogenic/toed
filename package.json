@@ -4,7 +4,7 @@
   "private": true,
   "proxy": "http://localhost:5000/",
   "dependencies": {
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "mobx": "^5.14.2",
     "mobx-react": "6.1.4",
     "node-fetch": "^2.6.1",
