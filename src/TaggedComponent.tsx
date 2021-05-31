@@ -34,7 +34,7 @@ export default function TaggedComponent({ query, word, title, children, tags, Ta
     </OverlayTrigger>;
 
     function popover(id: string) {
-        return tags && <Popover id={id} className="tags">
+        return tags ? <Popover id={id} className="tags">
             {title && <Popover.Title>{title} <span className="text-muted">{word}</span></Popover.Title>}
             <Popover.Content>
                 <TagControls TagControl={TagControl} word={word} tags={tags} />
@@ -42,6 +42,6 @@ export default function TaggedComponent({ query, word, title, children, tags, Ta
             <Popover.Content>
                 <MarksControl word={query} />
             </Popover.Content>
-        </Popover>;
+        </Popover> : <></>;
     }
 };

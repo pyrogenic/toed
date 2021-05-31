@@ -6,7 +6,7 @@ import uniq from "lodash/uniq";
 import without from "lodash/without";
 import App from "./App";
 import IDictionaryEntry from "./IDictionaryEntry";
-import IWordRecord, {DiscardedDictionaryEntry, ITags} from "./IWordRecord";
+import IWordRecord, { DiscardedDictionaryEntry, ITags } from "./IWordRecord";
 import {
     ArrayPropertyNamesOfType,
     arraySetAdd,
@@ -136,7 +136,7 @@ export default class OxfordDictionariesPipeline {
                 }
                 return potentialPlural.lexicalEntries?.some((lexicalEntry) => {
                     return lexicalEntry.entries?.some((entry) => {
-                        const isPlural = entry.grammaticalFeatures?.some(({id}) => id === "plural");
+                        const isPlural = entry.grammaticalFeatures?.some(({ id }) => id === "plural");
                         if (isPlural) {
                             const crossReferencePlural = entry.senses?.some(({ crossReferences: ec }) =>
                                 ec?.some(({ type, id }) => type === "see also" && id === potentialSingular.id));
@@ -145,6 +145,7 @@ export default class OxfordDictionariesPipeline {
                                 return true;
                             }
                         }
+                        return false;
                     });
                 });
             });
@@ -177,7 +178,7 @@ export default class OxfordDictionariesPipeline {
                 imputedXrefs.set(target, definedBy);
             }
         });
-        console.log({internalRedirects: imputedXrefs});
+        console.log({ internalRedirects: imputedXrefs });
         const rejectedLexicalEntries: ILexicalEntry[] = [];
         const discard = (
             lexicalEntry: Pick<ILexicalEntry, "entries" | "lexicalCategory" | "text">,
@@ -189,7 +190,7 @@ export default class OxfordDictionariesPipeline {
                 const grammaticalFeatures = lentry.grammaticalFeatures?.map((e) => e.id);
                 discardElements(record, result, "etymology", lentry.etymologies, tags);
                 this.pullPronunciation(
-                    record, result, {}, lexicalEntry.text, lentry.pronunciations, tags, {discard: true});
+                    record, result, {}, lexicalEntry.text, lentry.pronunciations, tags, { discard: true });
                 lentry.senses?.forEach((sense) => {
                     const senseTags: ITags = cloneDeep(tags);
                     arraySetAdd(senseTags, "partsOfSpeech", partOfSpeech);
@@ -291,7 +292,7 @@ export default class OxfordDictionariesPipeline {
         }
 
         headwordEntries.forEach((headwordEntry) => {
-            const { pronunciations: headwordEntryPronunciations} = headwordEntry;
+            const { pronunciations: headwordEntryPronunciations } = headwordEntry;
             // console.log(`Headword Entry '${headwordEntry.id}'`,
             //     { headwordEntryPronunciations },
             // );
@@ -381,13 +382,13 @@ export default class OxfordDictionariesPipeline {
                             arraySetAdd(lentryTags, "imputed", ["no-senses"]);
                             discardElements(record, result, "etymology", etymologies, lentryTags);
                             this.pullPronunciation(
-                                record, result, resultTags, text, pronunciations, lentryTags, {discard: true});
+                                record, result, resultTags, text, pronunciations, lentryTags, { discard: true });
                         }
                     });
                 } else {
-                    const pronunciations =  flatten(compact([headwordEntryPronunciations, lexicalEntryPronunciations]));
+                    const pronunciations = flatten(compact([headwordEntryPronunciations, lexicalEntryPronunciations]));
                     this.pullPronunciation(
-                        record, result, resultTags, text, pronunciations, lexicalEntryTags, {discard: true});
+                        record, result, resultTags, text, pronunciations, lexicalEntryTags, { discard: true });
                 }
             });
         });
@@ -413,7 +414,7 @@ export default class OxfordDictionariesPipeline {
             { short: true, subsenses: true, pass: Pass.tertiary, fallbackPass: Pass.secondary },
         ].forEach((pass) => {
             headwordEntries.forEach((headwordEntry) => {
-                const {lexicalEntries, pronunciations: headwordPronounciations} = headwordEntry;
+                const { lexicalEntries, pronunciations: headwordPronounciations } = headwordEntry;
                 lexicalEntries?.forEach((lexicalEntry) => {
                     if (rejectedLexicalEntries.includes(lexicalEntry)) {
                         return;
@@ -474,7 +475,7 @@ export default class OxfordDictionariesPipeline {
             copyTags(resultTags.pronunciation_ipa, allTags);
         }
         if (!result.definitions || Object.keys(result.definitions).length === 0) {
-          arraySetAdd(allTags, "imputed", ["undefined"]);
+            arraySetAdd(allTags, "imputed", ["undefined"]);
         }
         this.processed(this.query, record);
         return result;
@@ -690,7 +691,7 @@ export default class OxfordDictionariesPipeline {
         resultTags: Required<IWordRecord>["resultTags"],
         word: string, pronunciations: IPronunciation[] | undefined,
         tags: ITags | (() => ITags),
-        options?: {replace?: boolean, discard?: boolean}) {
+        options?: { replace?: boolean, discard?: boolean }) {
         const discard = options?.discard;
         const replace = options?.replace;
         if (!word) {
@@ -782,7 +783,7 @@ function discardElements(
     record: PartialWordRecord,
     result: Partial<IDictionaryEntry>,
     prop: ArrayPropertyNamesOfType<DiscardedDictionaryEntry, string>,
-    values: Array<string | {text: string}> | undefined,
+    values: Array<string | { text: string }> | undefined,
     tags: ITags | (() => ITags),
     ...additionalTags: Required<ITags>["imputed"]) {
     values?.forEach((item) => {
@@ -804,7 +805,7 @@ export function fillInTags(
         grammaticalFeatures = (grammaticalFeatures as IGrammaticalFeature[]).map((e) => e.id);
     }
     arraySetAddAll(tags, "grammaticalFeatures", grammaticalFeatures as string[]);
-    const getId = prefix ? ({id}: {id: string}) => `${prefix}${id}` : ({id}: {id: string}) => id;
+    const getId = prefix ? ({ id }: { id: string }) => `${prefix}${id}` : ({ id }: { id: string }) => id;
     const registers = spread(sense?.registers).map(getId);
     arraySetAddAll(tags, "registers", registers);
     const domains = spread(sense?.domains).map(getId);

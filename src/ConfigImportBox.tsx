@@ -33,7 +33,7 @@ export default function ConfigImportBox({ currentConfig, setConfig }: {
             rows={10}
             cols={24}
             value={value}
-            onChange={(e: React.SyntheticEvent<HTMLInputElement>) => setValue(e.currentTarget.value)}
+            onChange={({ target: { value } }) => setValue(value)}
         />
     </Col>;
     const isDefault = !error && isEqual(config, defaultConfig);

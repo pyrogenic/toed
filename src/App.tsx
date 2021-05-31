@@ -114,10 +114,11 @@ function odApiCallsLastMinute() {
   return OpTrack.history("odapi", 60 * 1000)[0]?.length ?? 0;
 }
 
-function DisclosureBar({id, title, tooltip, children}: React.PropsWithChildren<{
+function DisclosureBar({ id, title, tooltip, children }: React.PropsWithChildren<{
   id: string,
   title: React.ReactChild,
-  tooltip?: string}>) {
+  tooltip?: string
+}>) {
   const [open, setOpen] = React.useState(false);
   const [closing, setClosing] = React.useState(false);
   return (
@@ -247,7 +248,7 @@ export default class App extends React.Component<IProps, IState> {
         // tslint:disable-next-line:prefer-for-of
         for (let i = 0; i < document.styleSheets.length; i++) {
           const ss = document.styleSheets[i];
-          if (!ss.href && ss.ownerNode.childNodes.length === 0) {
+          if (!ss.href && ss.ownerNode?.childNodes.length === 0) {
             App.stylesheet = ss as CSSStyleSheet;
           }
         }
@@ -297,7 +298,7 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   public render() {
-    const loaded = this.state.records.map(({q}) => q);
+    const loaded = this.state.records.map(({ q }) => q);
     const history = without(this.state.history, ...loaded).reverse();
     const wordListExceptions = this.state.hideCached ? [...loaded, ...history] : loaded;
     const WordListComponent = this.WordListComponent;
@@ -320,20 +321,20 @@ export default class App extends React.Component<IProps, IState> {
                 <Form.Group>
                   <Form.Label>App ID</Form.Label>
                   <Form.Control
-                      placeholder="App ID"
-                      value={this.state.app_id || undefined}
-                      style={{fontFamily: "monospace"}}
-                      onChange={(e: any) => this.setState({app_id: e.target.value})}/>
-                  {this.lookupConfig({as: "checkbox", prop: "enterprise"})}
-                  {this.lookupConfig({as: "checkbox", prop: "directWebdis"})}
+                    placeholder="App ID"
+                    value={this.state.app_id || undefined}
+                    style={{ fontFamily: "monospace" }}
+                    onChange={(e: any) => this.setState({ app_id: e.target.value })} />
+                  {this.lookupConfig({ as: "checkbox", prop: "enterprise" })}
+                  {this.lookupConfig({ as: "checkbox", prop: "directWebdis" })}
                 </Form.Group>
                 <Form.Group>
                   <Form.Label>App Key</Form.Label>
                   <Form.Control
-                      placeholder="App Key"
-                      value={this.state.app_key || undefined}
-                      style={{fontFamily: "monospace"}}
-                      onChange={(e: any) => this.setState({app_key: e.target.value})}/>
+                    placeholder="App Key"
+                    value={this.state.app_key || undefined}
+                    style={{ fontFamily: "monospace" }}
+                    onChange={(e: any) => this.setState({ app_key: e.target.value })} />
                 </Form.Group>
               </Form>
             </Container>
@@ -343,14 +344,14 @@ export default class App extends React.Component<IProps, IState> {
               <Form>
                 <Form.Group>
                   <Form.Label>Lookup</Form.Label>
-                  {this.lookupConfig({as: "checkbox", prop: "online"})}
-                  {this.lookupConfig({as: "select", prop: "cache", enumType: CacheMode})}
+                  {this.lookupConfig({ as: "checkbox", prop: "online" })}
+                  {this.lookupConfig({ as: "select", prop: "cache", enumType: CacheMode })}
                 </Form.Group>
                 <Form.Group>
                   <Form.Label>Limits</Form.Label>
-                  {this.lookupConfig({as: "number", prop: "threads", range: [1, 10]})}
-                  {this.lookupConfig({as: "number", prop: "apiRate", range: [1, 500]})}
-                  {this.lookupConfig({as: "number", prop: "visible", range: [1, 1000]})}
+                  {this.lookupConfig({ as: "number", prop: "threads", range: [1, 10] })}
+                  {this.lookupConfig({ as: "number", prop: "apiRate", range: [1, 500] })}
+                  {this.lookupConfig({ as: "number", prop: "visible", range: [1, 1000] })}
                 </Form.Group>
               </Form>
             </Container>
@@ -358,8 +359,8 @@ export default class App extends React.Component<IProps, IState> {
           <NavDropdown title="Config" id="nav-config">
             <Container>
               <ConfigImportBox
-                  currentConfig={this.state.config}
-                  setConfig={(config) => this.setState({config})}/>
+                currentConfig={this.state.config}
+                setConfig={(config) => this.setState({ config })} />
             </Container>
           </NavDropdown>
           <NavDropdown title="Words" id="nav-words">
@@ -395,33 +396,33 @@ export default class App extends React.Component<IProps, IState> {
             </Container>
           </NavDropdown>
 
-          <Nav className="mr-auto"/>
+          <Nav className="mr-auto" />
 
-          <QueueComponent/>
+          <QueueComponent />
         </Navbar.Collapse>
         <Form inline={true} onSubmitCapture={this.go} action={"#"}>
           <InputGroup>
             <Form.Control
-                placeholder={"one or more terms"}
-                value={this.state.q}
-                onChange={(e: any) => this.setState({q: e.target.value ? e.target.value : undefined})}
+              placeholder={"one or more terms"}
+              value={this.state.q}
+              onChange={(e: any) => this.setState({ q: e.target.value ? e.target.value : undefined })}
             />
             <InputGroup.Append>
               <Button
-                  type={"submit"}
-                  onClick={this.go}
-                  variant="outline-primary"
-                  disabled={!this.state.q || this.state.q.length < 2}>Look Up</Button>
+                type={"submit"}
+                onClick={this.go}
+                variant="outline-primary"
+                disabled={!this.state.q || this.state.q.length < 2}>Look Up</Button>
             </InputGroup.Append>
           </InputGroup>
         </Form>
       </Navbar>
-      <Container fluid={true} style={{width: "90%"}}>
+      <Container fluid={true} style={{ width: "90%" }}>
 
         <DisclosureBar id="filters and tags"
-        title={disclosureTitle} tooltip={
-          JSON.stringify(this.state.focus)
-        }>
+          title={disclosureTitle} tooltip={
+            JSON.stringify(this.state.focus)
+          }>
           {this.renderFilters()}
         </DisclosureBar>
 
@@ -441,14 +442,14 @@ export default class App extends React.Component<IProps, IState> {
         <Row>
           <Col>
             <WordTable
-                records={this.state.records}
-                focus={this.state.focus}
-                show={this.lookup.effectiveProps.visible}
-                getReload={this.getOnClick}
-                get={this.get}
-                onFiltered={this.onFiltered}
-                TagControl={this.TagControl}
-                MarksControl={this.MarksControl}
+              records={this.state.records}
+              focus={this.state.focus}
+              show={this.lookup.effectiveProps.visible}
+              getReload={this.getOnClick}
+              get={this.get}
+              onFiltered={this.onFiltered}
+              TagControl={this.TagControl}
+              MarksControl={this.MarksControl}
             />
           </Col>
         </Row>
@@ -485,7 +486,7 @@ export default class App extends React.Component<IProps, IState> {
       arraySetHas(marks, key, query));
   }
 
-  public processed = (query: string, {allTags}: PartialWordRecord) => {
+  public processed = (query: string, { allTags }: PartialWordRecord) => {
     if (!allTags) {
       return;
     }
@@ -507,22 +508,22 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private lookupConfig<TEnum>(props: ({
-                                    as: "checkbox",
-                                    prop: PropertyNamesOfType<ILookupProps, boolean>,
-                                  } | {
-                                    as: "select",
-                                    prop: PropertyNamesOfType<ILookupProps, TEnum>,
-                                    enumType: {[key: string]: TEnum},
-                                  } | {
-                                    as: "number",
-                                    prop: PropertyNamesOfType<ILookupProps, number>,
-                                    range?: [number, number],
-                                  })) {
+    as: "checkbox",
+    prop: PropertyNamesOfType<ILookupProps, boolean>,
+  } | {
+    as: "select",
+    prop: PropertyNamesOfType<ILookupProps, TEnum>,
+    enumType: { [key: string]: TEnum },
+  } | {
+    as: "number",
+    prop: PropertyNamesOfType<ILookupProps, number>,
+    range?: [number, number],
+  })) {
     const defaultValue = Lookup.effectiveProps()[(props.prop)];
     let defaultValueLabel: Renderable;
     switch (typeof defaultValue) {
       case "boolean":
-        defaultValueLabel = <Icon icon={defaultValue ? OpenIconicNames.check :  OpenIconicNames.x} />;
+        defaultValueLabel = <Icon icon={defaultValue ? OpenIconicNames.check : OpenIconicNames.x} />;
         break;
       default:
         defaultValueLabel = defaultValue.toString();
@@ -629,7 +630,7 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private updateXref = (query: string, allTags: ITags) => {
-    this.setState(({xref}) => {
+    this.setState(({ xref }) => {
       Object.entries(xref).forEach(([tagType, xrefsForType]) => {
         Object.keys(xrefsForType).forEach((tag) => {
           if (!arraySetHas(allTags, tagType, (e) => peek(e) === tag)) {
@@ -641,41 +642,43 @@ export default class App extends React.Component<IProps, IState> {
         });
       });
       Object.entries(allTags).forEach(([tagType, tags]) =>
-          tags?.forEach((tag: [string, string] | string) => {
-            const tagTypeXref = ensureMap(xref, tagType as keyof ITags);
-            tag = peek(tag);
-            if (arraySetAdd(tagTypeXref, tag, query, true)) {
-              // console.log(`Added ${query} to ${tagType}/${tag}`);
-            }
-          }));
-      return {xref: {...xref}};
+        tags?.forEach((tag: [string, string] | string) => {
+          const tagTypeXref = ensureMap(xref, tagType as keyof ITags);
+          tag = peek(tag);
+          if (arraySetAdd(tagTypeXref, tag, query, true)) {
+            // console.log(`Added ${query} to ${tagType}/${tag}`);
+          }
+        }));
+      return { xref: { ...xref } };
     });
   }
 
-  private WordListComponent = ({label, words, except = [], variant = "outline-primary"}:
-                                   { label: string,
-                                     className?: string,
-                                     words: string[],
-                                     except?: string[],
-                                     variant?: ButtonProps["variant"] }) => {
+  private WordListComponent = ({ label, words, except = [], variant = "outline-primary" }:
+    {
+      label: string,
+      className?: string,
+      words: string[],
+      except?: string[],
+      variant?: ButtonProps["variant"]
+    }) => {
     if (except.length > 0) {
       words = without(words, ...except);
     }
     return <NavDropdownButtonGroup variant={variant} label={label} words={words} getOnClick={this.getOnClick}>
       {[1, 5, 50, 100].map((n) =>
-          words.length >= n && <Button
-              key={n}
-              variant={variant}
-              onClick={() =>
-                  this.enqueue(words.slice(0, n))}>{n}</Button>)}
-        {words.length > 0 && <Button
-            variant={variant}
-            onClick={() => this.enqueue(words)}>All</Button>}
+        words.length >= n && <Button
+          key={n}
+          variant={variant}
+          onClick={() =>
+            this.enqueue(words.slice(0, n))}>{n}</Button>)}
+      {words.length > 0 && <Button
+        variant={variant}
+        onClick={() => this.enqueue(words)}>All</Button>}
     </NavDropdownButtonGroup>;
   }
 
   private QueueComponent = () => {
-    const {paused, queue, rate} = this.state;
+    const { paused, queue, rate } = this.state;
     const variant: ButtonProps["variant"] = "outline-secondary";
     const style = rate <= 0 ? undefined : {
       backgroundImage: "linear-gradient(transparent 0%, var(--warning) 0%)",
@@ -692,28 +695,28 @@ export default class App extends React.Component<IProps, IState> {
     >
       {/* {promises.map(({q}) => <Button>{q}</Button>)} */}
       <Button
-          variant={variant}
-          onClick={this.togglePause}
-          style={style}
+        variant={variant}
+        onClick={this.togglePause}
+        style={style}
       >
-            <span
-                className={`oi oi-${paused ? OpenIconicNames["media-play"] : OpenIconicNames["media-pause"]}`}
-                title={paused ? "Unpause" : "Pause"}/>
+        <span
+          className={`oi oi-${paused ? OpenIconicNames["media-play"] : OpenIconicNames["media-pause"]}`}
+          title={paused ? "Unpause" : "Pause"} />
       </Button>
       <Button
-          variant={variant}
-          onClick={this.unpauseOnce}
-          disabled={!paused || queue.length === 0}
+        variant={variant}
+        onClick={this.unpauseOnce}
+        disabled={!paused || queue.length === 0}
       >
-            <span
-                className={`oi oi-${OpenIconicNames["media-step-forward"]}`}
-                title="Process One"/>
+        <span
+          className={`oi oi-${OpenIconicNames["media-step-forward"]}`}
+          title="Process One" />
       </Button>
     </NavDropdownButtonGroup>;
   }
 
   private onFiltered = (visibleRecords: IWordRecord[]) => {
-    this.setState({visibleRecordCount: visibleRecords.length});
+    this.setState({ visibleRecordCount: visibleRecords.length });
   }
 
   private get maxThreads() {
@@ -728,9 +731,9 @@ export default class App extends React.Component<IProps, IState> {
     return this.unshift.bind(this, [q], true);
   }
 
-  private togglePause = () => this.setState(({paused}) => ({paused: !paused}));
+  private togglePause = () => this.setState(({ paused }) => ({ paused: !paused }));
 
-  private unpauseOnce = () => this.setState({paused: 1});
+  private unpauseOnce = () => this.setState({ paused: 1 });
 
   private toggleFocus = (tag: string) => {
     (App.highlightedTag === tag ? this.onExitBadge : this.onEnterBadge)(tag);
@@ -784,13 +787,13 @@ export default class App extends React.Component<IProps, IState> {
 
   private renderFilter(label: string, prop: keyof ITagCrossReference, showAll?: boolean): React.ReactNode {
     return <FilterRow
-        label={label}
-        prop={prop}
-        focus={this.getFocusFor}
-        config={this.state.config[prop]}
-        xref={this.state.xref[prop]}
-        TagControl={this.TagControl}
-        showAll={showAll}
+      label={label}
+      prop={prop}
+      focus={this.getFocusFor}
+      config={this.state.config[prop]}
+      xref={this.state.xref[prop]}
+      TagControl={this.TagControl}
+      showAll={showAll}
     />;
   }
 
@@ -805,12 +808,12 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private enqueue = (words: Array<string | undefined>) => {
-    this.setState(({queue}) =>
-        ({queue: uniq(compact(flatten([queue, words])))}));
+    this.setState(({ queue }) =>
+      ({ queue: uniq(compact(flatten([queue, words]))) }));
   }
 
   private unshift = (words: Array<string | undefined>, go?: boolean) => {
-    this.setState(({queue, paused}) => {
+    this.setState(({ queue, paused }) => {
       if (go && paused !== false) {
         words = uniq(compact(words));
         if (typeof paused === "number") {
@@ -819,7 +822,7 @@ export default class App extends React.Component<IProps, IState> {
           paused = words.length;
         }
       }
-      return ({queue: uniq(compact(flatten([words, queue]))), paused});
+      return ({ queue: uniq(compact(flatten([words, queue]))), paused });
     });
   }
 
@@ -847,7 +850,7 @@ export default class App extends React.Component<IProps, IState> {
       this.timer = undefined;
       clearInterval(timer);
     }
-    this.setState(({queue: [item, ...queue], paused, promises, rate}) => {
+    this.setState(({ queue: [item, ...queue], paused, promises, rate }) => {
       if (paused === true || item === undefined || promises.length > this.maxThreads) {
         return null;
       }
@@ -865,19 +868,19 @@ export default class App extends React.Component<IProps, IState> {
       const promiseEntry = { q: item, promise };
       promise.then(...this.resolvePromise(promiseEntry));
       promises.push(promiseEntry);
-      return {queue, promises, paused};
+      return { queue, promises, paused };
     }, () => this.updateRate(restoreTimer));
   }
 
   private resolvePromise = (promiseEntry: IPromiseEntry) => {
-    const c = () => new Promise((resolve) => this.setState(({promises}) =>
-        ({promises: without(promises, promiseEntry)}), resolve));
+    const c = () => new Promise((resolve) => this.setState(({ promises }) =>
+      ({ promises: without(promises, promiseEntry) }), () => resolve(undefined)));
     return [c, c];
   }
 
   private get = async (q: string, redirect?: string): Promise<IRetrieveEntry> => {
     q = q.toLocaleLowerCase();
-    const {apiBaseUrl, languages} = this.state;
+    const { apiBaseUrl, languages } = this.state;
     let promises: Array<[string, Promise<RetrieveEntry>]> = [];
     const addLookup = (word: string, tags: ITags) => {
       const words = promises.map(([w]) => w);
@@ -933,7 +936,7 @@ export default class App extends React.Component<IProps, IState> {
       return this.get(q, redirect);
     }
     return new Promise((resolve) => {
-      this.setState(({records, history}) => {
+      this.setState(({ records, history }) => {
         const pipeline = new OxfordDictionariesPipeline({
           allowed: this.allowed,
           entries: re.results as AnnotatedHeadwordEntry[] || [],
@@ -948,20 +951,20 @@ export default class App extends React.Component<IProps, IState> {
         } else {
           records.splice(index, 0, record);
         }
-        arraySetAdd({history}, "history", q, "mru");
-        return {re, records, history};
+        arraySetAdd({ history }, "history", q, "mru");
+        return { re, records, history };
       }, resolve.bind(null, re));
     });
   }
 
-  private tagControl = ({prop, flag, detail, value, query}: {
+  private tagControl = ({ prop, flag, detail, value, query }: {
     prop: keyof ITagCrossReference,
     flag: string,
     detail?: Renderable,
     value?: Pass,
     query: string | undefined,
   }) => {
-    const {xref, config} = this.state;
+    const { xref, config } = this.state;
     value = value ?? config[prop][flag];
     const key = `${prop}-${flag}`;
     const words = xref[prop][flag];
@@ -992,29 +995,29 @@ export default class App extends React.Component<IProps, IState> {
     // console.log({changePass: words});
     this.setState((state) => {
       state.config[prop][flag] = newValue;
-      return {config: {...state.config}};
+      return { config: { ...state.config } };
     }, () => this.unshift([query, ...words]));
   }
 
-  private marksControl = ({word, badges}: { word: string, badges?: boolean}) => {
+  private marksControl = ({ word, badges }: { word: string, badges?: boolean }) => {
     const marks = this.getMarksFor(word);
     if (badges) {
       return <div className="marks">{Marks.map(([mark, icon]) =>
-            marks.includes(mark) && <Badge key={mark}><span className={`oi oi-${icon}`} title={mark}/></Badge>)}</div>;
+        marks.includes(mark) && <Badge key={mark}><span className={`oi oi-${icon}`} title={mark} /></Badge>)}</div>;
     }
     return <ButtonGroup>
       {Marks.map(([mark, icon]) =>
-          <Button
-              key={mark}
-              onClick={this.toggleMark.bind(this, word, mark)}
-              size="sm"
-              variant={
-                marks.includes(mark)
-                    ? "primary"
-                    : "outline-primary"}
-          >
-            <span className={`oi oi-${icon}`} title={mark}/>
-          </Button>)}
+        <Button
+          key={mark}
+          onClick={this.toggleMark.bind(this, word, mark)}
+          size="sm"
+          variant={
+            marks.includes(mark)
+              ? "primary"
+              : "outline-primary"}
+        >
+          <span className={`oi oi-${icon}`} title={mark} />
+        </Button>)}
     </ButtonGroup>;
   }
 
@@ -1040,7 +1043,7 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private setFocusFor(prop: keyof IPipelineConfig, key: string, value: Focus, solo: boolean) {
-    this.setState(({focus}) => {
+    this.setState(({ focus }) => {
       focus = cloneDeep(focus);
       if (solo) {
         Object.entries(focus).forEach(([focusType, e]) => {
@@ -1064,29 +1067,29 @@ export default class App extends React.Component<IProps, IState> {
           }
         });
       }
-      return {focus};
+      return { focus };
     });
   }
 
   private toggleMark(query: string, mark: string) {
-    this.setState(({xref}) => {
+    this.setState(({ xref }) => {
       arraySetToggle(xref.marks, mark, query);
-      return {xref};
+      return { xref };
     }, () => this.unshift([query]));
   }
 
   private updateRate = (restoreTimer: boolean) => {
-    this.setState(({rate}) => {
-          const newRate = odApiCallsLastMinute();
-          if (newRate === rate) {
-            return null;
-          }
-          return {rate: newRate};
-        }, () => {
-          if (restoreTimer) {
-            this.restoreTimer();
-          }
-        });
+    this.setState(({ rate }) => {
+      const newRate = odApiCallsLastMinute();
+      if (newRate === rate) {
+        return null;
+      }
+      return { rate: newRate };
+    }, () => {
+      if (restoreTimer) {
+        this.restoreTimer();
+      }
+    });
   }
 }
 /*
@@ -1099,7 +1102,7 @@ export type MarksControlFactory = App["MarksControl"];
 
 type PrefixUnion<A, B> = A & Omit<B, keyof A>;
 
-type ITagBadgeProps = PrefixUnion<{pass: Pass, flag?: string}, React.HTMLAttributes<HTMLSpanElement>>;
+type ITagBadgeProps = PrefixUnion<{ pass: Pass, flag?: string }, React.HTMLAttributes<HTMLSpanElement>>;
 
 function defaultFocus(): TagFocus {
   return {
@@ -1109,7 +1112,7 @@ function defaultFocus(): TagFocus {
 }
 
 function TagBadge(props: ITagBadgeProps) {
-  const {pass, flag, children} = props;
+  const { pass, flag, children } = props;
   return <Badge variant={variantForPass(pass)} {...props}>{flag}{children}</Badge>;
 }
 
@@ -1119,29 +1122,29 @@ function variantForPass(value: Pass): BadgeProps["variant"] {
 }
 
 function FilterRow({
-                     label,
-                     prop,
-                     focus,
-                     config,
-                     xref,
-                     TagControl,
-                     showAll = false,
-                   }:
-                       {
-                         label: string,
-                         prop: keyof ITagCrossReference,
-                         focus: App["getFocusFor"],
-                         config: IPassMap,
-                         xref: IStringMap,
-                         TagControl: TagControlFactory;
-                         showAll?: boolean
-                       }) {
-    const [open, setOpen] = React.useState(showAll);
-    const flags = Object.keys(config).sort();
-    // These orphaned tags (like "404") are probably from old bugs:
-    // without(Object.keys(xref), ...flags).forEach((key) => config[key] = Pass.primary);
-    let hidden = 0;
-    return <Row>
+  label,
+  prop,
+  focus,
+  config,
+  xref,
+  TagControl,
+  showAll = false,
+}:
+  {
+    label: string,
+    prop: keyof ITagCrossReference,
+    focus: App["getFocusFor"],
+    config: IPassMap,
+    xref: IStringMap,
+    TagControl: TagControlFactory;
+    showAll?: boolean
+  }) {
+  const [open, setOpen] = React.useState(showAll);
+  const flags = Object.keys(config).sort();
+  // These orphaned tags (like "404") are probably from old bugs:
+  // without(Object.keys(xref), ...flags).forEach((key) => config[key] = Pass.primary);
+  let hidden = 0;
+  return <Row>
     <Col xs={3}>
       <Form.Label>{label}</Form.Label>
     </Col>
@@ -1154,15 +1157,15 @@ function FilterRow({
           return false;
         }
         return <TagControl key={flag} prop={prop} flag={flag} value={value} query={undefined}
-        detail={flagFocus !== Focus.normal && <Icon icon={FocusIcons[flagFocus]} />}/>;
+          detail={flagFocus !== Focus.normal && <Icon icon={FocusIcons[flagFocus]} />} />;
       })}
     </Col>
     <Col xs={"auto"} className="tags">
-    <TagBadge
+      <TagBadge
         pass={Pass.primary}
         onClick={() => setOpen(!open)}>
-          {open ? "hide acceptable tags" : <><Badge variant="secondary">{hidden}</Badge> acceptable tags</>}
-        </TagBadge>
+        {open ? "hide acceptable tags" : <><Badge variant="secondary">{hidden}</Badge> acceptable tags</>}
+      </TagBadge>
     </Col>
   </Row>;
 }

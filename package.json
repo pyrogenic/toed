@@ -4,25 +4,25 @@
   "private": true,
   "proxy": "http://localhost:5000/",
   "dependencies": {
+    "@pyrogenic/asset": "~1.0.0",
     "lodash": "^4.17.19",
     "mobx": "^5.14.2",
     "mobx-react": "6.1.4",
     "node-fetch": "^2.6.1",
     "npm-run-all": "^4.1.5",
     "open-iconic": "^1.1.1",
-    "react": "~16.10.2",
-    "react-bootstrap": "^1.0.0-beta.16",
-    "react-dom": "~16.10.2",
-    "react-scripts": "^3.2.0",
+    "react": "*",
+    "react-bootstrap": "*",
+    "react-dom": "*",
+    "react-scripts": "*",
     "serializr": "^1.5.3"
   },
   "scripts": {
     "bridge": "node src/bridge.js",
     "pre-webdis": "mkdir -p log && touch log/webdis-cache.log && touch log/webdis-gwf.log",
     "webdis-cache": "submodules/webdis/webdis webdis-cache.json",
-    "webdis-gwf": "submodules/webdis/webdis webdis-gwf.json",
     "tail-webdis": "tail -f log/webdis-*.log",
-    "start": "npm-run-all --print-label --sequential pre-webdis --parallel start-ts bridge tail-webdis webdis-cache webdis-gwf",
+    "start": "npm-run-all --print-label --sequential pre-webdis --parallel start-ts bridge tail-webdis webdis-cache",
     "start-ts": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
@@ -46,10 +46,9 @@
   "devDependencies": {
     "@types/jest": "^24.0.24",
     "@types/lodash": "^4.14.144",
-    "@types/node": "12.11.2",
-    "@types/react": "~16.9.9",
-    "@types/react-dom": "~16.9.2",
-    "tslint": "^5.20.0",
-    "typescript": "~3.7.3"
+    "@types/node": "~14",
+    "@types/react": "*",
+    "@types/react-dom": "*",
+    "typescript": "*"
   }
 }
