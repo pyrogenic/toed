@@ -1,3 +1,4 @@
+import { ArrayPropertyNamesOfType, arraySetAdd, arraySetAddAll, arraySetClear, arraySetHas, arraySetRemove, ensure, ensureArray, spread } from "@pyrogenic/asset/lib";
 import cloneDeep from "lodash/cloneDeep";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
@@ -7,17 +8,6 @@ import without from "lodash/without";
 import App from "./App";
 import IDictionaryEntry from "./IDictionaryEntry";
 import IWordRecord, { DiscardedDictionaryEntry, ITags } from "./IWordRecord";
-import {
-    ArrayPropertyNamesOfType,
-    arraySetAdd,
-    arraySetAddAll,
-    arraySetClear,
-    arraySetHas,
-    arraySetRemove,
-    ensure,
-    ensureArray,
-    spread,
-} from "./Magic";
 import map from "./map";
 import Marks from "./Marks";
 import Pass from "./Pass";

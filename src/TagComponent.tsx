@@ -1,6 +1,6 @@
+import { PropertyNamesOfType } from "@pyrogenic/asset/lib";
 import * as React from "react";
 import Badge from "react-bootstrap/Badge";
-import { PropertyNamesOfType } from "./Magic";
 import { IPassMap, IPipelineConfig } from "./OxfordDictionariesPipeline";
 
 interface IProps {

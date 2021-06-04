@@ -1,5 +1,5 @@
+import { PlainProperties, MapProperties, ArrayProperties, MultipleValue } from "@pyrogenic/asset/lib";
 import IDictionaryEntry from "./IDictionaryEntry";
-import { ArrayProperties, MapProperties, MultipleValue, PlainProperties } from "./Magic";
 import RetrieveEntry from "./types/gen/RetrieveEntry";
 
 export interface ITags {

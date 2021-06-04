@@ -1,3 +1,5 @@
+import { arraySetHas } from "@pyrogenic/asset/lib";
+import minDiff from "@pyrogenic/perl/lib/minDiff";
 import clamp from "lodash/clamp";
 import isEqual from "lodash/isEqual";
 import range from "lodash/range";
@@ -11,9 +13,7 @@ import Row from "react-bootstrap/Row";
 import App, { MarksControlFactory, TagControlFactory, TagFocus } from "./App";
 import Focus from "./Focus";
 import IWordRecord from "./IWordRecord";
-import { arraySetHas } from "./Magic";
 import OpenIconicNames from "./OpenIconicNames";
-import { minDiff } from "./volumize";
 import WordRow from "./WordRow";
 import "./WordTable.css";
 

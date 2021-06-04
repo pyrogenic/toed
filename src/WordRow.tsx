@@ -1,3 +1,4 @@
+import { array } from "@pyrogenic/asset/lib";
 import React from "react";
 import Button from "react-bootstrap/Button";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
@@ -12,7 +13,6 @@ import Icon from "./Icon";
 import IDictionaryEntry from "./IDictionaryEntry";
 import IWordRecord, { IDiscardedWordRecord } from "./IWordRecord";
 import LiteralResultComponent from "./LiteralResultComponent";
-import { array } from "./Magic";
 import OpenIconicNames from "./OpenIconicNames";
 import TaggedComponent from "./TaggedComponent";
 import IRetrieveEntry from "./types/gen/IRetrieveEntry";

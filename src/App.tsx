@@ -1,4 +1,5 @@
-// import _ from "lodash";
+import { arraySetAdd, arraySetHas, arraySetRemove, PropertyNamesOfType, peek, arraySetToggle, ensureMap } from "@pyrogenic/asset/lib";
+import titleCase from "@pyrogenic/perl/lib/titleCase";
 import cloneDeep from "lodash/cloneDeep";
 import compact from "lodash/compact";
 import flatten from "lodash/flatten";
@@ -33,27 +34,16 @@ import Focus, { FocusIcons } from "./Focus";
 import Icon from "./Icon";
 import IWordRecord, { ITags } from "./IWordRecord";
 import Lookup, { CacheMode, ILookupProps } from "./Lookup";
-import {
-  arraySetAdd,
-  arraySetHas,
-  arraySetRemove,
-  arraySetToggle,
-  ensureMap,
-  peek,
-  PropertyNamesOfType,
-  titleCase,
-} from "./Magic";
 import Marks from "./Marks";
 import NavDropdownButtonGroup from "./NavDropdownButtonGroup";
 import OpenIconicNames from "./OpenIconicNames";
 import OpTrack from "./OpTrack";
-import OxfordDictionariesPipeline,
-{
+import OxfordDictionariesPipeline, {
   AnnotatedHeadwordEntry,
   fillInTags,
   IPassMap,
   IPipelineConfig,
-  PartialWordRecord,
+  PartialWordRecord
 } from "./OxfordDictionariesPipeline";
 import Pass from "./Pass";
 import PassComponent from "./PassComponent";
@@ -633,7 +623,7 @@ export default class App extends React.Component<IProps, IState> {
     this.setState(({ xref }) => {
       Object.entries(xref).forEach(([tagType, xrefsForType]) => {
         Object.keys(xrefsForType).forEach((tag) => {
-          if (!arraySetHas(allTags, tagType, (e) => peek(e) === tag)) {
+          if (!arraySetHas(allTags, tagType as keyof ITagCrossReference, (e: any) => peek(e) === tag)) {
             // TODO: binary search
             if (arraySetRemove(xrefsForType, tag, query)) {
               // console.log(`Removed ${query} from ${tagType}/${tag}`);
@@ -645,9 +635,7 @@ export default class App extends React.Component<IProps, IState> {
         tags?.forEach((tag: [string, string] | string) => {
           const tagTypeXref = ensureMap(xref, tagType as keyof ITags);
           tag = peek(tag);
-          if (arraySetAdd(tagTypeXref, tag, query, true)) {
-            // console.log(`Added ${query} to ${tagType}/${tag}`);
-          }
+          arraySetAdd(tagTypeXref, tag, query, true);
         }));
       return { xref: { ...xref } };
     });
