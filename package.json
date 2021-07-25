@@ -1,20 +1,20 @@
 {
-  "name": "toed",
+  "name": "@pyrogenic/toed",
   "version": "0.1.0",
   "private": true,
   "proxy": "http://localhost:5000/",
   "dependencies": {
     "lodash": "^4.17.19",
-    "mobx": "^5.14.2",
-    "mobx-react": "6.1.4",
+    "mobx": "~6.3.2",
+    "mobx-react": "~7.2.0",
     "node-fetch": "^2.6.1",
     "npm-run-all": "^4.1.5",
     "open-iconic": "^1.1.1",
-    "react": "~16.10.2",
+    "react": "~17.0.2",
     "react-bootstrap": "^1.0.0-beta.16",
-    "react-dom": "~16.10.2",
-    "react-scripts": "^3.2.0",
-    "serializr": "^1.5.3"
+    "react-dom": "~17.0.2",
+    "react-scripts": "~4.0.3",
+    "serializr": "~1.5.3"
   },
   "scripts": {
     "bridge": "node src/bridge.js",
@@ -47,9 +47,8 @@
     "@types/jest": "^24.0.24",
     "@types/lodash": "^4.14.144",
     "@types/node": "12.11.2",
-    "@types/react": "~16.9.9",
-    "@types/react-dom": "~16.9.2",
-    "tslint": "^5.20.0",
-    "typescript": "~3.7.3"
+    "@types/react": "~17.0.15",
+    "@types/react-dom": "~17.0.9",
+    "typescript": "~4.2.4"
   }
 }

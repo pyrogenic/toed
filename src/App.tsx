@@ -247,7 +247,7 @@ export default class App extends React.Component<IProps, IState> {
         // tslint:disable-next-line:prefer-for-of
         for (let i = 0; i < document.styleSheets.length; i++) {
           const ss = document.styleSheets[i];
-          if (!ss.href && ss.ownerNode.childNodes.length === 0) {
+          if (!ss.href && ss.ownerNode?.childNodes.length === 0) {
             App.stylesheet = ss as CSSStyleSheet;
           }
         }
@@ -310,7 +310,7 @@ export default class App extends React.Component<IProps, IState> {
       <> — <a onClickCapture={() => this.setState({ focus: defaultFocus() })}>reset filters</a></>;
     const disclosureTitle = <>filters and tags{hiddenChunk}{resetFiltersChunk}</>;
     return <>
-      <Navbar bg="light" expand="lg">
+      <Navbar variant="light" expand="lg">
         <Navbar.Toggle aria-controls="nav" as={NavbarBrand}>OD³</Navbar.Toggle>
         <Navbar.Collapse id="nav">
           <Navbar.Text className="powered-by-oxford"> Oxford Dictionaries Definition Distiller</Navbar.Text>
@@ -395,7 +395,7 @@ export default class App extends React.Component<IProps, IState> {
             </Container>
           </NavDropdown>
 
-          <Nav className="mr-auto"/>
+          <Nav className="me-auto" />
 
           <QueueComponent/>
         </Navbar.Collapse>
@@ -546,7 +546,7 @@ export default class App extends React.Component<IProps, IState> {
     switch (props.as) {
       case "checkbox":
         row = <Form.Check
-          className="mr-auto"
+          className="me-auto"
           label={titleCase(props.prop)}
           checked={this.state.lookupProps[props.prop]}
           onChange={() =>
@@ -562,8 +562,7 @@ export default class App extends React.Component<IProps, IState> {
           <Form.Control
             as={"select"}
             value={(this.state.lookupProps[props.prop] ?? defaultValueLabel).toString()}
-            onChange={(event) => {
-              const newValue = event.currentTarget.value;
+            onChange={({ target: { value: newValue } }) => {
               this.setState(({ lookupProps }) => {
                 const realValue = newValue === "undefined" ? undefined : newValue;
                 return ({
@@ -606,8 +605,7 @@ export default class App extends React.Component<IProps, IState> {
             placeholder={`${defaultValue}`}
             defaultValue={this.state.lookupProps[props.prop] === undefined ? `${defaultValue}` : undefined}
             value={value}
-            onChange={(event: any) => {
-              const newValue = event.currentTarget.value;
+            onChange={({ target: { value: newValue } }) => {
               this.setState(({ lookupProps }) => {
                 return ({
                   lookupProps: {
@@ -688,7 +686,7 @@ export default class App extends React.Component<IProps, IState> {
       label={"Queue"}
       words={queue}
       getOnClick={this.getOnClick}
-      className={"mr-3"}
+      className={"me-3"}
     >
       {/* {promises.map(({q}) => <Button>{q}</Button>)} */}
       <Button
@@ -870,7 +868,7 @@ export default class App extends React.Component<IProps, IState> {
   }
 
   private resolvePromise = (promiseEntry: IPromiseEntry) => {
-    const c = () => new Promise((resolve) => this.setState(({promises}) =>
+    const c = () => new Promise<void>((resolve) => this.setState(({ promises }) =>
         ({promises: without(promises, promiseEntry)}), resolve));
     return [c, c];
   }

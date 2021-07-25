@@ -1,5 +1,5 @@
 import * as React from "react";
-import Button from "react-bootstrap/Button";
+import Button, { ButtonProps } from "react-bootstrap/Button";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
 import Col from "react-bootstrap/Col";
 import Dropdown from "react-bootstrap/Dropdown";
@@ -24,11 +24,11 @@ interface IState {
 export default class PassComponent extends React.Component<IProps, IState> {
     public render() {
         const { lookup, pass, changePass, focus, changeFocus, words } = this.props;
-        const CustomToggle = React.forwardRef<Button, ConstructorParameters<typeof Button>[0]>(
-            ({ children, onClick }, ref: any) => (
-            <Button ref={ref} size="sm" variant="outline-secondary" onClick={(e: { preventDefault: () => void; }) => {
+        const CustomToggle = React.forwardRef<HTMLButtonElement, Parameters<Button>[0]>(
+            ({ children, onClick }, ref) => (
+                <Button ref={ref} size="sm" variant="outline-secondary" onClick={(e) => {
                 e.preventDefault();
-                onClick(e);
+                    onClick?.(e);
             }}>
                 {children}
             </Button>
@@ -68,7 +68,7 @@ export default class PassComponent extends React.Component<IProps, IState> {
                       aria-hidden={true}
                       />
                 </Button>
-                <Dropdown onSelect={(word: string) => lookup(word)}>
+                <Dropdown onSelect={(word: string | null) => word && lookup(word)}>
                     <Dropdown.Toggle as={CustomToggle} id="tagged-words">
                         <span className="oi oi-list" title="list" aria-hidden={true} />
                     </Dropdown.Toggle>

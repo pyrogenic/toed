@@ -56,6 +56,10 @@ body {
     flex-flow: nowrap;
 }
 
+.navbar a, .navbar a:active, .navbar a:visited, .navbar a:disabled  {
+    color: inherit !important;
+}
+
 .navbar-toggler {
     padding: 0.25rem;
     margin-left: -8px;
