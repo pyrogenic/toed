@@ -8,4 +8,5 @@
     "tslint.run": "onSave",
     "typescript.format.semicolons": "insert",
     "typescript.tsdk": "./node_modules/typescript/lib",
+    "jest.jestCommandLine": "yarn test",
 }
