@@ -66,6 +66,7 @@ import WordTable from "./WordTable";
 import jqxzWordsUrl from "./wwf/jqxzWords.txt";
 import threeLetterWordsUrl from "./wwf/threeLetterWords.txt";
 import twoLetterWordsUrl from "./wwf/twoLetterWords.txt";
+import setImmediate from "@pyrogenic/perl/lib/setImmediate";
 
 type Renderable = ReturnType<React.Component["render"]>;
 
